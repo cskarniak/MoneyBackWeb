@@ -1,0 +1,458 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth & Users ────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userRoles  UserRole[]
+  auditLogs  AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id    String @id @default(uuid())
+  name  String @unique // admin | gestion | consultation
+
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId String @map("user_id")
+  roleId String @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// ─── Referentials ─────────────────────────────────────────────────────────────
+
+model PaymentMethod {
+  id      String @id @default(uuid())
+  label   String
+  active  Boolean @default(true)
+
+  operations Operation[]
+
+  @@map("payment_methods")
+}
+
+model MovementType {
+  id      String @id @default(uuid())
+  label   String
+  active  Boolean @default(true)
+
+  operations    Operation[]
+  subscriptions Subscription[]
+
+  @@map("movement_types")
+}
+
+model Grouping {
+  id      String  @id @default(uuid())
+  label   String
+  expense Boolean @default(false)
+  income  Boolean @default(false)
+
+  budgets    Budget[]
+  categories Category[]
+
+  @@map("groupings")
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  label      String
+  comment    String?
+  summary    Boolean  @default(false)
+  dashboard  Boolean  @default(false)
+  balance    Decimal  @default(0) @db.Decimal(15, 2)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  groupingId String?  @map("grouping_id")
+  grouping   Grouping? @relation(fields: [groupingId], references: [id])
+
+  operations    Operation[]
+  operationSplits OperationSplit[]
+  subscriptions Subscription[]
+
+  @@map("budgets")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  label     String
+  comment   String?
+  expense   Boolean  @default(false)
+  income    Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  groupingId String?   @map("grouping_id")
+  grouping   Grouping? @relation(fields: [groupingId], references: [id])
+
+  operations      Operation[]
+  operationSplits OperationSplit[]
+  subscriptions   Subscription[]
+
+  @@map("categories")
+}
+
+model ThirdParty {
+  id       String  @id @default(uuid())
+  name     String
+  keyword1 String? @map("keyword1")
+  keyword2 String? @map("keyword2")
+  keyword3 String? @map("keyword3")
+  active   Boolean @default(true)
+
+  operations    Operation[]
+  subscriptions Subscription[]
+
+  @@map("third_parties")
+}
+
+// ─── Accounts ─────────────────────────────────────────────────────────────────
+
+model Account {
+  id             String    @id @default(uuid())
+  name           String
+  agency         String?
+  counter        String?
+  number         String?
+  rib            String?
+  bankUrl        String?   @map("bank_url")
+  bankLogin      String?   @map("bank_login")
+  comment        String?
+  closureDate    DateTime? @map("closure_date")
+  closureBalance Decimal?  @map("closure_balance") @db.Decimal(15, 2)
+  managedForOther Boolean  @default(false) @map("managed_for_other")
+  closed         Boolean   @default(false)
+  syncDate       DateTime? @map("sync_date")
+  lastStatementRef String? @map("last_statement_ref")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  operations        Operation[]
+  reconciliations   AccountReconciliation[]
+  subscriptions     Subscription[]
+
+  @@map("accounts")
+}
+
+// ─── Operations ───────────────────────────────────────────────────────────────
+
+model Operation {
+  id                  String    @id @default(uuid())
+  label               String
+  expense             Decimal   @default(0) @db.Decimal(15, 2)
+  income              Decimal   @default(0) @db.Decimal(15, 2)
+  operationDate       DateTime  @map("operation_date")
+  integrationDate     DateTime? @map("integration_date")
+  pieceNumber         String?   @map("piece_number")
+  reconciliationCode  String?   @map("reconciliation_code")
+  lettering           String?
+  operationType       String?   @map("operation_type") // V=ventilé, P=partiel, T=transfert
+  entryMode           String?   @map("entry_mode")
+  locked              Boolean   @default(false)
+  closed              Boolean   @default(false)
+  newBudgetAmount     Decimal?  @map("new_budget_amount") @db.Decimal(15, 2)
+  statementRef        String?   @map("statement_ref")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  accountId       String        @map("account_id")
+  account         Account       @relation(fields: [accountId], references: [id])
+  budgetId        String?       @map("budget_id")
+  budget          Budget?       @relation(fields: [budgetId], references: [id])
+  categoryId      String?       @map("category_id")
+  category        Category?     @relation(fields: [categoryId], references: [id])
+  thirdPartyId    String?       @map("third_party_id")
+  thirdParty      ThirdParty?   @relation(fields: [thirdPartyId], references: [id])
+  paymentMethodId String?       @map("payment_method_id")
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  movementTypeId  String?       @map("movement_type_id")
+  movementType    MovementType? @relation(fields: [movementTypeId], references: [id])
+  subscriptionId  String?       @map("subscription_id")
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  originId        String?       @map("origin_id")
+
+  splits                   OperationSplit[]
+  reconciliationLines      AccountReconciliationLine[]
+
+  @@index([accountId, operationDate])
+  @@index([accountId, categoryId])
+  @@index([accountId, budgetId])
+  @@index([accountId, thirdPartyId])
+  @@map("operations")
+}
+
+model OperationSplit {
+  id        String   @id @default(uuid())
+  label     String?
+  expense   Decimal  @default(0) @db.Decimal(15, 2)
+  income    Decimal  @default(0) @db.Decimal(15, 2)
+  lettering String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  operationId String    @map("operation_id")
+  operation   Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  budgetId    String?   @map("budget_id")
+  budget      Budget?   @relation(fields: [budgetId], references: [id])
+  categoryId  String?   @map("category_id")
+  category    Category? @relation(fields: [categoryId], references: [id])
+
+  @@map("operation_splits")
+}
+
+// ─── Reconciliation ───────────────────────────────────────────────────────────
+
+model AccountReconciliation {
+  id             String    @id @default(uuid())
+  reference      String?
+  startBalance   Decimal   @map("start_balance") @db.Decimal(15, 2)
+  targetBalance  Decimal   @map("target_balance") @db.Decimal(15, 2)
+  reconciledAt   DateTime? @map("reconciled_at")
+  inProgress     Boolean   @default(true) @map("in_progress")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  accountId String  @map("account_id")
+  account   Account @relation(fields: [accountId], references: [id])
+
+  lines AccountReconciliationLine[]
+
+  @@map("account_reconciliations")
+}
+
+model AccountReconciliationLine {
+  id               String   @id @default(uuid())
+  reconciledAt     DateTime @default(now()) @map("reconciled_at")
+
+  reconciliationId String                @map("reconciliation_id")
+  reconciliation   AccountReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  operationId      String                @map("operation_id")
+  operation        Operation             @relation(fields: [operationId], references: [id])
+
+  @@map("account_reconciliation_lines")
+}
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+
+model Subscription {
+  id                    String    @id @default(uuid())
+  label                 String
+  entryLabel            String?   @map("entry_label")
+  expense               Decimal   @default(0) @db.Decimal(15, 2)
+  income                Decimal   @default(0) @db.Decimal(15, 2)
+  periodicity           String    // monthly | quarterly | annual | weekly
+  dayOfPeriod           Int?      @map("day_of_period")
+  firstDueDate          DateTime  @map("first_due_date")
+  nextDueDate           DateTime? @map("next_due_date")
+  endDate               DateTime? @map("end_date")
+  lastGeneratedDate     DateTime? @map("last_generated_date")
+  lastGeneratedDueDate  DateTime? @map("last_generated_due_date")
+  active                Boolean   @default(true)
+  hasSplits             Boolean   @default(false) @map("has_splits")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  accountId      String        @map("account_id")
+  account        Account       @relation(fields: [accountId], references: [id])
+  thirdPartyId   String?       @map("third_party_id")
+  thirdParty     ThirdParty?   @relation(fields: [thirdPartyId], references: [id])
+  categoryId     String?       @map("category_id")
+  category       Category?     @relation(fields: [categoryId], references: [id])
+  budgetId       String?       @map("budget_id")
+  budget         Budget?       @relation(fields: [budgetId], references: [id])
+  movementTypeId String?       @map("movement_type_id")
+  movementType   MovementType? @relation(fields: [movementTypeId], references: [id])
+
+  operations Operation[]
+  runs       SubscriptionRun[]
+
+  @@map("subscriptions")
+}
+
+model SubscriptionRun {
+  id          String   @id @default(uuid())
+  runAt       DateTime @default(now()) @map("run_at")
+  dateRef     DateTime @map("date_ref")
+  generated   Int      @default(0)
+
+  subscriptionId String       @map("subscription_id")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("subscription_runs")
+}
+
+// ─── Imports ──────────────────────────────────────────────────────────────────
+
+model Import {
+  id        String   @id @default(uuid())
+  source    String   // excel | bank-file | degiro | abc-bourse
+  filename  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  jobs ImportJob[]
+
+  @@map("imports")
+}
+
+model ImportJob {
+  id          String   @id @default(uuid())
+  status      String   @default("pending") // pending | parsing | preview | confirmed | done | error
+  totalLines  Int      @default(0) @map("total_lines")
+  validLines  Int      @default(0) @map("valid_lines")
+  errorLines  Int      @default(0) @map("error_lines")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  importId  String @map("import_id")
+  import    Import @relation(fields: [importId], references: [id], onDelete: Cascade)
+  profileId String? @map("profile_id")
+  profile   ImportProfile? @relation(fields: [profileId], references: [id])
+
+  lines ImportJobLine[]
+
+  @@map("import_jobs")
+}
+
+model ImportJobLine {
+  id        String  @id @default(uuid())
+  lineNum   Int     @map("line_num")
+  rawData   Json    @map("raw_data")
+  status    String  @default("pending") // pending | valid | error | skipped
+  errorMsg  String? @map("error_msg")
+
+  jobId String    @map("job_id")
+  job   ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("import_job_lines")
+}
+
+model ImportProfile {
+  id        String   @id @default(uuid())
+  name      String
+  source    String
+  mapping   Json
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  jobs ImportJob[]
+
+  @@map("import_profiles")
+}
+
+// ─── Portfolio ────────────────────────────────────────────────────────────────
+
+model PortfolioTransaction {
+  id               String   @id @default(uuid())
+  operatorRef      String?  @map("operator_ref")
+  product          String
+  isin             String?
+  code             String?
+  transactionDate  DateTime @map("transaction_date")
+  quantity         Decimal  @db.Decimal(15, 6)
+  price            Decimal  @db.Decimal(15, 6)
+  fees             Decimal  @default(0) @db.Decimal(15, 2)
+  ttf              Decimal  @default(0) @db.Decimal(15, 2)
+  grossAmount      Decimal  @map("gross_amount") @db.Decimal(15, 2)
+  netAmount        Decimal  @map("net_amount") @db.Decimal(15, 2)
+  currency         String   @default("EUR")
+  movementType     String   @map("movement_type") // buy | sell | dividend
+  dividendAmount   Decimal? @map("dividend_amount") @db.Decimal(15, 2)
+  importRef        String?  @map("import_ref")
+  status           String   @default("active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  buyMatchings  PortfolioMatching[] @relation("BuyTransaction")
+  sellMatchings PortfolioMatching[] @relation("SellTransaction")
+
+  @@map("portfolio_transactions")
+}
+
+model PortfolioMatching {
+  id              String  @id @default(uuid())
+  quantityMatched Decimal @map("quantity_matched") @db.Decimal(15, 6)
+
+  buyTransactionId  String               @map("buy_transaction_id")
+  buyTransaction    PortfolioTransaction @relation("BuyTransaction", fields: [buyTransactionId], references: [id])
+  sellTransactionId String               @map("sell_transaction_id")
+  sellTransaction   PortfolioTransaction @relation("SellTransaction", fields: [sellTransactionId], references: [id])
+
+  @@map("portfolio_matchings")
+}
+
+model PortfolioPrice {
+  id     String   @id @default(uuid())
+  isin   String
+  code   String?
+  date   DateTime
+  price  Decimal  @db.Decimal(15, 6)
+  source String?
+
+  @@unique([isin, date])
+  @@map("portfolio_prices")
+}
+
+model PortfolioLabel {
+  isin    String @id
+  label   String
+  market  String?
+
+  @@map("portfolio_labels")
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // delete | import | reconcile | recalculate | admin
+  entity     String
+  entityId   String   @map("entity_id")
+  data       Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

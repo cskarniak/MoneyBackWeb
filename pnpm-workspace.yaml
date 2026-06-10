@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  sharp: true
+  "@img/sharp-darwin-arm64": true
+  "@img/sharp-darwin-x64": true
+  "@img/sharp-linux-x64": true
+  "@img/sharp-linux-arm64": true
+  "@prisma/client": true
+  "@prisma/engines": true
+  "@scarf/scarf": true
+  msgpackr-extract: true
+  prisma: true
