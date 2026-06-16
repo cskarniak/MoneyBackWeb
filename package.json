@@ -7,14 +7,18 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "pnpm --parallel dev",
+    "dev": "pnpm build:packages && pnpm --parallel dev",
     "dev:web": "pnpm --filter web dev",
-    "dev:api": "pnpm --filter api dev",
+    "dev:api": "pnpm build:packages && pnpm --filter api dev",
+    "build:packages": "pnpm --filter @moneyback/shared build && pnpm --filter @moneyback/db build",
     "build": "pnpm --filter web build && pnpm --filter api build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @moneyback/db generate",
     "db:migrate": "pnpm --filter @moneyback/db migrate:dev",
+    "db:deploy": "pnpm --filter @moneyback/db migrate:deploy",
+    "db:seed": "pnpm --filter @moneyback/db seed",
+    "db:setup": "pnpm docker:up && pnpm db:deploy && pnpm db:seed",
     "db:studio": "pnpm --filter @moneyback/db studio",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down"

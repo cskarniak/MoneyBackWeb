@@ -13,3 +13,4 @@ allowBuilds:
   "@scarf/scarf": true
   msgpackr-extract: true
   prisma: true
+  "@swc/core": true
