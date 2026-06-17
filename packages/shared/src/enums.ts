@@ -47,3 +47,34 @@ export const AuditAction = {
   RECALCULATE: 'recalculate',
   ADMIN: 'admin',
 } as const;
+
+export const ThirdPartyMatchingOperator = {
+  AND: 'AND',
+  OR: 'OR',
+} as const;
+
+export const ThirdPartyMatchingField = {
+  LABEL: 'label',
+  NORMALIZED_LABEL: 'normalizedLabel',
+  AMOUNT: 'amount',
+  DIRECTION: 'direction',
+  ACCOUNT_ID: 'accountId',
+  STATEMENT_REF: 'statementRef',
+  COUNTERPARTY_NAME: 'counterpartyName',
+  MEMO: 'memo',
+  DAY_OF_MONTH: 'dayOfMonth',
+} as const;
+
+export const ThirdPartyMatchingMatcher = {
+  CONTAINS: 'contains',
+  EQUALS: 'equals',
+  STARTS_WITH: 'startsWith',
+  ENDS_WITH: 'endsWith',
+  REGEX: 'regex',
+  GT: 'gt',
+  GTE: 'gte',
+  LT: 'lt',
+  LTE: 'lte',
+  BETWEEN: 'between',
+  IN: 'in',
+} as const;

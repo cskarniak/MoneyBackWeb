@@ -227,6 +227,7 @@ export function OperationsInlineEditor({
   const thirdPartyOptions = thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name }));
 
   const watchSplits = watch('splits');
+  const hasSplitRows = watchSplits.length > 0;
   const accountValue = watch('accountId');
   const dueDateValue = watch('dueDate');
   const letteringValue = watch('lettering');
@@ -236,6 +237,12 @@ export function OperationsInlineEditor({
   const splitExpense = watchSplits.reduce((sum, split) => sum + asNumber(split.expense), 0);
   const splitIncome = watchSplits.reduce((sum, split) => sum + asNumber(split.income), 0);
   const remainingBalance = (income - expense) - (splitIncome - splitExpense);
+  const displayedCategoryOptions = hasSplitRows
+    ? [{ value: '__split__', label: 'Ventilé' }]
+    : categoryOptions;
+  const displayedEnveloppeOptions = hasSplitRows
+    ? [{ value: '__split__', label: 'Ventilé' }]
+    : enveloppeOptions;
 
   const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
   const splitError =
@@ -373,23 +380,25 @@ export function OperationsInlineEditor({
         </Table.Td>
         <Table.Td style={inlineCellTdStyle}>
           <Select
-            data={categoryOptions}
-            value={watch('categoryId') ?? null}
+            data={displayedCategoryOptions}
+            value={hasSplitRows ? '__split__' : (watch('categoryId') ?? null)}
             onChange={val => setValue('categoryId', val, { shouldDirty: true })}
             placeholder="Catégorie"
-            clearable
-            searchable
+            clearable={!hasSplitRows}
+            searchable={!hasSplitRows}
+            disabled={hasSplitRows}
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
         <Table.Td style={inlineCellTdStyle}>
           <Select
-            data={enveloppeOptions}
-            value={watch('budgetId') ?? null}
+            data={displayedEnveloppeOptions}
+            value={hasSplitRows ? '__split__' : (watch('budgetId') ?? null)}
             onChange={val => setValue('budgetId', val, { shouldDirty: true })}
             placeholder="Enveloppe"
-            clearable
-            searchable
+            clearable={!hasSplitRows}
+            searchable={!hasSplitRows}
+            disabled={hasSplitRows}
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
@@ -510,23 +519,6 @@ export function OperationsInlineEditor({
                   styles={{ input: fieldInputStyle }}
                 />
               </Group>
-              {!isNew && (
-                <Checkbox
-                  label="Validée"
-                  checked={watch('operationValidated')}
-                  onChange={event => setValue('operationValidated', event.currentTarget.checked, { shouldDirty: true })}
-                />
-              )}
-              <Checkbox
-                label="Verrouillée"
-                checked={watch('locked')}
-                onChange={event => setValue('locked', event.currentTarget.checked, { shouldDirty: true })}
-              />
-              <Checkbox
-                label="Clôturée"
-                checked={watch('closed')}
-                onChange={event => setValue('closed', event.currentTarget.checked, { shouldDirty: true })}
-              />
             </Group>
           </Stack>
         </Table.Td>

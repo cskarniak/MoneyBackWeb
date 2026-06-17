@@ -96,9 +96,11 @@ Issues des procédures globales WinDev originales — à implémenter côté API
 - **`CalculateAccountBalance`** : solde = solde de clôture + recettes − dépenses des opérations non clôturées
 - **`CalculateAccountBalanceAtDate`** : idem filtré sur `operation_date <= date`
 - **`RebuildBudgetBalances`** : remet à zéro les soldes `budgets`, rejoue toutes les opérations + ventilations
-- **`AutoAssignThirdParty`** : matching libellé / mots-clés tiers (`keyword1/2/3`) avec logique ET/OU
+- **`AutoAssignThirdParty`** : matching tiers via règles explicites et conditions, sans ancien système `keyword1/2/3`
 - **`SplitOperation`** : décompose une opération en `operation_splits` ; la somme des splits doit égaler le montant principal
 - **`GenerateDueSubscriptions`** : sélectionne les abonnements dont `next_due_date <= dateRef` et génère les opérations
+
+Pour les arbitrages métier validés au fil des sessions, consulter aussi `docs/regles_gestion_impl.md`.
 
 Le **solde progressif** affiché dans AG Grid est calculé localement côté frontend pour la fluidité d'affichage — le backend reste la source de vérité en cas d'écart.
 

@@ -110,14 +110,62 @@ CREATE TABLE "categories" (
 CREATE TABLE "tiers" (
     "id" TEXT NOT NULL,
     "nom" TEXT NOT NULL,
-    "mot_cle_1" TEXT,
-    "mot_cle_2" TEXT,
-    "mot_cle_3" TEXT,
-    "mode_mots_cles" TEXT NOT NULL DEFAULT 'OR',
-    "formule_affectation" TEXT,
+    "commentaire" TEXT,
+    "ventilation" BOOLEAN NOT NULL DEFAULT false,
     "actif" BOOLEAN NOT NULL DEFAULT true,
+    "categorie_id" TEXT,
+    "budget_id" TEXT,
 
     CONSTRAINT "tiers_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "operations_ventilees_tiers" (
+    "id" TEXT NOT NULL,
+    "libelle" TEXT,
+    "depense" DECIMAL(15,2) NOT NULL DEFAULT 0,
+    "recette" DECIMAL(15,2) NOT NULL DEFAULT 0,
+    "solde" DECIMAL(15,2),
+    "date_creation" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "date_modification" TIMESTAMP(3) NOT NULL,
+    "tiers_id" TEXT NOT NULL,
+    "budget_id" TEXT,
+    "categorie_id" TEXT,
+
+    CONSTRAINT "operations_ventilees_tiers_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "tiers_regles_matching" (
+    "id" TEXT NOT NULL,
+    "libelle" TEXT NOT NULL,
+    "description" TEXT,
+    "actif" BOOLEAN NOT NULL DEFAULT true,
+    "priorite" INTEGER NOT NULL DEFAULT 100,
+    "score" INTEGER NOT NULL DEFAULT 100,
+    "operateur" TEXT NOT NULL DEFAULT 'AND',
+    "stop_si_match" BOOLEAN NOT NULL DEFAULT false,
+    "date_creation" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "date_modification" TIMESTAMP(3) NOT NULL,
+    "tiers_id" TEXT NOT NULL,
+
+    CONSTRAINT "tiers_regles_matching_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "tiers_regles_matching_conditions" (
+    "id" TEXT NOT NULL,
+    "champ" TEXT NOT NULL,
+    "operateur" TEXT NOT NULL,
+    "valeur_1" TEXT,
+    "valeur_2" TEXT,
+    "negation" BOOLEAN NOT NULL DEFAULT false,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "date_creation" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "date_modification" TIMESTAMP(3) NOT NULL,
+    "regle_id" TEXT NOT NULL,
+
+    CONSTRAINT "tiers_regles_matching_conditions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -473,6 +521,15 @@ CREATE UNIQUE INDEX "imports_reference_key" ON "imports"("reference");
 CREATE UNIQUE INDEX "portefeuille_cours_code_isin_date_cours_key" ON "portefeuille_cours"("code_isin", "date_cours");
 
 -- CreateIndex
+CREATE INDEX "operations_ventilees_tiers_tiers_id_idx" ON "operations_ventilees_tiers"("tiers_id");
+
+-- CreateIndex
+CREATE INDEX "tiers_regles_matching_tiers_id_actif_priorite_idx" ON "tiers_regles_matching"("tiers_id", "actif", "priorite");
+
+-- CreateIndex
+CREATE INDEX "tiers_regles_matching_conditions_regle_id_position_idx" ON "tiers_regles_matching_conditions"("regle_id", "position");
+
+-- CreateIndex
 CREATE INDEX "journaux_audit_entite_entite_id_idx" ON "journaux_audit"("entite", "entite_id");
 
 -- CreateIndex
@@ -492,6 +549,12 @@ ALTER TABLE "budgets" ADD CONSTRAINT "budgets_type_mouvement_id_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "categories" ADD CONSTRAINT "categories_regroupement_id_fkey" FOREIGN KEY ("regroupement_id") REFERENCES "regroupements"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tiers" ADD CONSTRAINT "tiers_categorie_id_fkey" FOREIGN KEY ("categorie_id") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tiers" ADD CONSTRAINT "tiers_budget_id_fkey" FOREIGN KEY ("budget_id") REFERENCES "budgets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "operations" ADD CONSTRAINT "operations_compte_id_fkey" FOREIGN KEY ("compte_id") REFERENCES "comptes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -528,6 +591,21 @@ ALTER TABLE "operations_ventilees" ADD CONSTRAINT "operations_ventilees_budget_i
 
 -- AddForeignKey
 ALTER TABLE "operations_ventilees" ADD CONSTRAINT "operations_ventilees_categorie_id_fkey" FOREIGN KEY ("categorie_id") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "operations_ventilees_tiers" ADD CONSTRAINT "operations_ventilees_tiers_tiers_id_fkey" FOREIGN KEY ("tiers_id") REFERENCES "tiers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "operations_ventilees_tiers" ADD CONSTRAINT "operations_ventilees_tiers_budget_id_fkey" FOREIGN KEY ("budget_id") REFERENCES "budgets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "operations_ventilees_tiers" ADD CONSTRAINT "operations_ventilees_tiers_categorie_id_fkey" FOREIGN KEY ("categorie_id") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tiers_regles_matching" ADD CONSTRAINT "tiers_regles_matching_tiers_id_fkey" FOREIGN KEY ("tiers_id") REFERENCES "tiers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tiers_regles_matching_conditions" ADD CONSTRAINT "tiers_regles_matching_conditions_regle_id_fkey" FOREIGN KEY ("regle_id") REFERENCES "tiers_regles_matching"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "rapprochements_bancaires" ADD CONSTRAINT "rapprochements_bancaires_compte_id_fkey" FOREIGN KEY ("compte_id") REFERENCES "comptes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { Periodicity } from './enums';
+import {
+  Periodicity,
+  ThirdPartyMatchingField,
+  ThirdPartyMatchingMatcher,
+  ThirdPartyMatchingOperator,
+} from './enums';
 
 // ─── Account ──────────────────────────────────────────────────────────────────
 
@@ -228,14 +233,81 @@ export type BudgetFiltersDto = z.infer<typeof BudgetFiltersSchema>;
 
 // ─── Third Party / Tiers ─────────────────────────────────────────────────────
 
+export const ThirdPartyMatchingConditionSchema = z.object({
+  field: z.enum([
+    ThirdPartyMatchingField.LABEL,
+    ThirdPartyMatchingField.NORMALIZED_LABEL,
+    ThirdPartyMatchingField.AMOUNT,
+    ThirdPartyMatchingField.DIRECTION,
+    ThirdPartyMatchingField.ACCOUNT_ID,
+    ThirdPartyMatchingField.STATEMENT_REF,
+    ThirdPartyMatchingField.COUNTERPARTY_NAME,
+    ThirdPartyMatchingField.MEMO,
+    ThirdPartyMatchingField.DAY_OF_MONTH,
+  ]),
+  matcher: z.enum([
+    ThirdPartyMatchingMatcher.CONTAINS,
+    ThirdPartyMatchingMatcher.EQUALS,
+    ThirdPartyMatchingMatcher.STARTS_WITH,
+    ThirdPartyMatchingMatcher.ENDS_WITH,
+    ThirdPartyMatchingMatcher.REGEX,
+    ThirdPartyMatchingMatcher.GT,
+    ThirdPartyMatchingMatcher.GTE,
+    ThirdPartyMatchingMatcher.LT,
+    ThirdPartyMatchingMatcher.LTE,
+    ThirdPartyMatchingMatcher.BETWEEN,
+    ThirdPartyMatchingMatcher.IN,
+  ]),
+  value: z.string().optional().nullable(),
+  value2: z.string().optional().nullable(),
+  negate: z.boolean().default(false),
+  position: z.number().int().min(0).default(0),
+});
+
+export type ThirdPartyMatchingConditionDto = z.infer<typeof ThirdPartyMatchingConditionSchema>;
+
+export const ThirdPartyMatchingRuleSchema = z.object({
+  label: z.string().min(1, 'Le libellé est obligatoire'),
+  description: z.string().optional().nullable(),
+  active: z.boolean().default(true),
+  priority: z.number().int().default(100),
+  score: z.number().int().min(0).default(100),
+  operator: z.enum([ThirdPartyMatchingOperator.AND, ThirdPartyMatchingOperator.OR]).default(ThirdPartyMatchingOperator.AND),
+  stopOnMatch: z.boolean().default(false),
+  conditions: z.array(ThirdPartyMatchingConditionSchema).default([]),
+});
+
+export type ThirdPartyMatchingRuleDto = z.infer<typeof ThirdPartyMatchingRuleSchema>;
+
+export const ThirdPartyMatchingCandidateSchema = z.object({
+  label: z.string().default(''),
+  normalizedLabel: z.string().optional(),
+  amount: z.number(),
+  direction: z.enum(['expense', 'income']),
+  accountId: z.string().uuid().optional().nullable(),
+  statementRef: z.string().optional().nullable(),
+  counterpartyName: z.string().optional().nullable(),
+  memo: z.string().optional().nullable(),
+  dayOfMonth: z.number().int().min(1).max(31).optional().nullable(),
+});
+
+export type ThirdPartyMatchingCandidateDto = z.infer<typeof ThirdPartyMatchingCandidateSchema>;
+
 export const CreateThirdPartySchema = z.object({
   name: z.string().min(1, 'Le nom est obligatoire'),
-  keyword1: z.string().optional().nullable(),
-  keyword2: z.string().optional().nullable(),
-  keyword3: z.string().optional().nullable(),
-  keywordMode: z.enum(['OR', 'AND']).default('OR'),
-  affectationFormula: z.string().optional().nullable(),
+  comment: z.string().optional().nullable(),
+  ventilated: z.boolean().default(false),
+  categoryId: z.string().uuid().optional().nullable(),
+  budgetId: z.string().uuid().optional().nullable(),
   active: z.boolean().default(true),
+  splits: z.array(z.object({
+    label: z.string().optional().nullable(),
+    expense: z.number().min(0).default(0),
+    income: z.number().min(0).default(0),
+    categoryId: z.string().uuid().optional().nullable(),
+    budgetId: z.string().uuid().optional().nullable(),
+  })).default([]),
+  matchingRules: z.array(ThirdPartyMatchingRuleSchema).default([]),
 });
 
 export type CreateThirdPartyDto = z.infer<typeof CreateThirdPartySchema>;
@@ -251,7 +323,7 @@ export const ThirdPartyFiltersSchema = z.object({
   ),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
-  sortBy: z.enum(['name', 'keyword1', 'keywordMode']).default('name'),
+  sortBy: z.enum(['name', 'comment', 'ventilated']).default('name'),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
 });
 

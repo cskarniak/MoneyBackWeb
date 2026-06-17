@@ -184,10 +184,17 @@ export function OperationsFiche({ id }: Props) {
   const thirdPartyOptions = thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name }));
 
   const watchSplits = watch('splits');
+  const hasSplitRows = watchSplits.length > 0;
   const expense = asNumber(watch('expense'));
   const income = asNumber(watch('income'));
   const splitExpense = watchSplits.reduce((sum, split) => sum + asNumber(split.expense), 0);
   const splitIncome = watchSplits.reduce((sum, split) => sum + asNumber(split.income), 0);
+  const displayedCategoryOptions = hasSplitRows
+    ? [{ value: '__split__', label: 'Ventilé' }]
+    : categoryOptions;
+  const displayedEnveloppeOptions = hasSplitRows
+    ? [{ value: '__split__', label: 'Ventilé' }]
+    : enveloppeOptions;
 
   const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
   const splitError =
@@ -331,10 +338,28 @@ export function OperationsFiche({ id }: Props) {
                         <Select data={thirdPartyOptions} value={watch('thirdPartyId') ?? null} onChange={val => setValue('thirdPartyId', val)} clearable searchable styles={{ input: fieldInputStyle }} />
                       </Table.Td>
                       <Table.Td>
-                        <Select data={categoryOptions} value={watch('categoryId') ?? null} onChange={val => setValue('categoryId', val)} clearable searchable styles={{ input: fieldInputStyle }} />
+                        <Select
+                          data={displayedCategoryOptions}
+                          value={hasSplitRows ? '__split__' : (watch('categoryId') ?? null)}
+                          onChange={val => setValue('categoryId', val)}
+                          placeholder="Catégorie"
+                          clearable={!hasSplitRows}
+                          searchable={!hasSplitRows}
+                          disabled={hasSplitRows}
+                          styles={{ input: fieldInputStyle }}
+                        />
                       </Table.Td>
                       <Table.Td>
-                        <Select data={enveloppeOptions} value={watch('budgetId') ?? null} onChange={val => setValue('budgetId', val)} clearable searchable styles={{ input: fieldInputStyle }} />
+                        <Select
+                          data={displayedEnveloppeOptions}
+                          value={hasSplitRows ? '__split__' : (watch('budgetId') ?? null)}
+                          onChange={val => setValue('budgetId', val)}
+                          placeholder="Enveloppe"
+                          clearable={!hasSplitRows}
+                          searchable={!hasSplitRows}
+                          disabled={hasSplitRows}
+                          styles={{ input: fieldInputStyle }}
+                        />
                       </Table.Td>
                       <Table.Td>
                         <TextInput {...register('pieceNumber')} styles={{ input: fieldInputStyle }} />
@@ -348,13 +373,6 @@ export function OperationsFiche({ id }: Props) {
               </Box>
 
               <Group justify="space-between" mt={10} gap={20}>
-                <Group gap={24}>
-                  {!isNew && (
-                    <Checkbox label="Validée" checked={watch('operationValidated')} onChange={e => setValue('operationValidated', e.currentTarget.checked)} />
-                  )}
-                  <Checkbox label="Verrouillée" checked={watch('locked')} onChange={e => setValue('locked', e.currentTarget.checked)} />
-                  <Checkbox label="Clôturée" checked={watch('closed')} onChange={e => setValue('closed', e.currentTarget.checked)} />
-                </Group>
                 <Group gap={20}>
                   <Text size="sm">Dépense: <strong>{expense.toFixed(2)}</strong></Text>
                   <Text size="sm">Recette: <strong>{income.toFixed(2)}</strong></Text>

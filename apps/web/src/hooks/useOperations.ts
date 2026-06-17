@@ -64,6 +64,10 @@ export type OperationFilters = {
   sortOrder?: 'asc' | 'desc';
 };
 
+type UseOperationsOptions = {
+  enabled?: boolean;
+};
+
 export type OperationSplitPayload = {
   label?: string | null;
   expense: number;
@@ -130,7 +134,7 @@ function normalizeOperation(operation: Record<string, unknown>): Operation {
   } as Operation;
 }
 
-export function useOperations(filters: OperationFilters) {
+export function useOperations(filters: OperationFilters, options?: UseOperationsOptions) {
   return useQuery<OperationsResponse>({
     queryKey: [KEY, filters],
     queryFn: () =>
@@ -138,6 +142,7 @@ export function useOperations(filters: OperationFilters) {
         ...r.data,
         items: (r.data.items as Record<string, unknown>[]).map(normalizeOperation),
       })),
+    enabled: options?.enabled ?? true,
   });
 }
 

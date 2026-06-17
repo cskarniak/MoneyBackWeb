@@ -116,6 +116,8 @@ model Budget {
   operationSplits    OperationSplit[]
   subscriptions      Subscription[]
   subscriptionSplits SubscriptionSplit[]
+  thirdParties       ThirdParty[]
+  thirdPartySplits   ThirdPartySplit[]
 
   @@map("budgets")
 }
@@ -138,6 +140,8 @@ model Category {
   operationSplits    OperationSplit[]
   subscriptions      Subscription[]
   subscriptionSplits SubscriptionSplit[]
+  thirdParties       ThirdParty[]
+  thirdPartySplits   ThirdPartySplit[]
 
   @@map("categories")
 }
@@ -145,17 +149,79 @@ model Category {
 model ThirdParty {
   id                 String  @id @default(uuid())
   name               String  @map("nom")
-  keyword1           String? @map("mot_cle_1")
-  keyword2           String? @map("mot_cle_2")
-  keyword3           String? @map("mot_cle_3")
-  keywordMode        String  @default("OR") @map("mode_mots_cles")
-  affectationFormula String? @map("formule_affectation")
+  comment            String? @map("commentaire")
+  ventilated         Boolean @default(false) @map("ventilation")
   active             Boolean @default(true) @map("actif")
+
+  categoryId String?   @map("categorie_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+  budgetId   String?   @map("budget_id")
+  budget     Budget?   @relation(fields: [budgetId], references: [id])
 
   operations    Operation[]
   subscriptions Subscription[]
+  splits        ThirdPartySplit[]
+  matchingRules ThirdPartyMatchingRule[]
 
   @@map("tiers")
+}
+
+model ThirdPartySplit {
+  id        String   @id @default(uuid())
+  label     String?  @map("libelle")
+  expense   Decimal  @default(0) @map("depense") @db.Decimal(15, 2)
+  income    Decimal  @default(0) @map("recette") @db.Decimal(15, 2)
+  balance   Decimal? @map("solde") @db.Decimal(15, 2)
+  createdAt DateTime @default(now()) @map("date_creation")
+  updatedAt DateTime @updatedAt @map("date_modification")
+
+  thirdPartyId String     @map("tiers_id")
+  thirdParty   ThirdParty @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
+  budgetId     String?    @map("budget_id")
+  budget       Budget?    @relation(fields: [budgetId], references: [id])
+  categoryId   String?    @map("categorie_id")
+  category     Category?  @relation(fields: [categoryId], references: [id])
+
+  @@index([thirdPartyId])
+  @@map("operations_ventilees_tiers")
+}
+
+model ThirdPartyMatchingRule {
+  id          String   @id @default(uuid())
+  label       String   @map("libelle")
+  description String?  @map("description")
+  active      Boolean  @default(true) @map("actif")
+  priority    Int      @default(100) @map("priorite")
+  score       Int      @default(100) @map("score")
+  operator    String   @default("AND") @map("operateur")
+  stopOnMatch Boolean  @default(false) @map("stop_si_match")
+  createdAt   DateTime @default(now()) @map("date_creation")
+  updatedAt   DateTime @updatedAt @map("date_modification")
+
+  thirdPartyId String     @map("tiers_id")
+  thirdParty   ThirdParty @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
+  conditions   ThirdPartyMatchingCondition[]
+
+  @@index([thirdPartyId, active, priority])
+  @@map("tiers_regles_matching")
+}
+
+model ThirdPartyMatchingCondition {
+  id        String   @id @default(uuid())
+  field     String   @map("champ")
+  matcher   String   @map("operateur")
+  value     String?  @map("valeur_1")
+  value2    String?  @map("valeur_2")
+  negate    Boolean  @default(false) @map("negation")
+  position  Int      @default(0) @map("position")
+  createdAt DateTime @default(now()) @map("date_creation")
+  updatedAt DateTime @updatedAt @map("date_modification")
+
+  ruleId String                 @map("regle_id")
+  rule   ThirdPartyMatchingRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, position])
+  @@map("tiers_regles_matching_conditions")
 }
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────

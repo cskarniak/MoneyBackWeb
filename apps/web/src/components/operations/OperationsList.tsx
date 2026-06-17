@@ -155,9 +155,10 @@ export function OperationsList() {
     unvalidatedOnly,
     sortBy,
     sortOrder,
-  });
+  }, { enabled: !!accountId });
   const { data: accounts = [] } = useAccountsAll();
   const selectedAccount = accounts.find(account => account.id === accountId) ?? null;
+  const hasSelectedAccount = !!accountId;
   const deleteMutation = useDeleteOperation();
   const updateMutation = useUpdateOperation();
   const openingBalance = Number(selectedAccount?.openingBalance ?? 0);
@@ -398,7 +399,7 @@ export function OperationsList() {
         header: () => <span style={thStyle()}>Catégorie</span>,
         cell: ({ row }) => (
           <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 400} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
-            {row.original.splits.length > 0 ? `${row.original.splits.length} ligne(s)` : (row.original.categorie?.label ?? '—')}
+            {row.original.splits.length > 0 ? 'Ventilé' : (row.original.categorie?.label ?? '—')}
           </Text>
         ),
       },
@@ -407,7 +408,7 @@ export function OperationsList() {
         header: () => <span style={thStyle()}>Enveloppe</span>,
         cell: ({ row }) => (
           <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 400} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
-            {row.original.splits.length > 0 ? 'Ventilée' : (row.original.enveloppe?.label ?? '—')}
+            {row.original.splits.length > 0 ? 'Ventilé' : (row.original.enveloppe?.label ?? '—')}
           </Text>
         ),
       },
@@ -465,7 +466,7 @@ export function OperationsList() {
   );
 
   const table = useReactTable({
-    data: data?.items ?? [],
+    data: hasSelectedAccount ? (data?.items ?? []) : [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
@@ -474,7 +475,7 @@ export function OperationsList() {
 
   const totalPages = data ? Math.ceil(data.total / limit) : 1;
   const rows = table.getRowModel().rows;
-  const showTopEditor = isCreating || (isEditing && !rows.some(row => row.original.id === editId));
+  const showTopEditor = hasSelectedAccount && (isCreating || (isEditing && !rows.some(row => row.original.id === editId)));
 
   const closeEditor = () => {
     setDraftOperation(null);
@@ -625,13 +626,19 @@ export function OperationsList() {
               {deleteError}
             </Alert>
           )}
-          {error && (
+          {hasSelectedAccount && error && (
             <Alert color="red" icon={<IconAlertCircle size={16} />} m="md">
               Erreur lors du chargement des opérations.
             </Alert>
           )}
 
-          {isLoading ? (
+          {!hasSelectedAccount ? (
+            <Center style={{ minHeight: 180, padding: 24 }}>
+              <Text fz={CRUD.typographie.tailleTexte} c="dimmed">
+                Sélectionnez un compte pour afficher les opérations.
+              </Text>
+            </Center>
+          ) : isLoading ? (
             <Center style={{ minHeight: 180 }}>
               <Loader size="sm" />
             </Center>
@@ -879,16 +886,16 @@ export function OperationsList() {
 
         <Group justify="space-between" align="center" style={{ padding: 'var(--crud-list-footer-padding-top) var(--crud-list-footer-padding-x)' }}>
           <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
-            {data?.total ?? 0} opérations
+            {hasSelectedAccount ? `${data?.total ?? 0} opérations` : 'Aucun compte sélectionné'}
           </Text>
           <Group gap={6} justify="center">
-            <Button variant="default" radius="md" disabled={page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
+            <Button variant="default" radius="md" disabled={!hasSelectedAccount || page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
               Précédent
             </Button>
             <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
-              Page {page} sur {Math.max(totalPages, 1)}
+              Page {hasSelectedAccount ? page : 0} sur {hasSelectedAccount ? Math.max(totalPages, 1) : 0}
             </Text>
-            <Button variant="default" radius="md" disabled={page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>
+            <Button variant="default" radius="md" disabled={!hasSelectedAccount || page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>
               Suivant
             </Button>
           </Group>

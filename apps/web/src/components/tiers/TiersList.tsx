@@ -48,7 +48,7 @@ export function TiersList() {
   const page = Number(searchParams.get('page') ?? '1');
   const limit = Number(searchParams.get('limit') ?? '10');
   const search = searchParams.get('search') ?? '';
-  const sortBy = (searchParams.get('sortBy') as 'name' | 'keyword1' | 'keywordMode') ?? 'name';
+  const sortBy = (searchParams.get('sortBy') as 'name' | 'comment' | 'ventilated') ?? 'name';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
   const highlight = searchParams.get('highlight');
 
@@ -83,7 +83,7 @@ export function TiersList() {
     [searchParams, pathname, router],
   );
 
-  const handleSort = (col: 'name' | 'keyword1' | 'keywordMode') => {
+  const handleSort = (col: 'name' | 'comment' | 'ventilated') => {
     const newOrder = sortBy === col && sortOrder === 'asc' ? 'desc' : 'asc';
     pushParams({ sortBy: col, sortOrder: newOrder, page: '1' });
   };
@@ -111,7 +111,7 @@ export function TiersList() {
   const sortIcon = (col: string) =>
     sortBy === col ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
 
-  const thStyle = (col?: 'name' | 'keyword1' | 'keywordMode') => ({
+  const thStyle = (col?: 'name' | 'comment' | 'ventilated') => ({
     padding: `${CRUD.liste.paddingVerticalEntete}px ${CRUD.liste.paddingHorizontalEntete}px`,
     fontSize: CRUD.typographie.petiteTailleTexte,
     fontWeight: 700,
@@ -151,7 +151,7 @@ export function TiersList() {
     switch (columnId) {
       case 'cursor':
         return '22px';
-      case 'keywordMode':
+      case 'ventilated':
         return '120px';
       case 'active':
         return '88px';
@@ -183,34 +183,24 @@ export function TiersList() {
         cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600}>{getValue() as string}</Text>,
       },
       {
-        accessorKey: 'keyword1',
+        accessorKey: 'comment',
         header: () => (
-          <span style={thStyle('keyword1')} onClick={() => handleSort('keyword1')}>
-            Mot-clé 1{sortIcon('keyword1')}
+          <span style={thStyle('comment')} onClick={() => handleSort('comment')}>
+            Bloc note{sortIcon('comment')}
           </span>
         ),
         cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
       },
       {
-        accessorKey: 'keyword2',
-        header: () => <span style={thStyle()}>Mot-clé 2</span>,
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
-      },
-      {
-        accessorKey: 'keyword3',
-        header: () => <span style={thStyle()}>Mot-clé 3</span>,
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
-      },
-      {
-        accessorKey: 'keywordMode',
+        accessorKey: 'ventilated',
         header: () => (
-          <span style={{ ...thStyle('keywordMode'), textAlign: 'center', display: 'block' }} onClick={() => handleSort('keywordMode')}>
-            Mode{sortIcon('keywordMode')}
+          <span style={{ ...thStyle('ventilated'), textAlign: 'center', display: 'block' }} onClick={() => handleSort('ventilated')}>
+            Ventilé{sortIcon('ventilated')}
           </span>
         ),
         cell: info => (
           <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">
-            {(info.getValue() as 'OR' | 'AND') === 'AND' ? 'ET' : 'OU'}
+            (info.getValue() as boolean) ? '✓' : ''
           </Text>
         ),
       },
