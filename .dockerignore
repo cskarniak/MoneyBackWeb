@@ -1,0 +1,15 @@
+node_modules
+.next
+dist
+.git
+.DS_Store
+coverage
+*.log
+.env
+.env.local
+.env.development
+.env.production
+apps/web/.next
+apps/api/dist
+packages/db/dist
+packages/shared/dist

@@ -34,11 +34,11 @@ import {
 } from '@tabler/icons-react';
 import { useDeleteThirdParty, useThirdParties, type ThirdParty } from '@/hooks/useThirdParties';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const TEXT_MUTED = '#667085';
 
-const LIMIT_OPTIONS = ['5', '10', '25', '50', '100'];
+const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
 export function TiersList() {
   const router = useRouter();
@@ -46,9 +46,9 @@ export function TiersList() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get('page') ?? '1');
-  const limit = Number(searchParams.get('limit') ?? '10');
+  const limit = Number(searchParams.get('limit') ?? '20');
   const search = searchParams.get('search') ?? '';
-  const sortBy = (searchParams.get('sortBy') as 'name' | 'comment' | 'ventilated') ?? 'name';
+  const sortBy = (searchParams.get('sortBy') as 'name' | 'comment') ?? 'name';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
   const highlight = searchParams.get('highlight');
 
@@ -83,7 +83,7 @@ export function TiersList() {
     [searchParams, pathname, router],
   );
 
-  const handleSort = (col: 'name' | 'comment' | 'ventilated') => {
+  const handleSort = (col: 'name' | 'comment') => {
     const newOrder = sortBy === col && sortOrder === 'asc' ? 'desc' : 'asc';
     pushParams({ sortBy: col, sortOrder: newOrder, page: '1' });
   };
@@ -111,7 +111,7 @@ export function TiersList() {
   const sortIcon = (col: string) =>
     sortBy === col ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
 
-  const thStyle = (col?: 'name' | 'comment' | 'ventilated') => ({
+  const thStyle = (col?: 'name' | 'comment') => ({
     padding: `${CRUD.liste.paddingVerticalEntete}px ${CRUD.liste.paddingHorizontalEntete}px`,
     fontSize: CRUD.typographie.petiteTailleTexte,
     fontWeight: 700,
@@ -151,8 +151,6 @@ export function TiersList() {
     switch (columnId) {
       case 'cursor':
         return '22px';
-      case 'ventilated':
-        return '120px';
       case 'active':
         return '88px';
       case 'actions':
@@ -190,19 +188,6 @@ export function TiersList() {
           </span>
         ),
         cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
-      },
-      {
-        accessorKey: 'ventilated',
-        header: () => (
-          <span style={{ ...thStyle('ventilated'), textAlign: 'center', display: 'block' }} onClick={() => handleSort('ventilated')}>
-            Ventilé{sortIcon('ventilated')}
-          </span>
-        ),
-        cell: info => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">
-            (info.getValue() as boolean) ? '✓' : ''
-          </Text>
-        ),
       },
       {
         id: 'active',

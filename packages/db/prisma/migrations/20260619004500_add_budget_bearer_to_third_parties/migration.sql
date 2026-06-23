@@ -1,0 +1,2 @@
+ALTER TABLE "tiers"
+ADD COLUMN "porte_budget" BOOLEAN NOT NULL DEFAULT false;

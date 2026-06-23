@@ -14,7 +14,9 @@ export class ThirdPartiesService {
   private presenter(thirdParty: {
     id: string;
     name: string;
+    idSource: string | null;
     comment: string | null;
+    budgetBearer: boolean;
     ventilated: boolean;
     active: boolean;
     categoryId: string | null;
@@ -26,8 +28,6 @@ export class ThirdPartiesService {
       label: string;
       description: string | null;
       active: boolean;
-      priority: number;
-      score: number;
       operator: string;
       stopOnMatch: boolean;
       conditions: Array<{
@@ -98,10 +98,7 @@ export class ThirdPartiesService {
                 orderBy: { position: 'asc' },
               },
             },
-            orderBy: [
-              { priority: 'asc' },
-              { createdAt: 'asc' },
-            ],
+            orderBy: { createdAt: 'asc' },
           },
           splits: {
             include: {
@@ -130,10 +127,7 @@ export class ThirdPartiesService {
               orderBy: { position: 'asc' },
             },
           },
-          orderBy: [
-            { priority: 'asc' },
-            { createdAt: 'asc' },
-          ],
+          orderBy: { createdAt: 'asc' },
         },
         splits: {
           include: {
@@ -158,7 +152,9 @@ export class ThirdPartiesService {
     const thirdParty = await this.prisma.thirdParty.create({
       data: {
         name: dto.name,
+        idSource: dto.idSource ?? null,
         comment: dto.comment ?? null,
+        budgetBearer: dto.budgetBearer ?? false,
         ventilated: dto.ventilated ?? false,
         categoryId: dto.categoryId ?? null,
         budgetId: dto.budgetId ?? null,
@@ -184,10 +180,7 @@ export class ThirdPartiesService {
               orderBy: { position: 'asc' },
             },
           },
-          orderBy: [
-            { priority: 'asc' },
-            { createdAt: 'asc' },
-          ],
+          orderBy: { createdAt: 'asc' },
         },
         splits: {
           include: {
@@ -214,7 +207,9 @@ export class ThirdPartiesService {
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.idSource !== undefined && { idSource: dto.idSource ?? null }),
         ...(dto.comment !== undefined && { comment: dto.comment ?? null }),
+        ...(dto.budgetBearer !== undefined && { budgetBearer: dto.budgetBearer }),
         ...(dto.ventilated !== undefined && { ventilated: dto.ventilated }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId ?? null }),
         ...(dto.budgetId !== undefined && { budgetId: dto.budgetId ?? null }),
@@ -248,10 +243,7 @@ export class ThirdPartiesService {
               orderBy: { position: 'asc' },
             },
           },
-          orderBy: [
-            { priority: 'asc' },
-            { createdAt: 'asc' },
-          ],
+          orderBy: { createdAt: 'asc' },
         },
         splits: {
           include: {
@@ -294,8 +286,6 @@ export class ThirdPartiesService {
             label: rule.label,
             description: rule.description,
             active: rule.active,
-            priority: rule.priority,
-            score: rule.score,
             operator: rule.operator,
             stopOnMatch: rule.stopOnMatch,
             conditions: {

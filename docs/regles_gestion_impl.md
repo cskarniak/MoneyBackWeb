@@ -41,6 +41,19 @@ Statuts possibles :
 - Regle : `Validee`, `Verrouillee` et `Cloturee` ne sont pas exposes dans la fiche de saisie d'une operation.
 - Regle : ces champs restent utilises pour le filtrage et la gestion interne des operations existantes.
 
+#### RG-OPE-004 - Coherence de la ventilation d'une operation
+
+- Statut : `implementee`
+- Regle : une operation ventilee doit totaliser le montant de l'operation pour etre consideree comme totalement ventilee.
+- Regle : si la somme des lignes de ventilation couvre tout le montant, l'operation est de type `V`.
+- Regle : si la somme des lignes de ventilation ne couvre qu'une partie du montant, l'operation est de type `P`.
+
+#### RG-OPE-005 - Les lignes de ventilation vides ne sont pas conservees
+
+- Statut : `implementee`
+- Regle : lors de l'enregistrement d'une operation, une ligne de ventilation vide n'est pas conservee.
+- Definition : une ligne est consideree vide si elle ne porte ni libelle, ni categorie, ni enveloppe, ni montant.
+
 ### Tiers
 
 #### RG-TIERS-001 - Fin de l'ancien systeme mots-cles / formule
@@ -66,6 +79,31 @@ Statuts possibles :
 - Statut : `implementee`
 - Regle : un tiers peut embarquer une ventilation habituelle reutilisable.
 - Regle : si le tiers est defini comme ventile, ses lignes de ventilation servent de modele pour les traitements automatiques futurs.
+
+#### RG-TIERS-005 - Les lignes de ventilation vides d'un tiers ne sont pas conservees
+
+- Statut : `implementee`
+- Regle : lors de l'enregistrement d'un tiers, une ligne de ventilation habituelle vide n'est pas conservee.
+- Definition : une ligne est consideree vide si elle ne porte ni libelle, ni categorie, ni enveloppe, ni montant.
+
+#### RG-TIERS-006 - Seuls les tiers actifs et leurs regles actives peuvent matcher
+
+- Statut : `implementee`
+- Regle : une affectation automatique de tiers ne peut s'appuyer que sur un tiers actif et sur une regle de matching active.
+- Intention : eviter qu'un tiers ou une regle desactivee continue a produire des affectations.
+
+#### RG-TIERS-007 - Priorite et score pilotent le matching
+
+- Statut : `implementee`
+- Regle : les regles de matching sont evaluees par priorite croissante, puis par score decroissant.
+- Regle : une regle peut stopper l'evaluation des suivantes lorsqu'elle est parametree pour cela.
+- Regle : parmi les correspondances trouvees, le meilleur resultat retenu privilegie d'abord le score, puis la regle la plus specifique.
+
+#### RG-TIERS-008 - Seuil d'application automatique
+
+- Statut : `implementee`
+- Regle : une correspondance de tiers est consideree comme auto-applicable lorsque son score atteint au moins `80`.
+- Regle : en dessous, la correspondance reste exploitable mais avec un niveau de confiance inferieur.
 
 ## Points ouverts
 

@@ -6,33 +6,22 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Group,
-  Select,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-  Alert,
-  Loader,
-  Center,
-} from '@mantine/core';
+import { Box, Button, Checkbox, Group, Select, Stack, Text, Textarea, TextInput, Alert, Loader, Center } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
+import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { useCreateEnveloppe, useDeleteEnveloppe, useEnveloppe, useUpdateEnveloppe, type EnveloppePayload } from '@/hooks/useEnveloppes';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
 
 const schema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
-  legacyCode: z.string().optional(),
   regroupementId: z.string().nullable().optional(),
+  regroupementTableauDeBordId: z.string().nullable().optional(),
+  movementTypeId: z.string().nullable().optional(),
   comment: z.string().optional(),
   summary: z.boolean(),
   dashboard: z.boolean(),
@@ -44,11 +33,12 @@ type FormValues = z.infer<typeof schema>;
 function toPayload(values: FormValues): EnveloppePayload {
   return {
     label: values.label,
-    legacyCode: values.legacyCode || null,
     regroupementId: values.regroupementId || null,
+    regroupementTableauDeBordId: values.regroupementTableauDeBordId || null,
+    movementTypeId: values.movementTypeId || null,
     comment: values.comment || null,
     summary: values.summary,
-    dashboard: values.dashboard,
+    dashboard: !!values.regroupementTableauDeBordId || values.dashboard,
     active: values.active,
   };
 }
@@ -61,6 +51,7 @@ export function EnveloppesFiche({ id }: Props) {
 
   const { data: enveloppe, isLoading: loadingEnveloppe } = useEnveloppe(id ?? '');
   const { data: regroupements = [], isLoading: loadingRegroupements } = useRegroupementsAll();
+  const { data: movementTypes = [], isLoading: loadingMovementTypes } = useMovementTypesAll();
   const createMutation = useCreateEnveloppe();
   const updateMutation = useUpdateEnveloppe();
   const deleteMutation = useDeleteEnveloppe();
@@ -76,8 +67,9 @@ export function EnveloppesFiche({ id }: Props) {
     resolver: zodResolver(schema),
     defaultValues: {
       label: '',
-      legacyCode: '',
       regroupementId: null,
+      regroupementTableauDeBordId: null,
+      movementTypeId: null,
       comment: '',
       summary: false,
       dashboard: false,
@@ -89,8 +81,9 @@ export function EnveloppesFiche({ id }: Props) {
     if (enveloppe) {
       reset({
         label: enveloppe.label,
-        legacyCode: enveloppe.legacyCode ?? '',
         regroupementId: enveloppe.regroupementId,
+        regroupementTableauDeBordId: enveloppe.regroupementTableauDeBordId,
+        movementTypeId: enveloppe.movementTypeId,
         comment: enveloppe.comment ?? '',
         summary: enveloppe.summary,
         dashboard: enveloppe.dashboard,
@@ -115,8 +108,17 @@ export function EnveloppesFiche({ id }: Props) {
   };
 
   const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
-  const regroupementOptions = regroupements.map(r => ({ value: r.id, label: r.label }));
-  const isLoading = (!isNew && loadingEnveloppe) || loadingRegroupements;
+  const regroupementOptions = regroupements
+    .filter(r => r.expense)
+    .map(r => ({ value: r.id, label: r.label }));
+  const regroupementTableauDeBordOptions = regroupements
+    .filter(r => r.dashboard)
+    .map(r => ({ value: r.id, label: r.label }));
+  const movementTypeOptions = movementTypes.map(movementType => ({
+    value: movementType.id,
+    label: movementType.code?.trim() ? `${movementType.code} - ${movementType.label}` : movementType.label,
+  }));
+  const isLoading = (!isNew && loadingEnveloppe) || loadingRegroupements || loadingMovementTypes;
 
   if (isLoading) {
     return (
@@ -201,13 +203,14 @@ export function EnveloppesFiche({ id }: Props) {
 
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
-                Ancien code
+                Id source
               </Text>
               <TextInput
-                {...register('legacyCode')}
+                value={enveloppe?.idSource ?? ''}
                 size="sm"
                 radius="md"
                 style={{ flex: 1 }}
+                disabled
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -230,6 +233,45 @@ export function EnveloppesFiche({ id }: Props) {
               />
             </Group>
 
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                Regroupement TB
+              </Text>
+              <Select
+                size="sm"
+                radius="md"
+                style={{ flex: 1 }}
+                data={regroupementTableauDeBordOptions}
+                value={watch('regroupementTableauDeBordId') ?? null}
+                onChange={val => {
+                  setValue('regroupementTableauDeBordId', val);
+                  setValue('dashboard', !!val);
+                }}
+                clearable
+                placeholder="Aucun"
+                searchable
+                styles={{ input: fieldInputStyle }}
+              />
+            </Group>
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                Type de mouvement
+              </Text>
+              <Select
+                size="sm"
+                radius="md"
+                style={{ flex: 1 }}
+                data={movementTypeOptions}
+                value={watch('movementTypeId') ?? null}
+                onChange={val => setValue('movementTypeId', val)}
+                clearable
+                placeholder="Aucun"
+                searchable
+                styles={{ input: fieldInputStyle }}
+              />
+            </Group>
+
             <Group gap={0} align="flex-start">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={topLabelStyle}>
                 Commentaire
@@ -243,20 +285,6 @@ export function EnveloppesFiche({ id }: Props) {
                 placeholder="Notes..."
                 styles={{ input: { background: FIELD_BG, fontSize: 'var(--crud-field-font-size)' } }}
               />
-            </Group>
-
-            <Group gap={0} align="center">
-              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
-                Synthèse
-              </Text>
-              <Checkbox size="md" checked={watch('summary')} onChange={e => setValue('summary', e.currentTarget.checked)} />
-            </Group>
-
-            <Group gap={0} align="center">
-              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
-                Tableau de bord
-              </Text>
-              <Checkbox size="md" checked={watch('dashboard')} onChange={e => setValue('dashboard', e.currentTarget.checked)} />
             </Group>
 
             <Group gap={0} align="center">

@@ -32,7 +32,7 @@ import {
 } from '@/hooks/useThirdParties';
 import { OperationSplitModal } from '../operations/OperationSplitModal';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
@@ -58,8 +58,6 @@ const matchingRuleSchema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
   description: z.string().optional(),
   active: z.boolean(),
-  priority: z.number().int(),
-  score: z.number().int().min(0),
   operator: z.enum(['AND', 'OR']),
   stopOnMatch: z.boolean(),
   conditions: z.array(matchingConditionSchema),
@@ -68,6 +66,7 @@ const matchingRuleSchema = z.object({
 const schema = z.object({
   name: z.string().min(1, 'Le nom est obligatoire'),
   comment: z.string().optional(),
+  budgetBearer: z.boolean(),
   ventilated: z.boolean(),
   categoryId: z.string().nullable().optional(),
   budgetId: z.string().nullable().optional(),
@@ -83,11 +82,6 @@ type Props = { id?: string };
 function asNumber(value?: string) {
   const normalized = Number(String(value ?? '').replace(',', '.'));
   return Number.isFinite(normalized) ? normalized : 0;
-}
-
-function asInteger(value?: string) {
-  const normalized = Number(String(value ?? '').replace(',', '.'));
-  return Number.isFinite(normalized) ? Math.trunc(normalized) : 0;
 }
 
 const MATCHING_FIELD_OPTIONS = [
@@ -121,13 +115,11 @@ function MatchingRuleEditor({
   control,
   watch,
   setValue,
-  onRemoveRule,
 }: {
   ruleIndex: number;
   control: Control<FormValues>;
   watch: UseFormWatch<FormValues>;
   setValue: UseFormSetValue<FormValues>;
-  onRemoveRule: () => void;
 }) {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -154,18 +146,6 @@ function MatchingRuleEditor({
             ]}
             value={rule?.operator ?? 'AND'}
             onChange={value => setValue(`matchingRules.${ruleIndex}.operator`, (value as 'AND' | 'OR') ?? 'AND', { shouldDirty: true })}
-          />
-          <TextInput
-            label="Priorité"
-            inputMode="numeric"
-            value={String(rule?.priority ?? 100)}
-            onChange={event => setValue(`matchingRules.${ruleIndex}.priority`, asInteger(event.currentTarget.value), { shouldDirty: true })}
-          />
-          <TextInput
-            label="Score"
-            inputMode="numeric"
-            value={String(rule?.score ?? 100)}
-            onChange={event => setValue(`matchingRules.${ruleIndex}.score`, asInteger(event.currentTarget.value), { shouldDirty: true })}
           />
         </Group>
 
@@ -267,12 +247,6 @@ function MatchingRuleEditor({
             })}
           </Stack>
         </Box>
-
-        <Group justify="flex-end">
-          <Button type="button" color="red" variant="light" size="xs" onClick={onRemoveRule}>
-            Supprimer la règle
-          </Button>
-        </Group>
       </Stack>
     </Box>
   );
@@ -282,6 +256,7 @@ function toPayload(values: FormValues): ThirdPartyPayload {
   return {
     name: values.name,
     comment: values.comment || null,
+    budgetBearer: values.budgetBearer,
     ventilated: values.ventilated,
     categoryId: values.categoryId || null,
     budgetId: values.budgetId || null,
@@ -291,8 +266,6 @@ function toPayload(values: FormValues): ThirdPartyPayload {
         label: rule.label.trim(),
         description: rule.description?.trim() || null,
         active: rule.active,
-        priority: asInteger(String(rule.priority)),
-        score: asInteger(String(rule.score)),
         operator: rule.operator,
         stopOnMatch: rule.stopOnMatch,
         conditions: rule.conditions.map((condition, index) => ({
@@ -317,10 +290,38 @@ function toPayload(values: FormValues): ThirdPartyPayload {
   };
 }
 
+function getSplitError(ventilated: boolean, splits: FormValues['splits']) {
+  if (!ventilated) return null;
+  if (splits.length === 0) return 'Ajoutez au moins une ligne de ventilation pour un tiers ventilé.';
+
+  const hasInvalidRow = splits.some(split => {
+    const expense = asNumber(split.expense);
+    const income = asNumber(split.income);
+    return (expense === 0 && income === 0) || (expense > 0 && income > 0);
+  });
+
+  return hasInvalidRow
+    ? 'Chaque ligne de ventilation doit contenir soit une dépense, soit une recette.'
+    : null;
+}
+
+function getMatchingRulesError(matchingRules: FormValues['matchingRules']) {
+  const invalidRule = matchingRules.find(rule => {
+    if (!rule.label.trim()) return true;
+    if ((rule.conditions ?? []).length === 0) return true;
+    return rule.conditions.some(condition => !condition.field || !condition.matcher || !(condition.value ?? '').trim());
+  });
+
+  return invalidRule
+    ? 'Chaque règle de matching doit avoir un libellé et au moins une condition avec une valeur.'
+    : null;
+}
+
 export function TiersFiche({ id }: Props) {
   const router = useRouter();
   const isNew = !id;
   const [ventilationOpened, setVentilationOpened] = useState(false);
+  const [expandedRuleIndex, setExpandedRuleIndex] = useState<number | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const { data: tiers, isLoading } = useThirdParty(id ?? '');
@@ -343,6 +344,7 @@ export function TiersFiche({ id }: Props) {
     defaultValues: {
       name: '',
       comment: '',
+      budgetBearer: false,
       ventilated: false,
       categoryId: null,
       budgetId: null,
@@ -371,6 +373,7 @@ export function TiersFiche({ id }: Props) {
     reset({
       name: tiers.name,
       comment: tiers.comment ?? '',
+      budgetBearer: tiers.budgetBearer,
       ventilated: tiers.ventilated,
       categoryId: tiers.categoryId,
       budgetId: tiers.budgetId,
@@ -379,8 +382,6 @@ export function TiersFiche({ id }: Props) {
         label: rule.label,
         description: rule.description ?? '',
         active: rule.active,
-        priority: rule.priority,
-        score: rule.score,
         operator: rule.operator,
         stopOnMatch: rule.stopOnMatch,
         conditions: rule.conditions.map(condition => ({
@@ -430,40 +431,20 @@ export function TiersFiche({ id }: Props) {
     categorieLabel: categories.find(category => category.id === watchedSplits?.[index]?.categoryId)?.label ?? null,
   }));
 
-  const splitError = useMemo(() => {
-    if (!watchedVentilated) return null;
-    if (splitRows.length === 0) return 'Ajoutez au moins une ligne de ventilation pour un tiers ventilé.';
+  const splitError = useMemo(() => getSplitError(watchedVentilated, watchedSplits ?? []), [watchedSplits, watchedVentilated]);
 
-    const hasInvalidRow = (watchedSplits ?? []).some(split => {
-      const expense = asNumber(split.expense);
-      const income = asNumber(split.income);
-      return (expense === 0 && income === 0) || (expense > 0 && income > 0);
-    });
-
-    return hasInvalidRow
-      ? 'Chaque ligne de ventilation doit contenir soit une dépense, soit une recette.'
-      : null;
-  }, [splitRows.length, watchedSplits, watchedVentilated]);
-
-  const matchingRulesError = useMemo(() => {
-    const invalidRule = (watchedMatchingRules ?? []).find(rule => {
-      if (!rule.label.trim()) return true;
-      if ((rule.conditions ?? []).length === 0) return true;
-      return rule.conditions.some(condition => !condition.field || !condition.matcher || !(condition.value ?? '').trim());
-    });
-
-    return invalidRule
-      ? 'Chaque règle de matching doit avoir un libellé et au moins une condition avec une valeur.'
-      : null;
-  }, [watchedMatchingRules]);
+  const matchingRulesError = useMemo(() => getMatchingRulesError(watchedMatchingRules ?? []), [watchedMatchingRules]);
 
   const onSubmit = async (values: FormValues) => {
-    if (splitError) {
-      setLocalError(splitError);
+    const nextSplitError = getSplitError(values.ventilated, values.splits);
+    const nextMatchingRulesError = getMatchingRulesError(values.matchingRules);
+
+    if (nextSplitError) {
+      setLocalError(nextSplitError);
       return;
     }
-    if (matchingRulesError) {
-      setLocalError(matchingRulesError);
+    if (nextMatchingRulesError) {
+      setLocalError(nextMatchingRulesError);
       return;
     }
 
@@ -558,6 +539,18 @@ export function TiersFiche({ id }: Props) {
             </Group>
 
             <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Id source</Text>
+              <TextInput
+                value={tiers?.idSource ?? ''}
+                size="sm"
+                radius="md"
+                style={{ flex: 1 }}
+                disabled
+                styles={{ input: fieldInputStyle }}
+              />
+            </Group>
+
+            <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Poste habituel</Text>
               <Select
                 size="sm"
@@ -586,6 +579,15 @@ export function TiersFiche({ id }: Props) {
                 placeholder={watchedVentilated ? 'Désactivée pour un tiers ventilé' : 'Aucune'}
                 onChange={value => setValue('categoryId', value, { shouldDirty: true })}
                 styles={{ input: fieldInputStyle }}
+              />
+            </Group>
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Porte budget</Text>
+              <Checkbox
+                size="md"
+                checked={watch('budgetBearer')}
+                onChange={event => setValue('budgetBearer', event.currentTarget.checked, { shouldDirty: true })}
               />
             </Group>
 
@@ -651,16 +653,17 @@ export function TiersFiche({ id }: Props) {
                       type="button"
                       variant="light"
                       size="xs"
-                      onClick={() => appendMatchingRule({
-                        label: '',
-                        description: '',
-                        active: true,
-                        priority: 100,
-                        score: 100,
-                        operator: 'AND',
-                        stopOnMatch: false,
-                        conditions: [{ field: 'normalizedLabel', matcher: 'contains', value: '', value2: '', negate: false, position: 0 }],
-                      })}
+                      onClick={() => {
+                        appendMatchingRule({
+                          label: '',
+                          description: '',
+                          active: true,
+                          operator: 'AND',
+                          stopOnMatch: false,
+                          conditions: [{ field: 'normalizedLabel', matcher: 'contains', value: '', value2: '', negate: false, position: 0 }],
+                        });
+                        setExpandedRuleIndex(matchingRuleFields.length);
+                      }}
                     >
                       Ajouter une règle
                     </Button>
@@ -669,14 +672,61 @@ export function TiersFiche({ id }: Props) {
                     <Text size="sm" c="dimmed">Aucune règle de matching.</Text>
                   )}
                   {matchingRuleFields.map((ruleField, ruleIndex) => (
-                    <MatchingRuleEditor
+                    <Box
                       key={ruleField.id}
-                      ruleIndex={ruleIndex}
-                      control={control}
-                      watch={watch}
-                      setValue={setValue}
-                      onRemoveRule={() => removeMatchingRule(ruleIndex)}
-                    />
+                      style={{ border: '1px solid #d9e3f0', borderRadius: 10, padding: 12, background: '#fcfdff' }}
+                    >
+                      <Group justify="space-between" align="flex-start" gap={12}>
+                        <Box style={{ flex: 1 }}>
+                          <Text fw={600} size="sm">
+                            {watchedMatchingRules?.[ruleIndex]?.label?.trim() || `Règle ${ruleIndex + 1}`}
+                          </Text>
+                          <Text size="sm" c="dimmed">
+                            {`${watchedMatchingRules?.[ruleIndex]?.conditions?.length ?? 0} condition(s)`}
+                            {watchedMatchingRules?.[ruleIndex]?.description?.trim()
+                              ? ` • ${watchedMatchingRules[ruleIndex]?.description?.trim()}`
+                              : ''}
+                          </Text>
+                        </Box>
+                        <Group gap={8}>
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="xs"
+                            onClick={() => setExpandedRuleIndex(current => current === ruleIndex ? null : ruleIndex)}
+                          >
+                            {expandedRuleIndex === ruleIndex ? 'Masquer le détail' : 'Éditer'}
+                          </Button>
+                          <Button
+                            type="button"
+                            color="red"
+                            variant="light"
+                            size="xs"
+                            onClick={() => {
+                              removeMatchingRule(ruleIndex);
+                              setExpandedRuleIndex(current => {
+                                if (current === null) return null;
+                                if (current === ruleIndex) return null;
+                                return current > ruleIndex ? current - 1 : current;
+                              });
+                            }}
+                          >
+                            Supprimer
+                          </Button>
+                        </Group>
+                      </Group>
+
+                      {expandedRuleIndex === ruleIndex && (
+                        <Box mt={12}>
+                          <MatchingRuleEditor
+                            ruleIndex={ruleIndex}
+                            control={control}
+                            watch={watch}
+                            setValue={setValue}
+                          />
+                        </Box>
+                      )}
+                    </Box>
                   ))}
                 </Stack>
               </Box>

@@ -4,7 +4,9 @@ import api from '@/lib/api';
 export type ThirdParty = {
   id: string;
   name: string;
+  idSource: string | null;
   comment: string | null;
+  budgetBearer: boolean;
   ventilated: boolean;
   categoryId: string | null;
   budgetId: string | null;
@@ -30,8 +32,6 @@ export type ThirdPartyMatchingRule = {
   label: string;
   description: string | null;
   active: boolean;
-  priority: number;
-  score: number;
   operator: 'AND' | 'OR';
   stopOnMatch: boolean;
   conditions: ThirdPartyMatchingCondition[];
@@ -66,7 +66,9 @@ export type ThirdPartyFilters = {
 
 export type ThirdPartyPayload = {
   name: string;
+  idSource?: string | null;
   comment?: string | null;
+  budgetBearer: boolean;
   ventilated: boolean;
   categoryId?: string | null;
   budgetId?: string | null;
@@ -75,8 +77,6 @@ export type ThirdPartyPayload = {
     label: string;
     description?: string | null;
     active: boolean;
-    priority: number;
-    score: number;
     operator: 'AND' | 'OR';
     stopOnMatch: boolean;
     conditions: Array<{
@@ -154,6 +154,9 @@ export function useThirdPartiesAll() {
         (r.data.items as Record<string, unknown>[]).map(normalizeThirdParty),
       ),
     staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 

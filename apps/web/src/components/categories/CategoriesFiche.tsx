@@ -31,7 +31,7 @@ import {
 } from '@/hooks/useCategories';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
@@ -199,6 +199,20 @@ export function CategoriesFiche({ id }: Props) {
                 style={{ flex: 1 }}
                 error={errors.label?.message}
                 autoFocus
+                styles={{ input: fieldInputStyle }}
+              />
+            </Group>
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                Id source
+              </Text>
+              <TextInput
+                value={category?.idSource ?? ''}
+                size="sm"
+                radius="md"
+                style={{ flex: 1 }}
+                disabled
                 styles={{ input: fieldInputStyle }}
               />
             </Group>

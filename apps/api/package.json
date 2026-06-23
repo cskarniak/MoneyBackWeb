@@ -6,7 +6,18 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "import:accounts:legacy": "ts-node src/scripts/import-accounts-legacy.ts",
+    "import:budgets:legacy": "ts-node src/scripts/import-budgets-legacy.ts",
+    "import:categories:legacy": "ts-node src/scripts/import-categories-legacy.ts",
+    "import:operations:legacy": "ts-node src/scripts/import-operations-legacy.ts",
+    "import:subscriptions:legacy": "ts-node src/scripts/import-subscriptions-legacy.ts",
+    "import:legacy-ref-mapping": "ts-node src/scripts/apply-legacy-reference-mapping.ts",
+    "import:legacy-refs": "ts-node src/scripts/import-legacy-references.ts",
+    "import:payment-methods:legacy": "ts-node src/scripts/import-payment-methods-legacy.ts",
+    "import:third-party-matching-rules:legacy": "ts-node src/scripts/import-third-party-matching-rules-legacy.ts",
+    "import:third-parties:legacy": "ts-node src/scripts/import-third-parties-legacy.ts",
+    "import:third-party-splits:legacy": "ts-node src/scripts/import-third-party-splits-legacy.ts"
   },
   "dependencies": {
     "@moneyback/db": "workspace:*",

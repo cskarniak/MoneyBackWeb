@@ -1,0 +1,4 @@
+ABO_ID;ABO_LIBELLE;ABO_PERIODICITE;ABO_DatePremiereEcheance;ABO_DateFin;OPE_ID;BUD_ID;TIE_ID;CAT_ID;CPT_ID;ABO_DateDerniereEcheance;ABO_DateDerniereGénération;ABO_OPerationGeneree;ABO_Depense;ABO_LibelleEcriture;ABO_Jour;ABO_DateProchaineEcheance;ABO_DatederniereEcheanceGeneree;ABO_Recette;ABO_Ventile;ABO_TYPE;ABO_Plannifie;ABO_TYM_ID;ABO_Actif
+10;Affectation mensuelle poste divers à ventiler;3;30/09/2018;;0;244;0;0;2;;02/06/2026;3;0,000000; mensuelle poste divers à ventiler;1;01/07/2026;01/06/2026;0,000000;1;1;0;3;0
+18;SUR LOYER;3;01/09/2022;01/09/2099;0;244;0;0;4;;02/06/2026;3;0,000000;SUR LOYER EMMA (rue Weber);2;02/07/2026;02/06/2026;0,000000;1;1;0;3;0
+20;Complément mois Emma;3;05/05/2023;05/05/2099;0;244;0;0;2;;02/06/2026;3;0,000000;Complément mois Emma;0;05/06/2026;05/05/2026;0,000000;1;1;0;3;0

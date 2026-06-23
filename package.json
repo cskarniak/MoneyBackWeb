@@ -21,7 +21,10 @@
     "db:setup": "pnpm docker:up && pnpm db:deploy && pnpm db:seed",
     "db:studio": "pnpm --filter @moneyback/db studio",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.yml down"
+    "docker:down": "docker compose -f docker/docker-compose.yml down",
+    "docker:deploy:build": "docker compose -f docker/docker-compose.deploy.yml build",
+    "docker:deploy:up": "docker compose -f docker/docker-compose.deploy.yml up -d --build",
+    "docker:deploy:down": "docker compose -f docker/docker-compose.deploy.yml down"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

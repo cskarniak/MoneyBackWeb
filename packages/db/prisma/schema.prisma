@@ -57,9 +57,11 @@ model Setting {
 // ─── Referentials ─────────────────────────────────────────────────────────────
 
 model PaymentMethod {
-  id     String  @id @default(uuid())
-  label  String  @map("libelle")
-  active Boolean @default(true) @map("actif")
+  id       String  @id @default(uuid())
+  label    String  @map("libelle")
+  code     String? @map("code")
+  idSource String? @map("id_source")
+  active   Boolean @default(true) @map("actif")
 
   operations Operation[]
 
@@ -67,9 +69,11 @@ model PaymentMethod {
 }
 
 model MovementType {
-  id     String  @id @default(uuid())
-  label  String  @map("libelle")
-  active Boolean @default(true) @map("actif")
+  id       String  @id @default(uuid())
+  label    String  @map("libelle")
+  code     String? @map("code")
+  idSource String? @map("id_source")
+  active   Boolean @default(true) @map("actif")
 
   budgets       Budget[]
   operations    Operation[]
@@ -81,6 +85,7 @@ model MovementType {
 model Grouping {
   id            String  @id @default(uuid())
   label         String  @map("libelle")
+  idSource      String? @map("id_source")
   expense       Boolean @default(false) @map("depense")
   income        Boolean @default(false) @map("recette")
   dashboard     Boolean @default(false) @map("tableau_bord")
@@ -88,8 +93,9 @@ model Grouping {
   categoryType  String? @map("type_categorie")
   budgetType    String? @map("type_budget")
 
-  budgets    Budget[]
-  categories Category[]
+  budgets              Budget[]
+  dashboardBudgets     Budget[]  @relation("BudgetDashboardGrouping")
+  categories           Category[]
 
   @@map("regroupements")
 }
@@ -97,7 +103,7 @@ model Grouping {
 model Budget {
   id             String   @id @default(uuid())
   label          String   @map("libelle")
-  legacyCode     String?  @map("ancien_code")
+  idSource       String?  @map("id_source")
   comment        String?  @map("commentaire")
   summary        Boolean  @default(false) @map("synthese")
   dashboard      Boolean  @default(false) @map("tableau_bord")
@@ -109,6 +115,8 @@ model Budget {
 
   groupingId     String?       @map("regroupement_id")
   grouping       Grouping?     @relation(fields: [groupingId], references: [id])
+  dashboardGroupingId String?  @map("regroupement_tableau_bord_id")
+  dashboardGrouping   Grouping? @relation("BudgetDashboardGrouping", fields: [dashboardGroupingId], references: [id])
   movementTypeId String?       @map("type_mouvement_id")
   movementType   MovementType? @relation(fields: [movementTypeId], references: [id])
 
@@ -119,12 +127,17 @@ model Budget {
   thirdParties       ThirdParty[]
   thirdPartySplits   ThirdPartySplit[]
 
+  @@index([groupingId])
+  @@index([dashboardGroupingId])
+  @@index([movementTypeId])
+  @@index([active])
   @@map("budgets")
 }
 
 model Category {
   id         String   @id @default(uuid())
   label      String   @map("libelle")
+  idSource   String?  @map("id_source")
   legacyCode String?  @map("ancien_code")
   comment    String?  @map("commentaire")
   expense    Boolean  @default(false) @map("depense")
@@ -143,13 +156,17 @@ model Category {
   thirdParties       ThirdParty[]
   thirdPartySplits   ThirdPartySplit[]
 
+  @@index([groupingId])
+  @@index([active])
   @@map("categories")
 }
 
 model ThirdParty {
   id                 String  @id @default(uuid())
   name               String  @map("nom")
+  idSource           String? @map("id_source")
   comment            String? @map("commentaire")
+  budgetBearer       Boolean @default(false) @map("porte_budget")
   ventilated         Boolean @default(false) @map("ventilation")
   active             Boolean @default(true) @map("actif")
 
@@ -163,11 +180,16 @@ model ThirdParty {
   splits        ThirdPartySplit[]
   matchingRules ThirdPartyMatchingRule[]
 
+  @@index([categoryId])
+  @@index([budgetId])
+  @@index([active])
+  @@index([name])
   @@map("tiers")
 }
 
 model ThirdPartySplit {
   id        String   @id @default(uuid())
+  idSource  String?  @map("id_source")
   label     String?  @map("libelle")
   expense   Decimal  @default(0) @map("depense") @db.Decimal(15, 2)
   income    Decimal  @default(0) @map("recette") @db.Decimal(15, 2)
@@ -183,6 +205,8 @@ model ThirdPartySplit {
   category     Category?  @relation(fields: [categoryId], references: [id])
 
   @@index([thirdPartyId])
+  @@index([budgetId])
+  @@index([categoryId])
   @@map("operations_ventilees_tiers")
 }
 
@@ -191,8 +215,6 @@ model ThirdPartyMatchingRule {
   label       String   @map("libelle")
   description String?  @map("description")
   active      Boolean  @default(true) @map("actif")
-  priority    Int      @default(100) @map("priorite")
-  score       Int      @default(100) @map("score")
   operator    String   @default("AND") @map("operateur")
   stopOnMatch Boolean  @default(false) @map("stop_si_match")
   createdAt   DateTime @default(now()) @map("date_creation")
@@ -202,7 +224,7 @@ model ThirdPartyMatchingRule {
   thirdParty   ThirdParty @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
   conditions   ThirdPartyMatchingCondition[]
 
-  @@index([thirdPartyId, active, priority])
+  @@index([thirdPartyId, active])
   @@map("tiers_regles_matching")
 }
 
@@ -228,6 +250,7 @@ model ThirdPartyMatchingCondition {
 
 model Account {
   id               String    @id @default(uuid())
+  idSource         String?   @map("id_source")
   name             String    @map("nom")
   agency           String?   @map("agence")
   counter          String?   @map("guichet")
@@ -247,7 +270,6 @@ model Account {
   updatedAt        DateTime  @updatedAt @map("date_modification")
 
   operations      Operation[]
-  reconciliations AccountReconciliation[]
   subscriptions   Subscription[]
   imports         Import[]
 
@@ -258,15 +280,16 @@ model Account {
 
 model Operation {
   id                 String    @id @default(uuid())
+  idSource           String?   @map("id_source")
   label              String    @map("libelle")
   expense            Decimal   @default(0) @map("depense") @db.Decimal(15, 2)
   income             Decimal   @default(0) @map("recette") @db.Decimal(15, 2)
   balance            Decimal?  @map("solde") @db.Decimal(15, 2)
+  simulation         Boolean   @default(false) @map("simulation")
   operationDate      DateTime  @map("date_operation")
   dueDate            DateTime? @map("date_echeance")
   integrationDate    DateTime? @map("date_integration")
   pieceNumber        String?   @map("numero_piece")
-  reconciliationCode String?   @map("code_rapprochement")
   lettering          String?   @map("lettrage")
   comment            String?   @map("commentaire")
   operationType      String?   @map("type_operation") // V=ventilé, P=partiel, T=transfert
@@ -301,7 +324,6 @@ model Operation {
   importJob         ImportJob?     @relation(fields: [importJobId], references: [id])
 
   splits                      OperationSplit[]
-  reconciliationLines         AccountReconciliationLine[]
   subscriptionPlannings       SubscriptionPlanning[]
   lastGeneratedBySubscription Subscription?               @relation("SubscriptionLastGeneratedOperation")
 
@@ -309,11 +331,24 @@ model Operation {
   @@index([accountId, categoryId])
   @@index([accountId, budgetId])
   @@index([accountId, thirdPartyId])
+  @@index([operationDate])
+  @@index([budgetId])
+  @@index([categoryId])
+  @@index([thirdPartyId])
+  @@index([paymentMethodId])
+  @@index([movementTypeId])
+  @@index([subscriptionId])
+  @@index([importJobId])
+  @@index([closed])
+  @@index([locked])
+  @@index([deletedAt])
+  @@index([statementRef])
   @@map("operations")
 }
 
 model OperationSplit {
   id         String    @id @default(uuid())
+  idSource   String?   @map("id_source")
   label      String?   @map("libelle")
   expense    Decimal   @default(0) @map("depense") @db.Decimal(15, 2)
   income     Decimal   @default(0) @map("recette") @db.Decimal(15, 2)
@@ -330,49 +365,22 @@ model OperationSplit {
   categoryId  String?   @map("categorie_id")
   category    Category? @relation(fields: [categoryId], references: [id])
 
+  @@index([operationId])
+  @@index([budgetId])
+  @@index([categoryId])
   @@map("operations_ventilees")
-}
-
-// ─── Reconciliation ───────────────────────────────────────────────────────────
-
-model AccountReconciliation {
-  id            String    @id @default(uuid())
-  reference     String?   @map("reference")
-  startBalance  Decimal   @map("solde_depart") @db.Decimal(15, 2)
-  targetBalance Decimal   @map("solde_cible") @db.Decimal(15, 2)
-  reconciledAt  DateTime? @map("date_rapprochement")
-  inProgress    Boolean   @default(true) @map("en_cours")
-  createdAt     DateTime  @default(now()) @map("date_creation")
-
-  accountId String  @map("compte_id")
-  account   Account @relation(fields: [accountId], references: [id])
-
-  lines AccountReconciliationLine[]
-
-  @@map("rapprochements_bancaires")
-}
-
-model AccountReconciliationLine {
-  id           String   @id @default(uuid())
-  reconciledAt DateTime @default(now()) @map("date_rapprochement")
-
-  reconciliationId String                @map("rapprochement_id")
-  reconciliation   AccountReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
-  operationId      String                @map("operation_id")
-  operation        Operation             @relation(fields: [operationId], references: [id])
-
-  @@map("lignes_rapprochement_bancaire")
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────────
 
 model Subscription {
   id                   String    @id @default(uuid())
+  idSource             String?   @map("id_source")
   label                String    @map("libelle")
   entryLabel           String?   @map("libelle_ecriture")
   expense              Decimal   @default(0) @map("depense") @db.Decimal(15, 2)
   income               Decimal   @default(0) @map("recette") @db.Decimal(15, 2)
-  periodicity          String    @map("periodicite") // monthly | quarterly | annual | weekly
+  periodicity          String    @map("periodicite") // daily | weekly | monthly | bimonthly | quarterly | semiannual | annual
   dayOfPeriod          Int?      @map("jour_periode")
   subscriptionType     String?   @map("type_abonnement")
   firstDueDate         DateTime  @map("date_premiere_echeance")
@@ -403,6 +411,12 @@ model Subscription {
   splits     SubscriptionSplit[]
   planning   SubscriptionPlanning[]
 
+  @@index([accountId])
+  @@index([thirdPartyId])
+  @@index([categoryId])
+  @@index([budgetId])
+  @@index([active, nextDueDate])
+  @@index([idSource])
   @@map("abonnements")
 }
 
@@ -415,11 +429,13 @@ model SubscriptionRun {
   subscriptionId String       @map("abonnement_id")
   subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
+  @@index([subscriptionId])
   @@map("executions_abonnement")
 }
 
 model SubscriptionSplit {
   id        String   @id @default(uuid())
+  idSource  String?  @map("id_source")
   label     String?  @map("libelle")
   expense   Decimal  @default(0) @map("depense") @db.Decimal(15, 2)
   income    Decimal  @default(0) @map("recette") @db.Decimal(15, 2)
@@ -434,6 +450,8 @@ model SubscriptionSplit {
   categoryId     String?      @map("categorie_id")
   category       Category?    @relation(fields: [categoryId], references: [id])
 
+  @@index([subscriptionId])
+  @@index([idSource])
   @@map("abonnements_ventiles")
 }
 
@@ -469,6 +487,7 @@ model Import {
   jobs                  ImportJob[]
   portfolioTransactions PortfolioTransaction[]
 
+  @@index([accountId])
   @@map("imports")
 }
 
@@ -490,6 +509,8 @@ model ImportJob {
   lines      ImportJobLine[]
   operations Operation[]
 
+  @@index([importId])
+  @@index([status])
   @@map("jobs_import")
 }
 
@@ -503,6 +524,7 @@ model ImportJobLine {
   jobId String    @map("job_import_id")
   job   ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
+  @@index([jobId])
   @@map("lignes_job_import")
 }
 
@@ -550,6 +572,10 @@ model PortfolioTransaction {
   buyMatchings  PortfolioMatching[] @relation("BuyTransaction")
   sellMatchings PortfolioMatching[] @relation("SellTransaction")
 
+  @@index([importId])
+  @@index([isin])
+  @@index([transactionDate])
+  @@index([product, transactionDate])
   @@map("portefeuille_transactions")
 }
 
@@ -562,6 +588,8 @@ model PortfolioMatching {
   sellTransactionId String               @map("transaction_vente_id")
   sellTransaction   PortfolioTransaction @relation("SellTransaction", fields: [sellTransactionId], references: [id])
 
+  @@index([buyTransactionId])
+  @@index([sellTransactionId])
   @@map("portefeuille_points")
 }
 
@@ -609,6 +637,7 @@ model AnalysisDetail {
   analysisId String   @map("analyse_id")
   analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
 
+  @@index([analysisId])
   @@map("analyses_details")
 }
 
@@ -616,7 +645,7 @@ model AnalysisDetail {
 
 model AuditLog {
   id        String   @id @default(uuid())
-  action    String   @map("action") // delete | import | reconcile | recalculate | admin
+  action    String   @map("action") // delete | import | recalculate | admin
   entity    String   @map("entite")
   entityId  String   @map("entite_id")
   data      Json?    @map("donnees")

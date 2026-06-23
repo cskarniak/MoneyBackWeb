@@ -22,10 +22,10 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2 } from '@tabler/icons-react';
 import { useAccounts, useDeleteAccount, type Account } from '@/hooks/useAccounts';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const TEXT_MUTED = '#667085';
-const LIMIT_OPTIONS = ['5', '10', '25', '50', '100'];
+const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
 export function AccountsList() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export function AccountsList() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get('page') ?? '1');
-  const limit = Number(searchParams.get('limit') ?? '10');
+  const limit = Number(searchParams.get('limit') ?? '20');
   const search = searchParams.get('search') ?? '';
   const sortBy = (searchParams.get('sortBy') as 'name' | 'agency' | 'number') ?? 'name';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';

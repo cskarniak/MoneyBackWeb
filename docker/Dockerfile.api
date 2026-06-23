@@ -1,0 +1,30 @@
+FROM node:20-alpine
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN apk add --no-cache postgresql-client
+RUN corepack enable
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/db/package.json packages/db/package.json
+COPY packages/shared/package.json packages/shared/package.json
+
+RUN pnpm install --frozen-lockfile --prod=false
+
+COPY . .
+
+RUN pnpm db:generate \
+  && pnpm build:packages \
+  && pnpm --filter api build
+
+EXPOSE 3001
+
+ENV NODE_ENV=production
+
+CMD ["sh", "-c", "pnpm db:deploy && pnpm --filter api start"]

@@ -108,8 +108,11 @@ type CrudFormOverrides = Partial<{
 // - categoriesFiche : fiche catégorie (`components/categories/CategoriesFiche.tsx`)
 // - enveloppesFiche : fiche enveloppe / budget (`components/enveloppes/EnveloppesFiche.tsx`)
 // - groupingsFiche : fiche regroupement (`components/groupings/GroupingsFiche.tsx`)
+// - movementTypesFiche : fiche type de mouvement (`components/movement-types/MovementTypesFiche.tsx`)
+// - paymentMethodsFiche : fiche moyen de paiement (`components/payment-methods/PaymentMethodsFiche.tsx`)
 // - operationsFiche : fiche opération classique (`components/operations/OperationsFiche.tsx`)
 // - operationsInline : saisie d'opération dans la grille (`components/operations/OperationsInlineEditor.tsx`)
+// - subscriptionsFiche : fiche abonnement (`components/subscriptions/SubscriptionsFiche.tsx`)
 // - tiersFiche : fiche tiers (`components/tiers/TiersFiche.tsx`)
 //
 // Remarque : le référentiel `pods` n'a pas encore de composant de formulaire dédié.
@@ -118,12 +121,25 @@ export const CRUD_FORM_REGISTRY = {
   categoriesFiche: 'Fiche catégorie',
   enveloppesFiche: 'Fiche enveloppe / budget',
   groupingsFiche: 'Fiche regroupement',
+  movementTypesFiche: 'Fiche type de mouvement',
+  paymentMethodsFiche: 'Fiche moyen de paiement',
   operationsFiche: 'Fiche opération classique',
   operationsInline: "Saisie d'opération dans la grille",
+  subscriptionsFiche: 'Fiche abonnement',
   tiersFiche: 'Fiche tiers',
 } as const;
 
 export const CRUD_FORM_OVERRIDES = {
+  operationsFiche: {
+    hauteurChamp: 24,
+    tailleTexteChamp: 11,
+    espaceEntreChamps: 10,
+    paddingTopCorps: 18,
+    paddingHorizontalCorps: 18,
+    paddingBottomCorps: 18,
+    espaceSections: 12,
+    espaceBoutonsPied: 6,
+  },
   operationsInline: {
     hauteurChamp: 22,
     tailleTexteChamp: 10,
@@ -133,6 +149,16 @@ export const CRUD_FORM_OVERRIDES = {
     paddingBottomCorps: 10,
     espaceSections: 10,
     espaceBoutonsPied: 4,
+  },
+  subscriptionsFiche: {
+    hauteurChamp: 28,
+    tailleTexteChamp: 11,
+    espaceEntreChamps: 12,
+    paddingTopCorps: 22,
+    paddingHorizontalCorps: 22,
+    paddingBottomCorps: 20,
+    espaceSections: 14,
+    espaceBoutonsPied: 8,
   },
 } as const satisfies Record<string, CrudFormOverrides>;
 

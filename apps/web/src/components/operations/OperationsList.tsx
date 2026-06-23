@@ -2,10 +2,11 @@
 
 import { CRUD } from '@/lib/crud-tokens';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Fragment, useState, useMemo, useCallback, useEffect } from 'react';
+import { Fragment, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from '@tanstack/react-table';
 import {
   Box,
+  Badge,
   Group,
   Button,
   Checkbox,
@@ -20,24 +21,27 @@ import {
   Stack,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconCheck } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconCheck, IconGitBranch } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteOperation, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { OperationSplitModal } from './OperationSplitModal';
 import { OperationsInlineEditor } from './OperationsInlineEditor';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const TEXT_MUTED = '#667085';
 const UNVALIDATED_TEXT = '#b26a00';
-const LIMIT_OPTIONS = ['5', '10', '25', '50', '100'];
+const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 const OPERATIONS_ROW_FONT_SIZE = 12;
 const SPLIT_BALANCED_BG = '#fff4b8';
 const SPLIT_UNBALANCED_BG = '#ffd0ea';
+const OPERATIONS_LAST_ACCOUNT_STORAGE_KEY = 'operations:last-account-id';
+const SPLIT_TOLERANCE = 0.011;
+const VIEWPORT_TOP_OFFSET = 60;
 const OPERATION_COLUMN_WIDTHS: Record<string, string> = {
   cursor: '22px',
-  operationDate: '110px',
-  label: '30%',
+  operationDate: '104px',
+  label: '26%',
   tiers: '14%',
   categorie: '14%',
   enveloppe: '14%',
@@ -47,7 +51,12 @@ const OPERATION_COLUMN_WIDTHS: Record<string, string> = {
 };
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('fr-FR');
+  const date = new Date(value);
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = String(date.getUTCFullYear());
+
+  return `${day}/${month}/${year}`;
 }
 
 function formatAmount(value: string) {
@@ -61,6 +70,10 @@ function formatBalanceAmount(value: number) {
 
 function getOperationNet(operation: Pick<Operation, 'expense' | 'income'>) {
   return Number(operation.income || 0) - Number(operation.expense || 0);
+}
+
+function normalizeRemainingBalance(value: number) {
+  return Math.abs(value) < SPLIT_TOLERANCE ? 0 : Number(value.toFixed(2));
 }
 
 function getRowBackground(operation: Operation, index: number, hoveredId: string | null, recentId: string | null) {
@@ -95,21 +108,18 @@ export function OperationsList() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get('page') ?? '1');
-  const limit = Number(searchParams.get('limit') ?? '10');
+  const limit = Number(searchParams.get('limit') ?? '20');
   const search = searchParams.get('search') ?? '';
   const accountId = searchParams.get('accountId') ?? '';
   const hideLocked = searchParams.get('hideLocked') === 'true';
-  const hideReconciled = searchParams.get('hideReconciled') === 'true';
   const emptyEnvelopeOnly = searchParams.get('emptyEnvelopeOnly') === 'true';
   const unvalidatedOnly = searchParams.get('unvalidatedOnly') === 'true';
   const sortBy = (searchParams.get('sortBy') as 'operationDate' | 'label' | 'expense' | 'income') ?? 'operationDate';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'desc';
 
   const highlight = searchParams.get('highlight');
-  const editId = searchParams.get('edit');
-  const mode = searchParams.get('mode');
-  const isCreating = mode === 'new';
-  const isEditing = !!editId;
+  const editParam = searchParams.get('edit');
+  const modeParam = searchParams.get('mode');
   const [searchInput, setSearchInput] = useState(search);
   const [recentId, setRecentId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -117,6 +127,40 @@ export function OperationsList() {
   const [draftOperation, setDraftOperation] = useState<{ id?: string; accountId: string; expense: number; income: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; operation: Operation } | null>(null);
   const [splitDetailsOperation, setSplitDetailsOperation] = useState<Operation | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [mode, setMode] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const viewportAnchorRef = useRef<{ operationId: string; top: number } | null>(null);
+  const scrollTopRef = useRef<number | null>(null);
+  const listStateRef = useRef<{
+    page: string;
+    limit: string;
+    search: string | null;
+    accountId: string | null;
+    hideLocked: string | null;
+    emptyEnvelopeOnly: string | null;
+    unvalidatedOnly: string | null;
+    sortBy: string;
+    sortOrder: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!editParam && !modeParam) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('edit');
+    params.delete('mode');
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [editParam, modeParam, pathname, router, searchParams]);
+
+  const isCreating = mode === 'new';
+  const isEditing = !!editId;
 
   useEffect(() => {
     if (highlight) {
@@ -124,10 +168,27 @@ export function OperationsList() {
       const params = new URLSearchParams(searchParams.toString());
       params.delete('highlight');
       const qs = params.toString();
-      router.replace(`${pathname}${qs ? '?' + qs : ''}`);
+      router.replace(`${pathname}${qs ? '?' + qs : ''}`, { scroll: false });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlight]);
+
+  useEffect(() => {
+    if (!accountId || typeof window === 'undefined') return;
+    window.localStorage.setItem(OPERATIONS_LAST_ACCOUNT_STORAGE_KEY, accountId);
+  }, [accountId]);
+
+  useEffect(() => {
+    if (accountId || typeof window === 'undefined') return;
+
+    const storedAccountId = window.localStorage.getItem(OPERATIONS_LAST_ACCOUNT_STORAGE_KEY);
+    if (!storedAccountId) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('accountId', storedAccountId);
+    params.set('page', '1');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [accountId, pathname, router, searchParams]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -150,7 +211,6 @@ export function OperationsList() {
     search,
     accountId: accountId || undefined,
     hideLocked,
-    hideReconciled,
     emptyEnvelopeOnly,
     unvalidatedOnly,
     sortBy,
@@ -161,14 +221,10 @@ export function OperationsList() {
   const hasSelectedAccount = !!accountId;
   const deleteMutation = useDeleteOperation();
   const updateMutation = useUpdateOperation();
-  const openingBalance = Number(selectedAccount?.openingBalance ?? 0);
-  const loadedOperationsBalance = useMemo(
-    () => (data?.items ?? []).reduce((total, operation) => total + getOperationNet(operation), openingBalance),
-    [data?.items, openingBalance],
-  );
+  const persistedBalance = Number(selectedAccount?.currentBalance ?? 0);
   const displayedBalance = useMemo(() => {
     if (!draftOperation || !accountId || draftOperation.accountId !== accountId) {
-      return loadedOperationsBalance;
+      return persistedBalance;
     }
 
     const originalOperation = draftOperation.id
@@ -177,8 +233,8 @@ export function OperationsList() {
     const originalNet = originalOperation ? getOperationNet(originalOperation) : 0;
     const draftNet = draftOperation.income - draftOperation.expense;
 
-    return loadedOperationsBalance - originalNet + draftNet;
-  }, [accountId, data?.items, draftOperation, loadedOperationsBalance]);
+    return persistedBalance - originalNet + draftNet;
+  }, [accountId, data?.items, draftOperation, persistedBalance]);
 
   useEffect(() => {
     if (!draftOperation?.id || !data?.items) return;
@@ -194,16 +250,141 @@ export function OperationsList() {
     }
   }, [data?.items, draftOperation]);
 
+  const rememberViewportAnchor = useCallback((excludedOperationId?: string) => {
+    if (typeof window === 'undefined') return;
+
+    scrollTopRef.current = window.scrollY;
+
+    const visibleRows = (data?.items ?? [])
+      .map(operation => {
+        const element = rowRefs.current[operation.id];
+        if (!element) return null;
+
+        return {
+          operationId: operation.id,
+          rect: element.getBoundingClientRect(),
+        };
+      })
+      .filter((row): row is { operationId: string; rect: DOMRect } => row !== null);
+
+    const candidateRows = excludedOperationId
+      ? visibleRows.filter(row => row.operationId !== excludedOperationId)
+      : visibleRows;
+
+    const anchor =
+      candidateRows.find(row => row.rect.bottom > VIEWPORT_TOP_OFFSET)
+      ?? candidateRows[0]
+      ?? visibleRows.find(row => row.rect.bottom > VIEWPORT_TOP_OFFSET)
+      ?? visibleRows[0];
+
+    if (!anchor) return;
+
+    viewportAnchorRef.current = {
+      operationId: anchor.operationId,
+      top: anchor.rect.top,
+    };
+  }, [data?.items]);
+
+  const captureListState = useCallback(() => {
+    listStateRef.current = {
+      page: String(page),
+      limit: String(limit),
+      search: search || null,
+      accountId: accountId || null,
+      hideLocked: hideLocked ? 'true' : null,
+      emptyEnvelopeOnly: emptyEnvelopeOnly ? 'true' : null,
+      unvalidatedOnly: unvalidatedOnly ? 'true' : null,
+      sortBy,
+      sortOrder,
+    };
+  }, [
+    accountId,
+    emptyEnvelopeOnly,
+    hideLocked,
+    limit,
+    page,
+    search,
+    sortBy,
+    sortOrder,
+    unvalidatedOnly,
+  ]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (scrollTopRef.current !== null) {
+      const targetScrollTop = scrollTopRef.current;
+      const frame = window.requestAnimationFrame(() => {
+        window.scrollTo({ top: targetScrollTop });
+        scrollTopRef.current = null;
+        viewportAnchorRef.current = null;
+      });
+
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    if (!viewportAnchorRef.current) return;
+
+    const anchor = viewportAnchorRef.current;
+    const element = rowRefs.current[anchor.operationId];
+    if (!element) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const delta = element.getBoundingClientRect().top - anchor.top;
+      if (Math.abs(delta) > 1) {
+        window.scrollBy({ top: delta });
+      }
+      viewportAnchorRef.current = null;
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isLoading, data?.items, editId, mode, highlight]);
+
   const pushParams = useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
+    (
+      updates: Record<string, string | null>,
+      options?: {
+        scroll?: boolean;
+        preserveViewportAnchor?: boolean;
+        excludedOperationId?: string;
+        useCapturedListState?: boolean;
+      },
+    ) => {
+      if (options?.preserveViewportAnchor) {
+        rememberViewportAnchor(options.excludedOperationId);
+      }
+
+      const params = new URLSearchParams();
+
+      if (options?.useCapturedListState && listStateRef.current !== null) {
+        const capturedState = listStateRef.current;
+
+        Object.entries(capturedState).forEach(([key, value]) => {
+          if (value !== null && value !== '') {
+            params.set(key, value);
+          }
+        });
+      } else {
+        const currentParams = new URLSearchParams(searchParams.toString());
+        currentParams.forEach((value, key) => {
+          params.set(key, value);
+        });
+      }
+
       Object.entries(updates).forEach(([k, v]) => {
         if (v !== null && v !== '') params.set(k, v);
         else params.delete(k);
       });
-      router.push(`${pathname}?${params.toString()}`);
+
+      // Keep the selected account sticky across edit/create/filter transitions
+      // unless the caller explicitly clears or replaces it.
+      if (!Object.prototype.hasOwnProperty.call(updates, 'accountId') && accountId) {
+        params.set('accountId', accountId);
+      }
+
+      router.push(`${pathname}?${params.toString()}`, { scroll: options?.scroll ?? true });
     },
-    [searchParams, pathname, router],
+    [accountId, rememberViewportAnchor, searchParams, pathname, router],
   );
 
   const handleSort = (col: 'operationDate' | 'label' | 'expense' | 'income') => {
@@ -218,7 +399,6 @@ export function OperationsList() {
       search: null,
       accountId: null,
       hideLocked: null,
-      hideReconciled: null,
       emptyEnvelopeOnly: null,
       unvalidatedOnly: null,
       page: '1',
@@ -234,10 +414,14 @@ export function OperationsList() {
       return;
     }
 
-    pushParams({ mode: 'new', edit: null });
+    captureListState();
+    rememberViewportAnchor();
+    setEditId(null);
+    setMode('new');
   };
 
   const handleDelete = async (operation: Operation) => {
+    rememberViewportAnchor(operation.id);
     setContextMenu(null);
     setDeleteError(null);
     if (!window.confirm(`Supprimer l'opération "${operation.label}" ?`)) return;
@@ -250,6 +434,7 @@ export function OperationsList() {
   };
 
   const handleToggleValidation = async (operation: Operation) => {
+    rememberViewportAnchor(operation.id);
     setContextMenu(null);
     try {
       const currentlyValidated = isOperationValidated(operation);
@@ -380,9 +565,16 @@ export function OperationsList() {
           </span>
         ),
         cell: ({ row }) => (
-          <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 600} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
-            {row.original.label}
-          </Text>
+          <Stack gap={4}>
+            <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 600} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
+              {row.original.label}
+            </Text>
+            {row.original.simulation ? (
+              <Badge size="xs" color="orange" variant="light" style={{ alignSelf: 'flex-start' }}>
+                Simulation
+              </Badge>
+            ) : null}
+          </Stack>
         ),
       },
       {
@@ -443,7 +635,18 @@ export function OperationsList() {
         header: () => <span style={thStyle()}>Actions</span>,
         cell: ({ row }) => (
           <Group gap={4} wrap="nowrap">
-            <ActionIcon variant="subtle" size="md" onClick={() => pushParams({ edit: row.original.id, mode: null })} title="Modifier" style={actionIconStyle}>
+            <ActionIcon
+              variant="subtle"
+              size="md"
+              onClick={() => {
+                captureListState();
+                rememberViewportAnchor(row.original.id);
+                setMode(null);
+                setEditId(row.original.id);
+              }}
+              title="Modifier"
+              style={actionIconStyle}
+            >
               <IconPencil size={14} />
             </ActionIcon>
             <ActionIcon
@@ -457,6 +660,17 @@ export function OperationsList() {
             >
               <IconTrash size={14} />
             </ActionIcon>
+            {isSplitOperation(row.original) && (
+              <ActionIcon
+                variant="subtle"
+                size="md"
+                onClick={() => handleOpenSplitDetails(row.original)}
+                title="Voir ventilation"
+                style={actionIconStyle}
+              >
+                <IconGitBranch size={14} />
+              </ActionIcon>
+            )}
           </Group>
         ),
       },
@@ -474,20 +688,52 @@ export function OperationsList() {
   });
 
   const totalPages = data ? Math.ceil(data.total / limit) : 1;
+  const paginationHasSelectedAccount = isHydrated && hasSelectedAccount;
   const rows = table.getRowModel().rows;
   const showTopEditor = hasSelectedAccount && (isCreating || (isEditing && !rows.some(row => row.original.id === editId)));
 
   const closeEditor = () => {
     setDraftOperation(null);
-    pushParams({ edit: null, mode: null });
+    rememberViewportAnchor();
+    setEditId(null);
+    setMode(null);
   };
   const handleEditorSuccess = (savedId: string) => {
     notifications.show({
       message: isCreating ? "Opération créée" : 'Opération mise à jour',
       color: 'green',
     });
-    pushParams({ edit: null, mode: null, highlight: savedId });
+    rememberViewportAnchor();
+    setEditId(null);
+    setMode(null);
+    setRecentId(savedId);
   };
+
+  const paginationControls = isHydrated ? (
+    <Group gap={6} wrap="nowrap">
+      <Button
+        variant="default"
+        radius="md"
+        disabled={!paginationHasSelectedAccount || page <= 1}
+        onClick={() => pushParams({ page: String(page - 1) })}
+      >
+        Précédent
+      </Button>
+      <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px', whiteSpace: 'nowrap' }}>
+        Page {paginationHasSelectedAccount ? page : 0} / {paginationHasSelectedAccount ? Math.max(totalPages, 1) : 0}
+      </Text>
+      <Button
+        variant="default"
+        radius="md"
+        disabled={!paginationHasSelectedAccount || page >= totalPages}
+        onClick={() => pushParams({ page: String(page + 1) })}
+      >
+        Suivant
+      </Button>
+    </Group>
+  ) : (
+    <Box w={220} h={34} />
+  );
 
   return (
     <Box style={{ maxWidth: 'var(--crud-list-max-width)', margin: '0 auto' }}>
@@ -532,6 +778,7 @@ export function OperationsList() {
               </Group>
 
               <Group gap={8} wrap="nowrap" justify="flex-end">
+                {paginationControls}
                 <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
                 <Select value={String(limit)} onChange={val => val && pushParams({ limit: val, page: '1' })} data={LIMIT_OPTIONS} w={78} radius="md" />
                 <TextInput
@@ -590,11 +837,6 @@ export function OperationsList() {
                 label="Écritures verrouillées masquées"
                 checked={hideLocked}
                 onChange={event => pushParams({ hideLocked: event.currentTarget.checked ? 'true' : null, page: '1' })}
-              />
-              <Checkbox
-                label="Écritures rapprochées masquées"
-                checked={hideReconciled}
-                onChange={event => pushParams({ hideReconciled: event.currentTarget.checked ? 'true' : null, page: '1' })}
               />
               <Checkbox
                 label="Enveloppe vide"
@@ -667,6 +909,11 @@ export function OperationsList() {
                   <OperationsInlineEditor
                     columnsCount={columns.length}
                     id={isCreating ? undefined : editId ?? undefined}
+                    initialOperation={
+                      isCreating
+                        ? undefined
+                        : rows.find(row => row.original.id === editId)?.original
+                    }
                     selectedAccountId={accountId || undefined}
                     selectedAccountLabel={selectedAccount?.name}
                     onDraftChange={setDraftOperation}
@@ -687,6 +934,7 @@ export function OperationsList() {
                         <OperationsInlineEditor
                           columnsCount={columns.length}
                           id={editId}
+                          initialOperation={row.original}
                           selectedAccountId={accountId || undefined}
                           selectedAccountLabel={selectedAccount?.name}
                           onDraftChange={setDraftOperation}
@@ -696,6 +944,9 @@ export function OperationsList() {
                       )}
                       {editId !== row.original.id && (
                         <Table.Tr
+                          ref={node => {
+                            rowRefs.current[row.original.id] = node;
+                          }}
                           onMouseEnter={() => setHoveredId(row.original.id)}
                           onMouseLeave={() => setHoveredId(null)}
                           onContextMenu={event => {
@@ -706,7 +957,12 @@ export function OperationsList() {
                               operation: row.original,
                             });
                           }}
-                          onDoubleClick={() => pushParams({ edit: row.original.id, mode: null })}
+                          onDoubleClick={() => {
+                            captureListState();
+                            rememberViewportAnchor(row.original.id);
+                            setMode(null);
+                            setEditId(row.original.id);
+                          }}
                           style={{
                             cursor: 'pointer',
                             background: getRowBackground(row.original, index, hoveredId, recentId),
@@ -872,13 +1128,15 @@ export function OperationsList() {
             categorieLabel: split.categorie?.label ?? null,
           }))}
           remainingBalance={splitDetailsOperation
-            ? (Number(splitDetailsOperation.income || 0) - Number(splitDetailsOperation.expense || 0))
+            ? normalizeRemainingBalance(
+              (Number(splitDetailsOperation.income || 0) - Number(splitDetailsOperation.expense || 0))
               - (
                 (splitDetailsOperation.splits ?? []).reduce(
                   (sum, split) => sum + (Number(split.income || 0) - Number(split.expense || 0)),
                   0,
                 )
-              )
+              ),
+            )
             : null}
           splitExpense={(splitDetailsOperation?.splits ?? []).reduce((sum, split) => sum + Number(split.expense || 0), 0)}
           splitIncome={(splitDetailsOperation?.splits ?? []).reduce((sum, split) => sum + Number(split.income || 0), 0)}
@@ -886,19 +1144,9 @@ export function OperationsList() {
 
         <Group justify="space-between" align="center" style={{ padding: 'var(--crud-list-footer-padding-top) var(--crud-list-footer-padding-x)' }}>
           <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
-            {hasSelectedAccount ? `${data?.total ?? 0} opérations` : 'Aucun compte sélectionné'}
+            {paginationHasSelectedAccount ? `${data?.total ?? 0} opérations` : 'Aucun compte sélectionné'}
           </Text>
-          <Group gap={6} justify="center">
-            <Button variant="default" radius="md" disabled={!hasSelectedAccount || page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
-              Précédent
-            </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
-              Page {hasSelectedAccount ? page : 0} sur {hasSelectedAccount ? Math.max(totalPages, 1) : 0}
-            </Text>
-            <Button variant="default" radius="md" disabled={!hasSelectedAccount || page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>
-              Suivant
-            </Button>
-          </Group>
+          {paginationControls}
           <Box w={82} />
         </Group>
       </Stack>

@@ -27,13 +27,14 @@ import {
   type RegroupementPayload,
 } from '@/hooks/useGroupings';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
 
 const schema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
+  idSource: z.string().optional(),
   expense: z.boolean(),
   income: z.boolean(),
   dashboard: z.boolean(),
@@ -44,6 +45,7 @@ type FormValues = z.infer<typeof schema>;
 function toPayload(values: FormValues): RegroupementPayload {
   return {
     label: values.label,
+    idSource: values.idSource || null,
     expense: values.expense,
     income: values.income,
     dashboard: values.dashboard,
@@ -70,13 +72,14 @@ export function GroupingsFiche({ id }: Props) {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { label: '', expense: false, income: false, dashboard: false },
+    defaultValues: { label: '', idSource: '', expense: false, income: false, dashboard: false },
   });
 
   useEffect(() => {
     if (regroupement) {
       reset({
         label: regroupement.label,
+        idSource: regroupement.idSource ?? '',
         expense: regroupement.expense,
         income: regroupement.income,
         dashboard: regroupement.dashboard,
@@ -180,6 +183,20 @@ export function GroupingsFiche({ id }: Props) {
                 style={{ flex: 1 }}
                 error={errors.label?.message}
                 autoFocus
+                styles={{ input: fieldInputStyle }}
+              />
+            </Group>
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                Id source
+              </Text>
+              <TextInput
+                value={watch('idSource') ?? ''}
+                size="sm"
+                radius="md"
+                style={{ flex: 1 }}
+                disabled
                 styles={{ input: fieldInputStyle }}
               />
             </Group>

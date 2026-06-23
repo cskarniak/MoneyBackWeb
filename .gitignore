@@ -32,6 +32,7 @@ packages/db/src/generated/
 
 # Docker volumes
 docker/volumes/
+backups/
 
 # Test coverage
 coverage/

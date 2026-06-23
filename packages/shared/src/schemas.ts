@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   Periodicity,
+  SubscriptionType,
   ThirdPartyMatchingField,
   ThirdPartyMatchingMatcher,
   ThirdPartyMatchingOperator,
@@ -57,12 +58,13 @@ export const CreateOperationSchema = z.object({
   label: z.string().min(1),
   expense: z.number().min(0).default(0),
   income: z.number().min(0).default(0),
+  simulation: z.boolean().optional().default(false),
   operationDate: z.string().datetime(),
   dueDate: z.string().datetime().optional().nullable(),
   budgetId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
   thirdPartyId: z.string().uuid().optional(),
-  lettering: z.string().optional(),
+  lettering: z.string().max(4, 'Le lettrage doit contenir au maximum 4 caractères').optional(),
   comment: z.string().optional(),
   paymentMethodId: z.string().uuid().optional(),
   movementTypeId: z.string().uuid().optional(),
@@ -91,15 +93,7 @@ export const OperationFiltersSchema = z.object({
     v => (v === 'true' ? true : v === 'false' ? false : undefined),
     z.boolean().optional(),
   ),
-  reconciled: z.preprocess(
-    v => (v === 'true' ? true : v === 'false' ? false : undefined),
-    z.boolean().optional(),
-  ),
   hideLocked: z.preprocess(
-    v => (v === 'true' ? true : v === 'false' ? false : undefined),
-    z.boolean().optional(),
-  ),
-  hideReconciled: z.preprocess(
     v => (v === 'true' ? true : v === 'false' ? false : undefined),
     z.boolean().optional(),
   ),
@@ -122,32 +116,93 @@ export type OperationFiltersDto = z.infer<typeof OperationFiltersSchema>;
 
 // ─── Subscription ─────────────────────────────────────────────────────────────
 
+export const CreateSubscriptionSplitSchema = z.object({
+  label: z.string().optional().nullable(),
+  expense: z.number().min(0).default(0),
+  income: z.number().min(0).default(0),
+  categoryId: z.string().uuid().optional().nullable(),
+  budgetId: z.string().uuid().optional().nullable(),
+});
+
+export type CreateSubscriptionSplitDto = z.infer<typeof CreateSubscriptionSplitSchema>;
+
 export const CreateSubscriptionSchema = z.object({
   accountId: z.string().uuid(),
   label: z.string().min(1),
-  entryLabel: z.string().optional(),
+  entryLabel: z.string().optional().nullable(),
   expense: z.number().min(0).default(0),
   income: z.number().min(0).default(0),
   periodicity: z.enum([
+    Periodicity.DAILY,
     Periodicity.WEEKLY,
     Periodicity.MONTHLY,
+    Periodicity.BIMONTHLY,
     Periodicity.QUARTERLY,
+    Periodicity.SEMIANNUAL,
     Periodicity.ANNUAL,
   ]),
-  dayOfPeriod: z.number().int().min(1).max(31).optional(),
+  dayOfPeriod: z.number().int().min(1).max(31).optional().nullable(),
+  subscriptionType: z.enum([
+    SubscriptionType.REAL,
+    SubscriptionType.SIMULATION,
+  ]).default(SubscriptionType.REAL),
   firstDueDate: z.string().datetime(),
-  endDate: z.string().datetime().optional(),
-  budgetId: z.string().uuid().optional(),
-  categoryId: z.string().uuid().optional(),
-  thirdPartyId: z.string().uuid().optional(),
+  nextDueDate: z.string().datetime().optional().nullable(),
+  endDate: z.string().datetime().optional().nullable(),
+  active: z.boolean().default(true),
+  budgetId: z.string().uuid().optional().nullable(),
+  categoryId: z.string().uuid().optional().nullable(),
+  thirdPartyId: z.string().uuid().optional().nullable(),
+  movementTypeId: z.string().uuid().optional().nullable(),
+  splits: z.array(CreateSubscriptionSplitSchema).default([]),
 });
 
 export type CreateSubscriptionDto = z.infer<typeof CreateSubscriptionSchema>;
+
+export const UpdateSubscriptionSchema = CreateSubscriptionSchema.partial();
+export type UpdateSubscriptionDto = z.infer<typeof UpdateSubscriptionSchema>;
+
+export const SubscriptionFiltersSchema = z.object({
+  search: z.string().optional(),
+  active: z.preprocess(
+    v => (v === 'true' ? true : v === 'false' ? false : undefined),
+    z.boolean().optional(),
+  ),
+  periodicity: z.enum([
+    Periodicity.DAILY,
+    Periodicity.WEEKLY,
+    Periodicity.MONTHLY,
+    Periodicity.BIMONTHLY,
+    Periodicity.QUARTERLY,
+    Periodicity.SEMIANNUAL,
+    Periodicity.ANNUAL,
+  ]).optional(),
+  page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
+  sortBy: z.enum(['label', 'nextDueDate', 'firstDueDate', 'periodicity']).default('nextDueDate'),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+});
+
+export type SubscriptionFiltersDto = z.infer<typeof SubscriptionFiltersSchema>;
+
+export const GenerateSubscriptionsSchema = z.object({
+  dateRef: z.string().datetime(),
+  subscriptionIds: z.array(z.string().uuid()).default([]),
+});
+
+export type GenerateSubscriptionsDto = z.infer<typeof GenerateSubscriptionsSchema>;
+
+export const PreviewSubscriptionsGenerationSchema = z.object({
+  dateRef: z.string().datetime(),
+});
+
+export type PreviewSubscriptionsGenerationDto = z.infer<typeof PreviewSubscriptionsGenerationSchema>;
 
 // ─── Category ─────────────────────────────────────────────────────────────────
 
 export const CreateCategorySchema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
+  idSource: z.string().optional().nullable(),
   comment: z.string().optional().nullable(),
   expense: z.boolean().default(false),
   income: z.boolean().default(false),
@@ -179,6 +234,7 @@ export type CategoryFiltersDto = z.infer<typeof CategoryFiltersSchema>;
 
 export const CreateGroupingSchema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
+  idSource: z.string().optional().nullable(),
   expense: z.boolean().default(false),
   income: z.boolean().default(false),
   dashboard: z.boolean().default(false),
@@ -192,23 +248,81 @@ export type UpdateGroupingDto = z.infer<typeof UpdateGroupingSchema>;
 export const GroupingFiltersSchema = z.object({
   search: z.string().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
-  limit: z.preprocess(v => Number(v ?? 10), z.number().int().min(1).max(200)).default(10),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['label']).default('label'),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
 });
 
 export type GroupingFiltersDto = z.infer<typeof GroupingFiltersSchema>;
 
+// ─── Payment Method / Moyen de paiement ─────────────────────────────────────
+
+export const CreatePaymentMethodSchema = z.object({
+  label: z.string().min(1, 'Le libellé est obligatoire'),
+  code: z.string().max(3, 'Le code doit contenir au maximum 3 caractères').optional().nullable(),
+  idSource: z.string().optional().nullable(),
+  active: z.boolean().default(true),
+});
+
+export type CreatePaymentMethodDto = z.infer<typeof CreatePaymentMethodSchema>;
+
+export const UpdatePaymentMethodSchema = CreatePaymentMethodSchema.partial();
+export type UpdatePaymentMethodDto = z.infer<typeof UpdatePaymentMethodSchema>;
+
+export const PaymentMethodFiltersSchema = z.object({
+  search: z.string().optional(),
+  active: z.preprocess(
+    v => (v === 'true' ? true : v === 'false' ? false : undefined),
+    z.boolean().optional(),
+  ),
+  page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
+  sortBy: z.enum(['label', 'code']).default('label'),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+});
+
+export type PaymentMethodFiltersDto = z.infer<typeof PaymentMethodFiltersSchema>;
+
+// ─── Movement Type / Type de mouvement ──────────────────────────────────────
+
+export const CreateMovementTypeSchema = z.object({
+  label: z.string().min(1, 'Le libellé est obligatoire'),
+  code: z.string().max(3, 'Le code doit contenir au maximum 3 caractères').optional().nullable(),
+  idSource: z.string().optional().nullable(),
+  active: z.boolean().default(true),
+});
+
+export type CreateMovementTypeDto = z.infer<typeof CreateMovementTypeSchema>;
+
+export const UpdateMovementTypeSchema = CreateMovementTypeSchema.partial();
+export type UpdateMovementTypeDto = z.infer<typeof UpdateMovementTypeSchema>;
+
+export const MovementTypeFiltersSchema = z.object({
+  search: z.string().optional(),
+  active: z.preprocess(
+    v => (v === 'true' ? true : v === 'false' ? false : undefined),
+    z.boolean().optional(),
+  ),
+  page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
+  sortBy: z.enum(['label', 'code']).default('label'),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+});
+
+export type MovementTypeFiltersDto = z.infer<typeof MovementTypeFiltersSchema>;
+
 // ─── Budget / Enveloppe ──────────────────────────────────────────────────────
 
 export const CreateBudgetSchema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
-  legacyCode: z.string().optional().nullable(),
+  idSource: z.string().optional().nullable(),
   comment: z.string().optional().nullable(),
   summary: z.boolean().default(false),
   dashboard: z.boolean().default(false),
   active: z.boolean().default(true),
   regroupementId: z.string().uuid().optional().nullable(),
+  regroupementTableauDeBordId: z.string().uuid().optional().nullable(),
+  movementTypeId: z.string().uuid().optional().nullable(),
 });
 
 export type CreateBudgetDto = z.infer<typeof CreateBudgetSchema>;
@@ -270,8 +384,6 @@ export const ThirdPartyMatchingRuleSchema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
   description: z.string().optional().nullable(),
   active: z.boolean().default(true),
-  priority: z.number().int().default(100),
-  score: z.number().int().min(0).default(100),
   operator: z.enum([ThirdPartyMatchingOperator.AND, ThirdPartyMatchingOperator.OR]).default(ThirdPartyMatchingOperator.AND),
   stopOnMatch: z.boolean().default(false),
   conditions: z.array(ThirdPartyMatchingConditionSchema).default([]),
@@ -295,7 +407,9 @@ export type ThirdPartyMatchingCandidateDto = z.infer<typeof ThirdPartyMatchingCa
 
 export const CreateThirdPartySchema = z.object({
   name: z.string().min(1, 'Le nom est obligatoire'),
+  idSource: z.string().optional().nullable(),
   comment: z.string().optional().nullable(),
+  budgetBearer: z.boolean().default(false),
   ventilated: z.boolean().default(false),
   categoryId: z.string().uuid().optional().nullable(),
   budgetId: z.string().uuid().optional().nullable(),

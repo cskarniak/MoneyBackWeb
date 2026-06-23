@@ -6,6 +6,7 @@ export type Regroupement = { id: string; label: string; expense: boolean; income
 export type Category = {
   id: string;
   label: string;
+  idSource: string | null;
   comment: string | null;
   expense: boolean;
   income: boolean;
@@ -34,6 +35,7 @@ export type CategoryFilters = {
 
 export type CategoryPayload = {
   label: string;
+  idSource?: string | null;
   comment?: string | null;
   expense: boolean;
   income: boolean;
@@ -78,6 +80,9 @@ export function useCategoriesAll() {
         (r.data.items as Record<string, unknown>[]).map(normalizeCategory),
       ),
     staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 

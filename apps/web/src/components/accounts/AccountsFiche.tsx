@@ -22,7 +22,7 @@ import {
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useAccount, useCreateAccount, useDeleteAccount, useUpdateAccount, type AccountPayload } from '@/hooks/useAccounts';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
@@ -190,6 +190,22 @@ export function AccountsFiche({ id }: Props) {
                 <Text size="sm">{mutationError}</Text>
               </Alert>
             )}
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                Id source
+              </Text>
+              <TextInput
+                size="sm"
+                radius="md"
+                style={{ flex: 1 }}
+                value={account?.idSource ?? ''}
+                tabIndex={-1}
+                readOnly
+                disabled
+                styles={{ input: { ...fieldInputStyle, background: '#f1f3f5', color: '#6b7280', cursor: 'not-allowed' } }}
+              />
+            </Group>
 
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>

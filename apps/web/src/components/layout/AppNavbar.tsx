@@ -2,20 +2,41 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Box, Button, Group, Menu, Text } from '@mantine/core';
-import { IconCoins, IconChevronDown, IconFolder, IconCategory, IconBriefcase, IconUsers } from '@tabler/icons-react';
+import {
+  IconCoins,
+  IconChevronDown,
+  IconFolder,
+  IconCategory,
+  IconBriefcase,
+  IconUsers,
+  IconCreditCard,
+  IconArrowsShuffle,
+  IconBuildingBank,
+  IconRepeat,
+  IconTool,
+  IconCalendarRepeat,
+  IconDatabaseExport,
+} from '@tabler/icons-react';
 
 const FLAT_LINKS = [
-  { label: 'Comptes', prefix: '/comptes' },
   { label: 'Opérations', prefix: '/operations' },
-  { label: 'Abonnements', prefix: '/abonnements' },
   { label: 'Imports', prefix: '/imports' },
   { label: 'Portefeuille', prefix: '/portefeuille' },
 ];
 
+const OUTILS_ITEMS = [
+  { label: 'Génération abonnements', href: '/outils/generation-abonnements', icon: IconCalendarRepeat },
+  { label: 'Sauvegarde base', href: '/outils/sauvegarde-base', icon: IconDatabaseExport },
+];
+
 const FICHIERS_ITEMS = [
+  { label: 'Comptes', href: '/comptes', icon: IconBuildingBank },
+  { label: 'Abonnements', href: '/abonnements', icon: IconRepeat },
   { label: 'Enveloppes', href: '/referentiels/enveloppes', icon: IconBriefcase },
   { label: 'Catégories', href: '/referentiels/categories', icon: IconCategory },
   { label: 'Regroupements', href: '/referentiels/regroupements', icon: IconFolder },
+  { label: 'Moyens de paiement', href: '/referentiels/moyens-paiement', icon: IconCreditCard },
+  { label: 'Types de mouvement', href: '/referentiels/types-mouvement', icon: IconArrowsShuffle },
   { label: 'Tiers', href: '/referentiels/tiers', icon: IconUsers },
 ];
 
@@ -27,6 +48,7 @@ export function AppNavbar() {
   const router = useRouter();
 
   const fichiersActive = FICHIERS_ITEMS.some(item => pathname.startsWith(item.href));
+  const outilsActive = OUTILS_ITEMS.some(item => pathname.startsWith(item.href));
 
   return (
     <Box
@@ -70,6 +92,48 @@ export function AppNavbar() {
               </Button>
             );
           })}
+
+          <Menu
+            position="bottom-start"
+            offset={4}
+            styles={{
+              dropdown: { background: '#25262b', border: '1px solid #373a40', padding: '4px 0' },
+              item: { color: '#c1c2c5', padding: '7px 14px', fontSize: 13 },
+            }}
+          >
+            <Menu.Target>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={<IconTool size={12} />}
+                rightSection={<IconChevronDown size={11} />}
+                style={{
+                  color: outilsActive ? ACTIVE_COLOR : '#adb5bd',
+                  fontWeight: outilsActive ? 700 : 400,
+                  background: 'transparent',
+                  whiteSpace: 'nowrap',
+                  padding: '4px 10px',
+                }}
+              >
+                Outils
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {OUTILS_ITEMS.map(item => {
+                const active = pathname.startsWith(item.href);
+                return (
+                  <Menu.Item
+                    key={item.href}
+                    leftSection={<item.icon size={14} />}
+                    onClick={() => router.push(item.href)}
+                    style={{ color: active ? ACTIVE_COLOR : '#c1c2c5', fontWeight: active ? 600 : 400 }}
+                  >
+                    {item.label}
+                  </Menu.Item>
+                );
+              })}
+            </Menu.Dropdown>
+          </Menu>
 
           {/* Sous-menu Fichiers */}
           <Menu

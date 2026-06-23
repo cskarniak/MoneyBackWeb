@@ -49,9 +49,9 @@ docker/      → PostgreSQL 16 + Redis 7 via docker compose
 ### Frontend (`apps/web`)
 
 - **Mantine 7** pour tous les composants UI (ne pas introduire Tailwind ni d'autre lib de composants)
-- **AG Grid Community** sur les écrans pivots à forte densité (liste des opérations, rapprochement) ; **TanStack Table** pour les listes secondaires
+- **AG Grid Community** sur les écrans pivots à forte densité (liste des opérations) ; **TanStack Table** pour les listes secondaires
 - **TanStack Query** pour toute communication avec l'API — pas de `fetch` direct dans les composants
-- **Zustand** pour l'état UI local complexe : sessions de rapprochement, onglets ouverts, filtres actifs
+- **Zustand** pour l'état UI local complexe : onglets ouverts, filtres actifs
 - **React Hook Form + Zod** pour tous les formulaires ; les schémas Zod viennent de `@moneyback/shared`
 - **cmdk** pour la palette de commandes (`Cmd+K`)
 - Les filtres actifs sont persistés dans les **search params URL** (TanStack Router)
@@ -70,7 +70,7 @@ Le schéma Prisma est dans `packages/db/prisma/schema.prisma`. Le client génér
 
 **Groupes d'entités :**
 - Auth : `users`, `roles`, `user_roles`
-- Comptes : `accounts`, `account_reconciliations`, `account_reconciliation_lines`
+- Comptes : `accounts`
 - Opérations : `operations`, `operation_splits`
 - Référentiels : `budgets`, `categories`, `groupings`, `third_parties`, `payment_methods`, `movement_types`
 - Abonnements : `subscriptions`, `subscription_runs`

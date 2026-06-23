@@ -29,10 +29,10 @@ import {
 } from '@tabler/icons-react';
 import { useDeleteEnveloppe, useEnveloppes, type Enveloppe } from '@/hooks/useEnveloppes';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const TEXT_MUTED = '#667085';
-const LIMIT_OPTIONS = ['5', '10', '25', '50', '100'];
+const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
 export function EnveloppesList() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export function EnveloppesList() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get('page') ?? '1');
-  const limit = Number(searchParams.get('limit') ?? '10');
+  const limit = Number(searchParams.get('limit') ?? '20');
   const search = searchParams.get('search') ?? '';
   const sortBy = (searchParams.get('sortBy') as 'label' | 'regroupement') ?? 'label';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
@@ -144,12 +144,11 @@ export function EnveloppesList() {
     switch (columnId) {
       case 'cursor':
         return '22px';
-      case 'legacyCode':
-        return '120px';
       case 'regroupement':
         return '180px';
+      case 'regroupementTableauDeBord':
+        return '180px';
       case 'summary':
-      case 'dashboard':
       case 'active':
         return '90px';
       case 'actions':
@@ -180,11 +179,6 @@ export function EnveloppesList() {
         cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600}>{getValue() as string}</Text>,
       },
       {
-        accessorKey: 'legacyCode',
-        header: () => <span style={thStyle()}>Code</span>,
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
-      },
-      {
         id: 'regroupement',
         header: () => (
           <span style={thStyle('regroupement')} onClick={() => handleSort('regroupement')}>
@@ -203,9 +197,13 @@ export function EnveloppesList() {
         cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.summary ? '✓' : ''}</Text>,
       },
       {
-        id: 'dashboard',
-        header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Tableau</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.dashboard ? '✓' : ''}</Text>,
+        id: 'regroupementTableauDeBord',
+        header: () => <span style={thStyle()}>Regroupement TB</span>,
+        cell: ({ row }) => (
+          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} c={row.original.regroupementTableauDeBord ? undefined : 'dimmed'}>
+            {row.original.regroupementTableauDeBord?.label ?? '—'}
+          </Text>
+        ),
       },
       {
         id: 'active',

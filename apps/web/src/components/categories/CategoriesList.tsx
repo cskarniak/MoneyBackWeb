@@ -36,11 +36,11 @@ import { useCategories, useDeleteCategory, type Category } from '@/hooks/useCate
 
 const SALMON = '#ffe4d6';
 const GRAY_BG = '#f8f9fa';
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const TEXT_MUTED = '#667085';
 
-const LIMIT_OPTIONS = ['5', '10', '25', '50', '100'];
+const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
 export function CategoriesList() {
   const router = useRouter();
@@ -48,7 +48,7 @@ export function CategoriesList() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get('page') ?? '1');
-  const limit = Number(searchParams.get('limit') ?? '10');
+  const limit = Number(searchParams.get('limit') ?? '20');
   const search = searchParams.get('search') ?? '';
   const sortBy = (searchParams.get('sortBy') as 'label' | 'regroupement') ?? 'label';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
@@ -148,6 +148,8 @@ export function CategoriesList() {
     switch (columnId) {
       case 'cursor':
         return '22px';
+      case 'label':
+        return '40%';
       case 'regroupement':
         return '180px';
       case 'active':

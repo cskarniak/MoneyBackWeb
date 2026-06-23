@@ -9,10 +9,16 @@ export type Regroupement = {
   dashboard: boolean;
 };
 
+export type TypeMouvement = {
+  id: string;
+  label: string;
+  code: string | null;
+};
+
 export type Enveloppe = {
   id: string;
   label: string;
-  legacyCode: string | null;
+  idSource: string | null;
   comment: string | null;
   summary: boolean;
   dashboard: boolean;
@@ -21,6 +27,10 @@ export type Enveloppe = {
   invoiceBalance: string;
   regroupementId: string | null;
   regroupement: Regroupement | null;
+  regroupementTableauDeBordId: string | null;
+  regroupementTableauDeBord: Regroupement | null;
+  movementTypeId: string | null;
+  typeMouvement: TypeMouvement | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -43,12 +53,14 @@ export type EnveloppeFilters = {
 
 export type EnveloppePayload = {
   label: string;
-  legacyCode?: string | null;
+  idSource?: string | null;
   comment?: string | null;
   summary: boolean;
   dashboard: boolean;
   active: boolean;
   regroupementId?: string | null;
+  regroupementTableauDeBordId?: string | null;
+  movementTypeId?: string | null;
 };
 
 const KEY = 'enveloppes';
@@ -57,6 +69,14 @@ function normalizeEnveloppe(enveloppe: Record<string, unknown>): Enveloppe {
   const regroupement =
     (enveloppe.regroupement as Regroupement | null | undefined) ??
     (enveloppe.grouping as Regroupement | null | undefined) ??
+    null;
+  const regroupementTableauDeBord =
+    (enveloppe.regroupementTableauDeBord as Regroupement | null | undefined) ??
+    (enveloppe.dashboardGrouping as Regroupement | null | undefined) ??
+    null;
+  const typeMouvement =
+    (enveloppe.typeMouvement as TypeMouvement | null | undefined) ??
+    (enveloppe.movementType as TypeMouvement | null | undefined) ??
     null;
 
   return {
@@ -68,6 +88,14 @@ function normalizeEnveloppe(enveloppe: Record<string, unknown>): Enveloppe {
       (enveloppe.groupingId as string | null | undefined) ??
       null,
     regroupement,
+    regroupementTableauDeBordId:
+      (enveloppe.regroupementTableauDeBordId as string | null | undefined) ??
+      (enveloppe.dashboardGroupingId as string | null | undefined) ??
+      null,
+    regroupementTableauDeBord,
+    movementTypeId:
+      (enveloppe.movementTypeId as string | null | undefined) ?? null,
+    typeMouvement,
   } as Enveloppe;
 }
 
@@ -90,6 +118,9 @@ export function useEnveloppesAll() {
         (r.data.items as Record<string, unknown>[]).map(normalizeEnveloppe),
       ),
     staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 

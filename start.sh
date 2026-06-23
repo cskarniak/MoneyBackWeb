@@ -23,7 +23,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 # ── 3. Attente que PostgreSQL soit prêt ─────────────────────────────────────
 echo -n "   Attente de PostgreSQL"
-until docker exec moneyback-postgres pg_isready -U moneyback &>/dev/null 2>&1; do
+until [ "$(docker inspect -f '{{.State.Health.Status}}' moneyback_postgres 2>/dev/null)" = "healthy" ]; do
   echo -n "."
   sleep 1
 done

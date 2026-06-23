@@ -1,6 +1,6 @@
 'use client';
 
-import { CRUD } from '@/lib/crud-tokens';
+import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -20,18 +20,30 @@ import {
   Table,
   Text,
   TextInput,
+  Tooltip,
 } from '@mantine/core';
 import { IconAlertCircle, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useCreateOperation, useDeleteOperation, useOperation, useUpdateOperation, type OperationPayload } from '@/hooks/useOperations';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
+import { useMovementTypesAll } from '@/hooks/useMovementTypes';
+import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
+const SHORT_SELECT_WIDTH = 92;
+const SHORT_SELECT_DROPDOWN_WIDTH = 260;
+const SPLIT_TOLERANCE = 0.011;
+
+type ShortCodeOption = {
+  value: string;
+  label: string;
+  fullLabel: string;
+};
 
 const splitSchema = z.object({
   label: z.string().optional(),
@@ -51,6 +63,8 @@ const schema = z.object({
   categoryId: z.string().nullable().optional(),
   budgetId: z.string().nullable().optional(),
   thirdPartyId: z.string().nullable().optional(),
+  paymentMethodId: z.string().nullable().optional(),
+  movementTypeId: z.string().nullable().optional(),
   pieceNumber: z.string().optional(),
   statementRef: z.string().optional(),
   operationValidated: z.boolean(),
@@ -67,12 +81,41 @@ function asNumber(value?: string) {
   return Number.isFinite(normalized) ? normalized : 0;
 }
 
+function amountsMatch(left: number, right: number) {
+  return Math.abs(left - right) < SPLIT_TOLERANCE;
+}
+
 function isoDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();
 }
 
 function inputDate(value?: string | null) {
   return value ? new Date(value).toISOString().slice(0, 10) : '';
+}
+
+function buildShortCodeOption(id: string, code: string | null | undefined, label: string): ShortCodeOption {
+  const trimmedCode = code?.trim();
+  return {
+    value: id,
+    label: trimmedCode || label,
+    fullLabel: label,
+  };
+}
+
+function filterShortCodeOptions({
+  options,
+  search,
+}: {
+  options: ShortCodeOption[];
+  search: string;
+}) {
+  const normalizedSearch = search.trim().toLowerCase();
+  if (!normalizedSearch) return options;
+
+  return options.filter(option =>
+    option.label.toLowerCase().includes(normalizedSearch)
+    || option.fullLabel.toLowerCase().includes(normalizedSearch),
+  );
 }
 
 function buildPayload(values: FormValues): OperationPayload {
@@ -86,6 +129,8 @@ function buildPayload(values: FormValues): OperationPayload {
     categoryId: values.categoryId || null,
     budgetId: values.budgetId || null,
     thirdPartyId: values.thirdPartyId || null,
+    paymentMethodId: values.paymentMethodId || null,
+    movementTypeId: values.movementTypeId || null,
     pieceNumber: values.pieceNumber || null,
     statementRef: values.statementRef || null,
     operationValidated: values.operationValidated ? 'V' : null,
@@ -106,11 +151,14 @@ function buildPayload(values: FormValues): OperationPayload {
 export function OperationsFiche({ id }: Props) {
   const router = useRouter();
   const isNew = !id;
+  const compactFormVars = buildCrudFormCssVariables('operationsFiche');
 
   const { data: operation, isLoading: loadingOperation } = useOperation(id ?? '');
   const { data: accounts = [], isLoading: loadingAccounts } = useAccountsAll();
   const { data: categories = [], isLoading: loadingCategories } = useCategoriesAll();
   const { data: enveloppes = [], isLoading: loadingEnveloppes } = useEnveloppesAll();
+  const { data: paymentMethods = [], isLoading: loadingPaymentMethods } = usePaymentMethodsAll();
+  const { data: movementTypes = [], isLoading: loadingMovementTypes } = useMovementTypesAll();
   const { data: thirdParties = [], isLoading: loadingThirdParties } = useThirdPartiesAll();
   const createMutation = useCreateOperation();
   const updateMutation = useUpdateOperation();
@@ -136,6 +184,8 @@ export function OperationsFiche({ id }: Props) {
       categoryId: null,
       budgetId: null,
       thirdPartyId: null,
+      paymentMethodId: null,
+      movementTypeId: null,
       pieceNumber: '',
       statementRef: '',
       operationValidated: true,
@@ -162,6 +212,8 @@ export function OperationsFiche({ id }: Props) {
         categoryId: operation.categoryId,
         budgetId: operation.budgetId,
         thirdPartyId: operation.thirdPartyId,
+        paymentMethodId: operation.paymentMethodId,
+        movementTypeId: operation.movementTypeId,
         pieceNumber: operation.pieceNumber ?? '',
         statementRef: operation.statementRef ?? '',
         operationValidated: operation.operationValidated === 'V',
@@ -182,6 +234,28 @@ export function OperationsFiche({ id }: Props) {
   const categoryOptions = categories.map(category => ({ value: category.id, label: category.label }));
   const enveloppeOptions = enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label }));
   const thirdPartyOptions = thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name }));
+  const paymentMethodOptions = paymentMethods.map(paymentMethod =>
+    buildShortCodeOption(paymentMethod.id, paymentMethod.code, paymentMethod.label));
+  const movementTypeOptions = movementTypes.map(movementType =>
+    buildShortCodeOption(movementType.id, movementType.code, movementType.label));
+  const currentPaymentMethodOption =
+    operation?.moyenPaiement && !paymentMethodOptions.some(option => option.value === operation.moyenPaiement?.id)
+      ? [{
+          value: operation.moyenPaiement.id,
+          label: operation.moyenPaiement.code || operation.moyenPaiement.label,
+          fullLabel: operation.moyenPaiement.label,
+        }]
+      : [];
+  const currentMovementTypeOption =
+    operation?.typeMouvement && !movementTypeOptions.some(option => option.value === operation.typeMouvement?.id)
+      ? [{
+          value: operation.typeMouvement.id,
+          label: operation.typeMouvement.code || operation.typeMouvement.label,
+          fullLabel: operation.typeMouvement.label,
+        }]
+      : [];
+  const displayedPaymentMethodOptions = [...currentPaymentMethodOption, ...paymentMethodOptions];
+  const displayedMovementTypeOptions = [...currentMovementTypeOption, ...movementTypeOptions];
 
   const watchSplits = watch('splits');
   const hasSplitRows = watchSplits.length > 0;
@@ -198,11 +272,18 @@ export function OperationsFiche({ id }: Props) {
 
   const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
   const splitError =
-    watchSplits.length > 0 && (expense !== splitExpense || income !== splitIncome)
+    watchSplits.length > 0 && (!amountsMatch(expense, splitExpense) || !amountsMatch(income, splitIncome))
       ? `La ventilation doit totaliser ${expense.toFixed(2)} en dépense et ${income.toFixed(2)} en recette. Actuel: ${splitExpense.toFixed(2)} / ${splitIncome.toFixed(2)}.`
       : null;
 
-  const isLoading = (!isNew && loadingOperation) || loadingAccounts || loadingCategories || loadingEnveloppes || loadingThirdParties;
+  const isLoading =
+    (!isNew && loadingOperation)
+    || loadingAccounts
+    || loadingCategories
+    || loadingEnveloppes
+    || loadingPaymentMethods
+    || loadingMovementTypes
+    || loadingThirdParties;
 
   if (isLoading) {
     return (
@@ -236,7 +317,7 @@ export function OperationsFiche({ id }: Props) {
   };
 
   return (
-    <Box style={{ maxWidth: 'var(--crud-list-max-width)', margin: '0 auto' }}>
+    <Box style={{ ...compactFormVars, maxWidth: 'var(--crud-list-max-width)', margin: '0 auto' }}>
       <Box
         style={{
           background: PANEL_BG,
@@ -277,6 +358,29 @@ export function OperationsFiche({ id }: Props) {
               </Alert>
             )}
 
+            {!isNew && (
+              <Group gap={0} align="center">
+                <Text
+                  fz="var(--crud-font-size)"
+                  fw={600}
+                  c={LABEL_COLOR}
+                  style={{ width: 120, flexShrink: 0 }}
+                >
+                  Id source
+                </Text>
+                <TextInput
+                  value={operation?.idSource ?? ''}
+                  size="sm"
+                  radius="md"
+                  style={{ flex: 1 }}
+                  tabIndex={-1}
+                  readOnly
+                  disabled
+                  styles={{ input: { ...fieldInputStyle, background: '#f1f3f5', color: '#6b7280', cursor: 'not-allowed' } }}
+                />
+              </Group>
+            )}
+
             <Group justify="space-between" align="center">
               <Text fw={700} c={LABEL_COLOR}>
                 {isNew ? 'Nouvelle opération' : `Modification: ${operation?.label ?? ''}`}
@@ -304,13 +408,23 @@ export function OperationsFiche({ id }: Props) {
                       <Table.Th>Compte</Table.Th>
                       <Table.Th>Date</Table.Th>
                       <Table.Th>Echéance</Table.Th>
+                      <Table.Th style={{ width: SHORT_SELECT_WIDTH }}>
+                        <Tooltip label="Type de mouvement">
+                          <Text inherit span style={{ cursor: 'help' }}>TM</Text>
+                        </Tooltip>
+                      </Table.Th>
+                      <Table.Th style={{ width: SHORT_SELECT_WIDTH }}>
+                        <Tooltip label="Moyen de paiement">
+                          <Text inherit span style={{ cursor: 'help' }}>MP</Text>
+                        </Tooltip>
+                      </Table.Th>
                       <Table.Th>Libellé</Table.Th>
                       <Table.Th style={{ textAlign: 'right' }}>Dépense</Table.Th>
                       <Table.Th style={{ textAlign: 'right' }}>Recette</Table.Th>
                       <Table.Th>Tiers</Table.Th>
                       <Table.Th>Catégorie</Table.Th>
                       <Table.Th>Enveloppe</Table.Th>
-                      <Table.Th>No pièce</Table.Th>
+                      <Table.Th>Pièce</Table.Th>
                       <Table.Th>Réf. relevé</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
@@ -324,6 +438,42 @@ export function OperationsFiche({ id }: Props) {
                       </Table.Td>
                       <Table.Td>
                         <TextInput {...register('dueDate')} type="date" styles={{ input: fieldInputStyle }} />
+                      </Table.Td>
+                      <Table.Td style={{ width: SHORT_SELECT_WIDTH }}>
+                        <Select
+                          data={displayedMovementTypeOptions}
+                          value={watch('movementTypeId') ?? null}
+                          onChange={val => setValue('movementTypeId', val)}
+                          clearable
+                          searchable
+                          comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
+                          filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
+                          renderOption={({ option }) => (
+                            <Group justify="space-between" gap={8} wrap="nowrap">
+                              <Text size="sm" fw={600}>{option.label}</Text>
+                              <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                            </Group>
+                          )}
+                          styles={{ input: fieldInputStyle }}
+                        />
+                      </Table.Td>
+                      <Table.Td style={{ width: SHORT_SELECT_WIDTH }}>
+                        <Select
+                          data={displayedPaymentMethodOptions}
+                          value={watch('paymentMethodId') ?? null}
+                          onChange={val => setValue('paymentMethodId', val)}
+                          clearable
+                          searchable
+                          comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
+                          filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
+                          renderOption={({ option }) => (
+                            <Group justify="space-between" gap={8} wrap="nowrap">
+                              <Text size="sm" fw={600}>{option.label}</Text>
+                              <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                            </Group>
+                          )}
+                          styles={{ input: fieldInputStyle }}
+                        />
                       </Table.Td>
                       <Table.Td>
                         <TextInput {...register('label')} error={errors.label?.message} styles={{ input: fieldInputStyle }} />
@@ -411,21 +561,21 @@ export function OperationsFiche({ id }: Props) {
                       fields.map((field, index) => {
                         const split = watchSplits[index];
                         return (
-                          <Table.Tr key={field.id}>
+                        <Table.Tr key={field.id}>
                             <Table.Td>
-                              <TextInput {...register(`splits.${index}.label`)} styles={{ input: { background: FIELD_BG } }} />
+                              <TextInput {...register(`splits.${index}.label`)} styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <TextInput {...register(`splits.${index}.expense`)} inputMode="decimal" styles={{ input: { background: FIELD_BG, textAlign: 'right' } }} />
+                              <TextInput {...register(`splits.${index}.expense`)} inputMode="decimal" styles={{ input: { ...fieldInputStyle, textAlign: 'right' } }} />
                             </Table.Td>
                             <Table.Td>
-                              <TextInput {...register(`splits.${index}.income`)} inputMode="decimal" styles={{ input: { background: FIELD_BG, textAlign: 'right' } }} />
+                              <TextInput {...register(`splits.${index}.income`)} inputMode="decimal" styles={{ input: { ...fieldInputStyle, textAlign: 'right' } }} />
                             </Table.Td>
                             <Table.Td>
-                              <Select data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable searchable styles={{ input: { background: FIELD_BG } }} />
+                              <Select data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable searchable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <Select data={categoryOptions} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable searchable styles={{ input: { background: FIELD_BG } }} />
+                              <Select data={categoryOptions} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable searchable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
                               <ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>

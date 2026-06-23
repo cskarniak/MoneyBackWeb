@@ -5,21 +5,21 @@ const prisma = new PrismaClient();
 async function main() {
   const roles = ['admin', 'gestion', 'consultation'];
   const paymentMethods = [
-    'Virement',
-    'Carte bancaire',
-    'Prelevement',
-    'Cheque',
-    'Especes',
-    'Autre',
+    { label: 'Virement', code: 'VIR' },
+    { label: 'Carte bancaire', code: 'CB' },
+    { label: 'Prelevement', code: 'PRL' },
+    { label: 'Cheque', code: 'CHQ' },
+    { label: 'Especes', code: 'ESP' },
+    { label: 'Autre', code: 'AUT' },
   ];
   const movementTypes = [
-    'Operation courante',
-    'Virement',
-    'Retrait',
-    'Depot',
-    'Abonnement',
-    'Portefeuille',
-    'Dividende',
+    { label: 'Operation courante', code: 'OPE' },
+    { label: 'Virement', code: 'VIR' },
+    { label: 'Retrait', code: 'RET' },
+    { label: 'Depot', code: 'DEP' },
+    { label: 'Abonnement', code: 'ABO' },
+    { label: 'Portefeuille', code: 'PRT' },
+    { label: 'Dividende', code: 'DIV' },
   ];
   const settings = [
     ['app.name', 'MoneyBack Web'],
@@ -35,25 +35,27 @@ async function main() {
     });
   }
 
-  for (const label of paymentMethods) {
+  for (const { label, code } of paymentMethods) {
     await prisma.paymentMethod.upsert({
       where: { id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
-      update: { label, active: true },
+      update: { label, code, active: true },
       create: {
         id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         label,
+        code,
         active: true,
       },
     });
   }
 
-  for (const label of movementTypes) {
+  for (const { label, code } of movementTypes) {
     await prisma.movementType.upsert({
       where: { id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
-      update: { label, active: true },
+      update: { label, code, active: true },
       create: {
         id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         label,
+        code,
         active: true,
       },
     });

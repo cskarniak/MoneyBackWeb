@@ -43,6 +43,8 @@ CREATE TABLE "parametres" (
 CREATE TABLE "moyens_paiement" (
     "id" TEXT NOT NULL,
     "libelle" TEXT NOT NULL,
+    "code" TEXT,
+    "id_source" TEXT,
     "actif" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "moyens_paiement_pkey" PRIMARY KEY ("id")
@@ -52,6 +54,8 @@ CREATE TABLE "moyens_paiement" (
 CREATE TABLE "types_mouvement" (
     "id" TEXT NOT NULL,
     "libelle" TEXT NOT NULL,
+    "code" TEXT,
+    "id_source" TEXT,
     "actif" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "types_mouvement_pkey" PRIMARY KEY ("id")
@@ -61,6 +65,7 @@ CREATE TABLE "types_mouvement" (
 CREATE TABLE "regroupements" (
     "id" TEXT NOT NULL,
     "libelle" TEXT NOT NULL,
+    "id_source" TEXT,
     "depense" BOOLEAN NOT NULL DEFAULT false,
     "recette" BOOLEAN NOT NULL DEFAULT false,
     "tableau_bord" BOOLEAN NOT NULL DEFAULT false,
@@ -75,7 +80,7 @@ CREATE TABLE "regroupements" (
 CREATE TABLE "budgets" (
     "id" TEXT NOT NULL,
     "libelle" TEXT NOT NULL,
-    "ancien_code" TEXT,
+    "id_source" TEXT,
     "commentaire" TEXT,
     "synthese" BOOLEAN NOT NULL DEFAULT false,
     "tableau_bord" BOOLEAN NOT NULL DEFAULT false,
@@ -85,6 +90,7 @@ CREATE TABLE "budgets" (
     "date_creation" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "date_modification" TIMESTAMP(3) NOT NULL,
     "regroupement_id" TEXT,
+    "regroupement_tableau_bord_id" TEXT,
     "type_mouvement_id" TEXT,
 
     CONSTRAINT "budgets_pkey" PRIMARY KEY ("id")
@@ -94,6 +100,7 @@ CREATE TABLE "budgets" (
 CREATE TABLE "categories" (
     "id" TEXT NOT NULL,
     "libelle" TEXT NOT NULL,
+    "id_source" TEXT,
     "ancien_code" TEXT,
     "commentaire" TEXT,
     "depense" BOOLEAN NOT NULL DEFAULT false,
@@ -110,7 +117,9 @@ CREATE TABLE "categories" (
 CREATE TABLE "tiers" (
     "id" TEXT NOT NULL,
     "nom" TEXT NOT NULL,
+    "id_source" TEXT,
     "commentaire" TEXT,
+    "porte_budget" BOOLEAN NOT NULL DEFAULT false,
     "ventilation" BOOLEAN NOT NULL DEFAULT false,
     "actif" BOOLEAN NOT NULL DEFAULT true,
     "categorie_id" TEXT,
@@ -122,6 +131,7 @@ CREATE TABLE "tiers" (
 -- CreateTable
 CREATE TABLE "operations_ventilees_tiers" (
     "id" TEXT NOT NULL,
+    "id_source" TEXT,
     "libelle" TEXT,
     "depense" DECIMAL(15,2) NOT NULL DEFAULT 0,
     "recette" DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -141,8 +151,6 @@ CREATE TABLE "tiers_regles_matching" (
     "libelle" TEXT NOT NULL,
     "description" TEXT,
     "actif" BOOLEAN NOT NULL DEFAULT true,
-    "priorite" INTEGER NOT NULL DEFAULT 100,
-    "score" INTEGER NOT NULL DEFAULT 100,
     "operateur" TEXT NOT NULL DEFAULT 'AND',
     "stop_si_match" BOOLEAN NOT NULL DEFAULT false,
     "date_creation" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -524,7 +532,7 @@ CREATE UNIQUE INDEX "portefeuille_cours_code_isin_date_cours_key" ON "portefeuil
 CREATE INDEX "operations_ventilees_tiers_tiers_id_idx" ON "operations_ventilees_tiers"("tiers_id");
 
 -- CreateIndex
-CREATE INDEX "tiers_regles_matching_tiers_id_actif_priorite_idx" ON "tiers_regles_matching"("tiers_id", "actif", "priorite");
+CREATE INDEX "tiers_regles_matching_tiers_id_actif_idx" ON "tiers_regles_matching"("tiers_id", "actif");
 
 -- CreateIndex
 CREATE INDEX "tiers_regles_matching_conditions_regle_id_position_idx" ON "tiers_regles_matching_conditions"("regle_id", "position");

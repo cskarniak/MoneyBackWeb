@@ -10,8 +10,6 @@ import type { ThirdPartyMatchingCandidateDto } from '@moneyback/shared';
 type LoadedRule = {
   id: string;
   label: string;
-  priority: number;
-  score: number;
   operator: string;
   stopOnMatch: boolean;
   thirdPartyId: string;
@@ -45,9 +43,6 @@ export type ThirdPartyMatchResult = {
   ventilated: boolean;
   matchedRuleId: string;
   matchedRuleLabel: string;
-  score: number;
-  confidence: 'high' | 'medium' | 'low';
-  autoApply: boolean;
   matchedConditions: ThirdPartyMatchConditionResult[];
 };
 
@@ -77,34 +72,23 @@ export class ThirdPartyMatchingService {
           orderBy: { position: 'asc' },
         },
       },
-      orderBy: [
-        { priority: 'asc' },
-        { score: 'desc' },
-        { createdAt: 'asc' },
-      ],
+      orderBy: { createdAt: 'asc' },
     });
 
-    const matches: ThirdPartyMatchResult[] = [];
+    let lastMatch: ThirdPartyMatchResult | null = null;
 
     for (const rule of rules) {
       const evaluated = this.evaluateRule(rule, normalizedCandidate);
       if (!evaluated) continue;
 
-      matches.push(evaluated);
+      lastMatch = evaluated;
 
       if (rule.stopOnMatch) {
         break;
       }
     }
 
-    if (matches.length === 0) {
-      return null;
-    }
-
-    return matches.sort((left, right) => {
-      if (right.score !== left.score) return right.score - left.score;
-      return left.matchedConditions.length - right.matchedConditions.length;
-    })[0] ?? null;
+    return lastMatch;
   }
 
   private normalizeCandidate(candidate: ThirdPartyMatchingCandidateDto) {
@@ -142,9 +126,6 @@ export class ThirdPartyMatchingService {
       ventilated: rule.thirdParty.ventilated,
       matchedRuleId: rule.id,
       matchedRuleLabel: rule.label,
-      score: rule.score,
-      confidence: this.computeConfidence(rule.score),
-      autoApply: rule.score >= 80,
       matchedConditions,
     };
   }
@@ -231,11 +212,5 @@ export class ThirdPartyMatchingService {
       default:
         return '';
     }
-  }
-
-  private computeConfidence(score: number): 'high' | 'medium' | 'low' {
-    if (score >= 80) return 'high';
-    if (score >= 50) return 'medium';
-    return 'low';
   }
 }

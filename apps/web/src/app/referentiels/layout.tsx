@@ -1,11 +1,5 @@
-import { Box } from '@mantine/core';
-import { AppNavbar } from '@/components/layout/AppNavbar';
+import { CrudLayoutShell } from '@/components/layout/CrudLayoutShell';
 
 export default function ReferentielsLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <Box style={{ minHeight: '100vh', background: '#f8f9fa' }}>
-      <AppNavbar />
-      {children}
-    </Box>
-  );
+  return <CrudLayoutShell>{children}</CrudLayoutShell>;
 }

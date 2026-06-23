@@ -3,6 +3,7 @@ import api from '@/lib/api';
 
 export type Account = {
   id: string;
+  idSource: string | null;
   name: string;
   agency: string | null;
   number: string | null;
@@ -11,6 +12,7 @@ export type Account = {
   bankLogin: string | null;
   comment: string | null;
   openingBalance: string | null;
+  currentBalance: string;
   managedForOther: boolean;
   closed: boolean;
   createdAt: string;
@@ -55,6 +57,7 @@ function normalizeAccount(account: Record<string, unknown>): Account {
       account.openingBalance === null || account.openingBalance === undefined
         ? null
         : String(account.openingBalance),
+    currentBalance: String(account.currentBalance ?? '0'),
   } as Account;
 }
 

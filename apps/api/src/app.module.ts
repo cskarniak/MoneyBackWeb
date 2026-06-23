@@ -8,6 +8,10 @@ import { GroupingsModule } from './modules/groupings/groupings.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { OperationsModule } from './modules/operations/operations.module';
 import { ThirdPartiesModule } from './modules/third-parties/third-parties.module';
+import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.module';
+import { MovementTypesModule } from './modules/movement-types/movement-types.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { DatabaseBackupsModule } from './modules/database-backups/database-backups.module';
 
 @Module({
   imports: [
@@ -20,8 +24,12 @@ import { ThirdPartiesModule } from './modules/third-parties/third-parties.module
     CategoriesModule,
     GroupingsModule,
     BudgetsModule,
+    PaymentMethodsModule,
+    MovementTypesModule,
     OperationsModule,
     ThirdPartiesModule,
+    SubscriptionsModule,
+    DatabaseBackupsModule,
   ],
   controllers: [AppController],
 })

@@ -17,7 +17,7 @@ import {
 import { IconAlertCircle, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
 
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 
 export type SplitModalRow = {
   id: string;
@@ -159,11 +159,15 @@ export function OperationSplitModal({
           top: position.y,
           left: position.x,
           width: 'min(760px, calc(100vw - 24px))',
+          maxHeight: 'calc(100vh - 24px)',
           background: '#ffffff',
           border: `1px solid ${GRAY_BORDER}`,
           borderRadius: 10,
           boxShadow: '0 24px 60px rgba(15, 23, 42, 0.22)',
           zIndex: 301,
+          display: 'flex',
+          flexDirection: 'column',
+          overscrollBehavior: 'contain',
         }}
       >
         <Group
@@ -191,7 +195,7 @@ export function OperationSplitModal({
             <IconX size={14} />
           </ActionIcon>
         </Group>
-        <Box style={{ padding: 12 }}>
+        <Box style={{ padding: 12, overflow: 'auto', overscrollBehavior: 'contain' }}>
           <Stack gap={12}>
             {splitError && (remainingBalance === null || remainingBalance === undefined) && (
               <Alert color="orange" icon={<IconAlertCircle size={16} />}>
@@ -211,7 +215,16 @@ export function OperationSplitModal({
               </Alert>
             )}
 
-            <Box style={{ border: `1px solid ${GRAY_BORDER}`, borderRadius: 8, overflow: 'hidden', background: '#ffffff' }}>
+            <Box
+              style={{
+                border: `1px solid ${GRAY_BORDER}`,
+                borderRadius: 8,
+                overflow: 'auto',
+                background: '#ffffff',
+                maxHeight: 'min(420px, calc(100vh - 220px))',
+                overscrollBehavior: 'contain',
+              }}
+            >
               <Table withTableBorder={false} withColumnBorders={false} style={{ tableLayout: 'fixed' }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
@@ -332,8 +345,13 @@ export function OperationSplitModal({
                 <Box />
               )}
               <Group gap={20}>
-                <Text size="sm">Total ventilé dépense: <strong>{splitExpense.toFixed(2)}</strong></Text>
-                <Text size="sm">Total ventilé recette: <strong>{splitIncome.toFixed(2)}</strong></Text>
+                <Text size="sm">Dépense: <strong>{splitExpense.toFixed(2)}</strong></Text>
+                <Text size="sm">Recette: <strong>{splitIncome.toFixed(2)}</strong></Text>
+                {remainingBalance !== null && remainingBalance !== undefined && (
+                  <Text size="sm" c={Math.abs(remainingBalance) < 0.005 ? 'teal' : 'orange'}>
+                    Solde: <strong>{remainingBalance.toFixed(2)}</strong>
+                  </Text>
+                )}
               </Group>
             </Group>
           </Stack>

@@ -4,6 +4,7 @@ import api from '@/lib/api';
 export type Regroupement = {
   id: string;
   label: string;
+  idSource: string | null;
   expense: boolean;
   income: boolean;
   dashboard: boolean;
@@ -26,6 +27,7 @@ export type RegroupementFilters = {
 
 export type RegroupementPayload = {
   label: string;
+  idSource?: string | null;
   expense: boolean;
   income: boolean;
   dashboard: boolean;

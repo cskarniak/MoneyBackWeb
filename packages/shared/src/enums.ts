@@ -6,10 +6,18 @@ export const OperationType = {
 } as const;
 
 export const Periodicity = {
+  DAILY: 'daily',
   WEEKLY: 'weekly',
   MONTHLY: 'monthly',
+  BIMONTHLY: 'bimonthly',
   QUARTERLY: 'quarterly',
+  SEMIANNUAL: 'semiannual',
   ANNUAL: 'annual',
+} as const;
+
+export const SubscriptionType = {
+  REAL: 'real',
+  SIMULATION: 'simulation',
 } as const;
 
 export const ImportSource = {
@@ -43,7 +51,6 @@ export const UserRole = {
 export const AuditAction = {
   DELETE: 'delete',
   IMPORT: 'import',
-  RECONCILE: 'reconcile',
   RECALCULATE: 'recalculate',
   ADMIN: 'admin',
 } as const;

@@ -40,10 +40,12 @@ export class OperationsService {
 
   private presenter(operation: {
     id: string;
+    idSource: string | null;
     label: string;
     expense: unknown;
     income: unknown;
     balance: unknown;
+    simulation: boolean;
     operationDate: Date;
     dueDate: Date | null;
     integrationDate: Date | null;
@@ -61,10 +63,14 @@ export class OperationsService {
     budgetId: string | null;
     categoryId: string | null;
     thirdPartyId: string | null;
+    paymentMethodId: string | null;
+    movementTypeId: string | null;
     account: { id: string; name: string } | null;
     budget: { id: string; label: string } | null;
     category: { id: string; label: string } | null;
     thirdParty: { id: string; name: string } | null;
+    paymentMethod: { id: string; label: string; code: string | null } | null;
+    movementType: { id: string; label: string; code: string | null } | null;
     splits: Array<{
       id: string;
       label: string | null;
@@ -79,7 +85,7 @@ export class OperationsService {
       budget: { id: string; label: string } | null;
     }>;
   }) {
-    const { account, budget, category, thirdParty, splits, ...rest } = operation;
+    const { account, budget, category, thirdParty, paymentMethod, movementType, splits, ...rest } = operation;
 
     return {
       ...rest,
@@ -87,6 +93,8 @@ export class OperationsService {
       enveloppe: budget,
       categorie: category,
       tiers: thirdParty,
+      moyenPaiement: paymentMethod,
+      typeMouvement: movementType,
       splits: splits.map(split => ({
         ...split,
         categorie: split.category,
@@ -105,9 +113,7 @@ export class OperationsService {
       dateFrom,
       dateTo,
       locked,
-      reconciled,
       hideLocked,
-      hideReconciled,
       emptyEnvelopeOnly,
       unvalidatedOnly,
       search,
@@ -153,41 +159,31 @@ export class OperationsService {
             },
           }
         : {}),
-      ...((reconciled !== undefined || hideReconciled || search)
+      ...(search
         ? {
-            AND: [
-              ...(reconciled === true
-                ? [{ reconciliationCode: { not: null } }, { NOT: { reconciliationCode: '' } }]
+            OR: [
+              { label: { contains: search, mode: 'insensitive' as const } },
+              { comment: { contains: search, mode: 'insensitive' as const } },
+              { lettering: { contains: search, mode: 'insensitive' as const } },
+              { pieceNumber: { contains: search, mode: 'insensitive' as const } },
+              { statementRef: { contains: search, mode: 'insensitive' as const } },
+              { account: { name: { contains: search, mode: 'insensitive' as const } } },
+              { category: { label: { contains: search, mode: 'insensitive' as const } } },
+              { budget: { label: { contains: search, mode: 'insensitive' as const } } },
+              { thirdParty: { name: { contains: search, mode: 'insensitive' as const } } },
+              { paymentMethod: { label: { contains: search, mode: 'insensitive' as const } } },
+              { movementType: { label: { contains: search, mode: 'insensitive' as const } } },
+              ...(hasNumericSearch
+                ? [
+                    { expense: numericSearch },
+                    { income: numericSearch },
+                    { splits: { some: { expense: numericSearch } } },
+                    { splits: { some: { income: numericSearch } } },
+                  ]
                 : []),
-              ...(reconciled === false || hideReconciled
-                ? [{ OR: [{ reconciliationCode: null }, { reconciliationCode: '' }] }]
-                : []),
-              ...(search
-                ? [{
-                    OR: [
-                      { label: { contains: search, mode: 'insensitive' as const } },
-                      { comment: { contains: search, mode: 'insensitive' as const } },
-                      { lettering: { contains: search, mode: 'insensitive' as const } },
-                      { pieceNumber: { contains: search, mode: 'insensitive' as const } },
-                      { statementRef: { contains: search, mode: 'insensitive' as const } },
-                      { account: { name: { contains: search, mode: 'insensitive' as const } } },
-                      { category: { label: { contains: search, mode: 'insensitive' as const } } },
-                      { budget: { label: { contains: search, mode: 'insensitive' as const } } },
-                      { thirdParty: { name: { contains: search, mode: 'insensitive' as const } } },
-                      ...(hasNumericSearch
-                        ? [
-                            { expense: numericSearch },
-                            { income: numericSearch },
-                            { splits: { some: { expense: numericSearch } } },
-                            { splits: { some: { income: numericSearch } } },
-                          ]
-                        : []),
-                      { splits: { some: { label: { contains: search, mode: 'insensitive' as const } } } },
-                      { splits: { some: { category: { label: { contains: search, mode: 'insensitive' as const } } } } },
-                      { splits: { some: { budget: { label: { contains: search, mode: 'insensitive' as const } } } } },
-                    ],
-                  }]
-                : []),
+              { splits: { some: { label: { contains: search, mode: 'insensitive' as const } } } },
+              { splits: { some: { category: { label: { contains: search, mode: 'insensitive' as const } } } } },
+              { splits: { some: { budget: { label: { contains: search, mode: 'insensitive' as const } } } } },
             ],
           }
         : {}),
@@ -201,6 +197,8 @@ export class OperationsService {
           budget: { select: { id: true, label: true } },
           category: { select: { id: true, label: true } },
           thirdParty: { select: { id: true, name: true } },
+          paymentMethod: { select: { id: true, label: true, code: true } },
+          movementType: { select: { id: true, label: true, code: true } },
           splits: {
             include: {
               category: { select: { id: true, label: true } },
@@ -226,6 +224,8 @@ export class OperationsService {
         budget: { select: { id: true, label: true } },
         category: { select: { id: true, label: true } },
         thirdParty: { select: { id: true, name: true } },
+        paymentMethod: { select: { id: true, label: true, code: true } },
+        movementType: { select: { id: true, label: true, code: true } },
         splits: {
           include: {
             category: { select: { id: true, label: true } },
@@ -251,8 +251,11 @@ export class OperationsService {
         budgetId: dto.budgetId ?? null,
         categoryId: dto.categoryId ?? null,
         thirdPartyId: dto.thirdPartyId ?? null,
+        paymentMethodId: dto.paymentMethodId ?? null,
+        movementTypeId: dto.movementTypeId ?? null,
         lettering: dto.lettering ?? null,
         comment: dto.comment ?? null,
+        simulation: dto.simulation ?? false,
         pieceNumber: dto.pieceNumber ?? null,
         statementRef: dto.statementRef ?? null,
         ...this.resolveValidationFields(dto.operationValidated ?? 'V'),
@@ -274,6 +277,8 @@ export class OperationsService {
         budget: { select: { id: true, label: true } },
         category: { select: { id: true, label: true } },
         thirdParty: { select: { id: true, name: true } },
+        paymentMethod: { select: { id: true, label: true, code: true } },
+        movementType: { select: { id: true, label: true, code: true } },
         splits: {
           include: {
             category: { select: { id: true, label: true } },
@@ -312,8 +317,11 @@ export class OperationsService {
         ...(dto.budgetId !== undefined && { budgetId: dto.budgetId ?? null }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId ?? null }),
         ...(dto.thirdPartyId !== undefined && { thirdPartyId: dto.thirdPartyId ?? null }),
+        ...(dto.paymentMethodId !== undefined && { paymentMethodId: dto.paymentMethodId ?? null }),
+        ...(dto.movementTypeId !== undefined && { movementTypeId: dto.movementTypeId ?? null }),
         ...(dto.lettering !== undefined && { lettering: dto.lettering ?? null }),
         ...(dto.comment !== undefined && { comment: dto.comment ?? null }),
+        ...(dto.simulation !== undefined && { simulation: dto.simulation }),
         ...(dto.pieceNumber !== undefined && { pieceNumber: dto.pieceNumber ?? null }),
         ...(dto.statementRef !== undefined && { statementRef: dto.statementRef ?? null }),
         ...(dto.operationValidated !== undefined && this.resolveValidationFields(dto.operationValidated)),
@@ -344,6 +352,8 @@ export class OperationsService {
         budget: { select: { id: true, label: true } },
         category: { select: { id: true, label: true } },
         thirdParty: { select: { id: true, name: true } },
+        paymentMethod: { select: { id: true, label: true, code: true } },
+        movementType: { select: { id: true, label: true, code: true } },
         splits: {
           include: {
             category: { select: { id: true, label: true } },

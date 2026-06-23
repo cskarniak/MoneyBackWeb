@@ -15,19 +15,34 @@ import {
   Stack,
   Table,
   Text,
+  Textarea,
   TextInput,
+  Tooltip,
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconGitBranch, IconMinus, IconPlus, IconX } from '@tabler/icons-react';
 import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
 import { useCategoriesAll } from '@/hooks/useCategories';
-import { useCreateOperation, useOperation, useUpdateOperation, type OperationPayload } from '@/hooks/useOperations';
+import { useCreateOperation, useOperation, useUpdateOperation, type Operation, type OperationPayload } from '@/hooks/useOperations';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
+import { useMovementTypesAll } from '@/hooks/useMovementTypes';
+import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { OperationSplitModal } from './OperationSplitModal';
 
 const FIELD_BG = '#fbfdff';
-const GRAY_BORDER = '#dee2e6';
+const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const INLINE_LABEL_COLOR = '#667085';
+const SHORT_SELECT_WIDTH = 60;
+const SHORT_SELECT_DROPDOWN_WIDTH = 260;
+const DUE_DATE_WIDTH = 120;
+const LETTERING_WIDTH = 40;
+const PIECE_NUMBER_WIDTH = 78;
+
+type ShortCodeOption = {
+  value: string;
+  label: string;
+  fullLabel: string;
+};
 
 const splitSchema = z.object({
   label: z.string().optional(),
@@ -47,7 +62,9 @@ const schema = z.object({
   categoryId: z.string().nullable().optional(),
   budgetId: z.string().nullable().optional(),
   thirdPartyId: z.string().nullable().optional(),
-  lettering: z.string().optional(),
+  paymentMethodId: z.string().nullable().optional(),
+  movementTypeId: z.string().nullable().optional(),
+  lettering: z.string().max(4, 'Le lettrage doit contenir au maximum 4 caractères').optional(),
   comment: z.string().optional(),
   pieceNumber: z.string().optional(),
   statementRef: z.string().optional(),
@@ -62,6 +79,7 @@ type FormValues = z.infer<typeof schema>;
 type Props = {
   id?: string;
   columnsCount: number;
+  initialOperation?: Operation;
   selectedAccountId?: string;
   selectedAccountLabel?: string;
   onDraftChange?: (draft: { id?: string; accountId: string; expense: number; income: number } | null) => void;
@@ -82,6 +100,31 @@ function inputDate(value?: string | null) {
   return value ? new Date(value).toISOString().slice(0, 10) : '';
 }
 
+function buildShortCodeOption(id: string, code: string | null | undefined, label: string): ShortCodeOption {
+  const trimmedCode = code?.trim();
+  return {
+    value: id,
+    label: trimmedCode || label,
+    fullLabel: label,
+  };
+}
+
+function filterShortCodeOptions({
+  options,
+  search,
+}: {
+  options: ShortCodeOption[];
+  search: string;
+}) {
+  const normalizedSearch = search.trim().toLowerCase();
+  if (!normalizedSearch) return options;
+
+  return options.filter(option =>
+    option.label.toLowerCase().includes(normalizedSearch)
+    || option.fullLabel.toLowerCase().includes(normalizedSearch),
+  );
+}
+
 function buildPayload(values: FormValues): OperationPayload {
   return {
     accountId: values.accountId,
@@ -93,6 +136,8 @@ function buildPayload(values: FormValues): OperationPayload {
     categoryId: values.categoryId || null,
     budgetId: values.budgetId || null,
     thirdPartyId: values.thirdPartyId || null,
+    paymentMethodId: values.paymentMethodId || null,
+    movementTypeId: values.movementTypeId || null,
     lettering: values.lettering || null,
     comment: values.comment || null,
     pieceNumber: values.pieceNumber || null,
@@ -115,6 +160,7 @@ function buildPayload(values: FormValues): OperationPayload {
 export function OperationsInlineEditor({
   id,
   columnsCount,
+  initialOperation,
   selectedAccountId,
   selectedAccountLabel,
   onDraftChange,
@@ -127,8 +173,11 @@ export function OperationsInlineEditor({
 
   const isNew = !id;
   const { data: operation, isLoading: loadingOperation } = useOperation(id ?? '');
+  const resolvedOperation = operation ?? initialOperation;
   const { data: categories = [], isLoading: loadingCategories } = useCategoriesAll();
   const { data: enveloppes = [], isLoading: loadingEnveloppes } = useEnveloppesAll();
+  const { data: paymentMethods = [], isLoading: loadingPaymentMethods } = usePaymentMethodsAll();
+  const { data: movementTypes = [], isLoading: loadingMovementTypes } = useMovementTypesAll();
   const { data: thirdParties = [], isLoading: loadingThirdParties } = useThirdPartiesAll();
   const createMutation = useCreateOperation();
   const updateMutation = useUpdateOperation();
@@ -153,6 +202,8 @@ export function OperationsInlineEditor({
       categoryId: null,
       budgetId: null,
       thirdPartyId: null,
+      paymentMethodId: null,
+      movementTypeId: null,
       lettering: '',
       comment: '',
       pieceNumber: '',
@@ -170,25 +221,27 @@ export function OperationsInlineEditor({
   });
 
   useEffect(() => {
-    if (operation) {
+    if (resolvedOperation) {
       reset({
-        accountId: operation.accountId,
-        label: operation.label,
-        operationDate: inputDate(operation.operationDate),
-        dueDate: inputDate(operation.dueDate),
-        expense: operation.expense,
-        income: operation.income,
-        categoryId: operation.categoryId,
-        budgetId: operation.budgetId,
-        thirdPartyId: operation.thirdPartyId,
-        lettering: operation.lettering ?? '',
-        comment: operation.comment ?? '',
-        pieceNumber: operation.pieceNumber ?? '',
-        statementRef: operation.statementRef ?? '',
-        operationValidated: operation.operationValidated === 'V',
-        locked: operation.locked,
-        closed: operation.closed,
-        splits: operation.splits.map(split => ({
+        accountId: resolvedOperation.accountId,
+        label: resolvedOperation.label,
+        operationDate: inputDate(resolvedOperation.operationDate),
+        dueDate: inputDate(resolvedOperation.dueDate),
+        expense: resolvedOperation.expense,
+        income: resolvedOperation.income,
+        categoryId: resolvedOperation.categoryId,
+        budgetId: resolvedOperation.budgetId,
+        thirdPartyId: resolvedOperation.thirdPartyId,
+        paymentMethodId: resolvedOperation.paymentMethodId,
+        movementTypeId: resolvedOperation.movementTypeId,
+        lettering: resolvedOperation.lettering ?? '',
+        comment: resolvedOperation.comment ?? '',
+        pieceNumber: resolvedOperation.pieceNumber ?? '',
+        statementRef: resolvedOperation.statementRef ?? '',
+        operationValidated: resolvedOperation.operationValidated === 'V',
+        locked: resolvedOperation.locked,
+        closed: resolvedOperation.closed,
+        splits: resolvedOperation.splits.map(split => ({
           label: split.label ?? '',
           categoryId: split.categoryId,
           budgetId: split.budgetId,
@@ -210,6 +263,8 @@ export function OperationsInlineEditor({
         categoryId: null,
         budgetId: null,
         thirdPartyId: null,
+        paymentMethodId: null,
+        movementTypeId: null,
         lettering: '',
         comment: '',
         pieceNumber: '',
@@ -220,11 +275,33 @@ export function OperationsInlineEditor({
         splits: [],
       });
     }
-  }, [isNew, operation, reset, selectedAccountId]);
+  }, [isNew, reset, resolvedOperation, selectedAccountId]);
 
   const categoryOptions = categories.map(category => ({ value: category.id, label: category.label }));
   const enveloppeOptions = enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label }));
   const thirdPartyOptions = thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name }));
+  const paymentMethodOptions = paymentMethods.map(paymentMethod =>
+    buildShortCodeOption(paymentMethod.id, paymentMethod.code, paymentMethod.label));
+  const movementTypeOptions = movementTypes.map(movementType =>
+    buildShortCodeOption(movementType.id, movementType.code, movementType.label));
+  const currentPaymentMethodOption =
+    resolvedOperation?.moyenPaiement && !paymentMethodOptions.some(option => option.value === resolvedOperation.moyenPaiement?.id)
+      ? [{
+          value: resolvedOperation.moyenPaiement.id,
+          label: resolvedOperation.moyenPaiement.code || resolvedOperation.moyenPaiement.label,
+          fullLabel: resolvedOperation.moyenPaiement.label,
+        }]
+      : [];
+  const currentMovementTypeOption =
+    resolvedOperation?.typeMouvement && !movementTypeOptions.some(option => option.value === resolvedOperation.typeMouvement?.id)
+      ? [{
+          value: resolvedOperation.typeMouvement.id,
+          label: resolvedOperation.typeMouvement.code || resolvedOperation.typeMouvement.label,
+          fullLabel: resolvedOperation.typeMouvement.label,
+        }]
+      : [];
+  const displayedPaymentMethodOptions = [...currentPaymentMethodOption, ...paymentMethodOptions];
+  const displayedMovementTypeOptions = [...currentMovementTypeOption, ...movementTypeOptions];
 
   const watchSplits = watch('splits');
   const hasSplitRows = watchSplits.length > 0;
@@ -250,18 +327,34 @@ export function OperationsInlineEditor({
       ? `Solde à ventiler : ${remainingBalance.toFixed(2)}`
       : null;
 
-  const isLoading = (!isNew && loadingOperation) || loadingCategories || loadingEnveloppes || loadingThirdParties;
+  const isLoading =
+    (!isNew && !resolvedOperation && loadingOperation)
+    || loadingCategories
+    || loadingEnveloppes
+    || loadingPaymentMethods
+    || loadingMovementTypes
+    || loadingThirdParties;
 
   const fieldInputStyle = {
     background: FIELD_BG,
     height: 'var(--crud-field-height)',
     minHeight: 'var(--crud-field-height)',
-    fontSize: 'var(--crud-field-font-size)',
+    fontSize: 'calc(var(--crud-field-font-size) - 1px)',
     paddingTop: 0,
     paddingBottom: 0,
     paddingLeft: 6,
     paddingRight: 6,
   } as const;
+
+  const memoInputStyle = {
+    background: FIELD_BG,
+    fontSize: 'var(--crud-field-font-size)',
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingLeft: 6,
+    paddingRight: 6,
+    resize: 'vertical' as const,
+  };
 
   const inlineCellInputStyle = {
     ...fieldInputStyle,
@@ -350,7 +443,7 @@ export function OperationsInlineEditor({
             ▶
           </Text>
         </Table.Td>
-        <Table.Td style={inlineCellTdStyle}>
+        <Table.Td style={{ ...inlineCellTdStyle, width: 104 }}>
           <TextInput
             {...register('operationDate')}
             type="date"
@@ -359,7 +452,7 @@ export function OperationsInlineEditor({
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
-        <Table.Td style={{ ...inlineCellTdStyle, width: '32%' }}>
+        <Table.Td style={{ ...inlineCellTdStyle, width: '28%' }}>
           <TextInput
             {...register('label')}
             error={errors.label?.message}
@@ -476,7 +569,7 @@ export function OperationsInlineEditor({
               </Alert>
             )}
 
-            <Group align="center" wrap="nowrap">
+            <Group align="flex-start" wrap="nowrap">
               <Group gap={6} wrap="nowrap">
                 <Text size="sm" c={INLINE_LABEL_COLOR} fw={500}>
                   Echeance
@@ -484,7 +577,55 @@ export function OperationsInlineEditor({
                 <TextInput
                   {...register('dueDate')}
                   type="date"
-                  w={132}
+                  w={DUE_DATE_WIDTH}
+                  styles={{ input: fieldInputStyle }}
+                />
+              </Group>
+              <Group gap={6} wrap="nowrap">
+                <Tooltip label="Type de mouvement">
+                  <Text size="sm" c={INLINE_LABEL_COLOR} fw={500} style={{ cursor: 'help' }}>
+                    TM
+                  </Text>
+                </Tooltip>
+                <Select
+                  data={displayedMovementTypeOptions}
+                  value={watch('movementTypeId') ?? null}
+                  onChange={val => setValue('movementTypeId', val, { shouldDirty: true })}
+                  clearable
+                  searchable
+                  w={SHORT_SELECT_WIDTH}
+                  comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
+                  filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
+                  renderOption={({ option }) => (
+                    <Group justify="space-between" gap={8} wrap="nowrap">
+                      <Text size="sm" fw={600}>{option.label}</Text>
+                      <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                    </Group>
+                  )}
+                  styles={{ input: fieldInputStyle }}
+                />
+              </Group>
+              <Group gap={6} wrap="nowrap">
+                <Tooltip label="Moyen de paiement">
+                  <Text size="sm" c={INLINE_LABEL_COLOR} fw={500} style={{ cursor: 'help' }}>
+                    MP
+                  </Text>
+                </Tooltip>
+                <Select
+                  data={displayedPaymentMethodOptions}
+                  value={watch('paymentMethodId') ?? null}
+                  onChange={val => setValue('paymentMethodId', val, { shouldDirty: true })}
+                  clearable
+                  searchable
+                  w={SHORT_SELECT_WIDTH}
+                  comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
+                  filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
+                  renderOption={({ option }) => (
+                    <Group justify="space-between" gap={8} wrap="nowrap">
+                      <Text size="sm" fw={600}>{option.label}</Text>
+                      <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                    </Group>
+                  )}
                   styles={{ input: fieldInputStyle }}
                 />
               </Group>
@@ -494,28 +635,31 @@ export function OperationsInlineEditor({
                 </Text>
                 <TextInput
                   {...register('lettering')}
-                  w={72}
-                  maxLength={5}
+                  w={LETTERING_WIDTH}
+                  maxLength={4}
                   styles={{ input: fieldInputStyle }}
                 />
               </Group>
-              <Group gap={6} wrap="nowrap" style={{ flex: 1 }}>
+              <Group gap={6} wrap="nowrap" style={{ flex: 1.5, minWidth: 360 }}>
                 <Text size="sm" c={INLINE_LABEL_COLOR} fw={500}>
                   Commentaire
                 </Text>
-                <TextInput
+                <Textarea
                   {...register('comment')}
-                  style={{ flex: 1 }}
-                  styles={{ input: fieldInputStyle }}
+                  autosize
+                  minRows={2}
+                  maxRows={8}
+                  style={{ flex: 1, minWidth: 0 }}
+                  styles={{ input: memoInputStyle }}
                 />
               </Group>
               <Group gap={6} wrap="nowrap">
                 <Text size="sm" c={INLINE_LABEL_COLOR} fw={500}>
-                  No piece
+                  Pièce
                 </Text>
                 <TextInput
                   {...register('pieceNumber')}
-                  w={96}
+                  w={PIECE_NUMBER_WIDTH}
                   styles={{ input: fieldInputStyle }}
                 />
               </Group>

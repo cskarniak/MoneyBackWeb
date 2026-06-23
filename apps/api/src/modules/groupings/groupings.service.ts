@@ -27,12 +27,29 @@ export class GroupingsService {
   }
 
   async create(dto: CreateGroupingDto) {
-    return this.prisma.grouping.create({ data: dto });
+    return this.prisma.grouping.create({
+      data: {
+        label: dto.label,
+        idSource: dto.idSource ?? null,
+        expense: dto.expense ?? false,
+        income: dto.income ?? false,
+        dashboard: dto.dashboard ?? false,
+      },
+    });
   }
 
   async update(id: string, dto: UpdateGroupingDto) {
     await this.findOne(id);
-    return this.prisma.grouping.update({ where: { id }, data: dto });
+    return this.prisma.grouping.update({
+      where: { id },
+      data: {
+        ...(dto.label !== undefined && { label: dto.label }),
+        ...(dto.idSource !== undefined && { idSource: dto.idSource ?? null }),
+        ...(dto.expense !== undefined && { expense: dto.expense }),
+        ...(dto.income !== undefined && { income: dto.income }),
+        ...(dto.dashboard !== undefined && { dashboard: dto.dashboard }),
+      },
+    });
   }
 
   async remove(id: string) {

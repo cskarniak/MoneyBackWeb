@@ -9,6 +9,7 @@ export class CategoriesService {
   private presenter(category: {
     id: string;
     label: string;
+    idSource: string | null;
     comment: string | null;
     expense: boolean;
     income: boolean;
@@ -69,6 +70,7 @@ export class CategoriesService {
     const category = await this.prisma.category.create({
       data: {
         label: dto.label,
+        idSource: dto.idSource ?? null,
         comment: dto.comment ?? null,
         expense: dto.expense ?? false,
         income: dto.income ?? false,
@@ -87,6 +89,7 @@ export class CategoriesService {
       where: { id },
       data: {
         ...(dto.label !== undefined && { label: dto.label }),
+        ...(dto.idSource !== undefined && { idSource: dto.idSource ?? null }),
         ...(dto.comment !== undefined && { comment: dto.comment }),
         ...(dto.expense !== undefined && { expense: dto.expense }),
         ...(dto.income !== undefined && { income: dto.income }),

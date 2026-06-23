@@ -3,7 +3,7 @@ name: moneyback
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: moneyback-postgres
+    container_name: moneyback_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: moneyback
@@ -21,7 +21,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: moneyback-redis
+    container_name: moneyback_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
