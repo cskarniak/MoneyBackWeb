@@ -114,6 +114,40 @@ export const OperationFiltersSchema = z.object({
 
 export type OperationFiltersDto = z.infer<typeof OperationFiltersSchema>;
 
+export const DetailedStatisticsFiltersSchema = z.object({
+  accountId: z.string().uuid().optional(),
+  budgetId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().optional(),
+  thirdPartyId: z.string().uuid().optional(),
+  categoryGroupingId: z.string().uuid().optional(),
+  budgetGroupingId: z.string().uuid().optional(),
+  pieceNumber: z.string().optional(),
+  operationDateFrom: z.string().datetime().optional(),
+  operationDateTo: z.string().datetime().optional(),
+  dueDateFrom: z.string().datetime().optional(),
+  dueDateTo: z.string().datetime().optional(),
+  sortByDueDate: z.preprocess(
+    v => (v === 'true' ? true : v === 'false' ? false : undefined),
+    z.boolean().optional(),
+  ).default(true),
+  page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
+  limit: z.preprocess(v => Number(v ?? 200), z.number().int().min(1).max(500)).default(200),
+  sortKey: z.enum([
+    'accountName',
+    'operationDate',
+    'effectiveDueDate',
+    'pieceNumber',
+    'label',
+    'balance',
+    'thirdPartyName',
+    'budgetLabel',
+    'categoryLabel',
+  ]).optional(),
+  sortDirection: z.enum(['asc', 'desc']).optional(),
+});
+
+export type DetailedStatisticsFiltersDto = z.infer<typeof DetailedStatisticsFiltersSchema>;
+
 // ─── Subscription ─────────────────────────────────────────────────────────────
 
 export const CreateSubscriptionSplitSchema = z.object({

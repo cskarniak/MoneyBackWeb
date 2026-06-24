@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm build:packages && pnpm --parallel dev",
+    "dev:test": "./scripts/dev-test.sh",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm build:packages && pnpm --filter api dev",
     "build:packages": "pnpm --filter @moneyback/shared build && pnpm --filter @moneyback/db build",
@@ -19,6 +20,7 @@
     "db:deploy": "pnpm --filter @moneyback/db migrate:deploy",
     "db:seed": "pnpm --filter @moneyback/db seed",
     "db:setup": "pnpm docker:up && pnpm db:deploy && pnpm db:seed",
+    "db:test:refresh": "./scripts/refresh-test-db.sh",
     "db:studio": "pnpm --filter @moneyback/db studio",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down",

@@ -54,6 +54,16 @@ Statuts possibles :
 - Regle : lors de l'enregistrement d'une operation, une ligne de ventilation vide n'est pas conservee.
 - Definition : une ligne est consideree vide si elle ne porte ni libelle, ni categorie, ni enveloppe, ni montant.
 
+### Statistiques
+
+#### RG-STAT-001 - Ordre d'affichage et solde progressif des statistiques detaillees
+
+- Statut : `implementee`
+- Regle : si l'option de tri par date d'echeance est active, la liste doit etre triee par date d'echeance decroissante puis par identifiant d'enregistrement decroissant.
+- Regle : si l'option de tri par date d'echeance est inactive, la liste doit etre triee par date d'operation decroissante puis par identifiant d'enregistrement decroissant.
+- Regle : le solde progressif doit etre calcule en partant de la fin de la liste vers le debut.
+- Intention : obtenir un ordre de lecture descendant par date, tout en conservant un solde cumule coherent calcule depuis le bas de la liste.
+
 ### Tiers
 
 #### RG-TIERS-001 - Fin de l'ancien systeme mots-cles / formule

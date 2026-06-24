@@ -12,6 +12,7 @@ import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.
 import { MovementTypesModule } from './modules/movement-types/movement-types.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { DatabaseBackupsModule } from './modules/database-backups/database-backups.module';
+import { StatisticsModule } from './modules/statistics/statistics.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DatabaseBackupsModule } from './modules/database-backups/database-backu
     ThirdPartiesModule,
     SubscriptionsModule,
     DatabaseBackupsModule,
+    StatisticsModule,
   ],
   controllers: [AppController],
 })

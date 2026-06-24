@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Box, Button, Group, Menu, Text } from '@mantine/core';
+import { Badge, Box, Button, Group, Menu, Text } from '@mantine/core';
 import {
   IconCoins,
   IconChevronDown,
@@ -16,15 +16,18 @@ import {
   IconTool,
   IconCalendarRepeat,
   IconDatabaseExport,
+  IconSettings,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
   { label: 'Opérations', prefix: '/operations' },
+  { label: 'Statistiques', prefix: '/statistiques' },
   { label: 'Imports', prefix: '/imports' },
   { label: 'Portefeuille', prefix: '/portefeuille' },
 ];
 
 const OUTILS_ITEMS = [
+  { label: 'Environnement actif', href: '/outils/environnement', icon: IconSettings },
   { label: 'Génération abonnements', href: '/outils/generation-abonnements', icon: IconCalendarRepeat },
   { label: 'Sauvegarde base', href: '/outils/sauvegarde-base', icon: IconDatabaseExport },
 ];
@@ -42,6 +45,8 @@ const FICHIERS_ITEMS = [
 
 const DARK_BG = '#1a1b1e';
 const ACTIVE_COLOR = '#51cf66';
+const APP_ENV_LABEL = process.env.NEXT_PUBLIC_APP_ENV_LABEL;
+const APP_ENV_DESCRIPTION = process.env.NEXT_PUBLIC_APP_ENV_DESCRIPTION;
 
 export function AppNavbar() {
   const pathname = usePathname();
@@ -180,6 +185,18 @@ export function AppNavbar() {
 
         {/* Right */}
         <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
+          {APP_ENV_LABEL ? (
+            <Group gap={6} wrap="nowrap">
+              <Badge color="orange" variant="filled" radius="sm">
+                {APP_ENV_LABEL}
+              </Badge>
+              {APP_ENV_DESCRIPTION ? (
+                <Text size="xs" style={{ color: '#fab005', whiteSpace: 'nowrap' }}>
+                  {APP_ENV_DESCRIPTION}
+                </Text>
+              ) : null}
+            </Group>
+          ) : null}
           <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
             Admin
           </Text>

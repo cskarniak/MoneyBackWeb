@@ -103,6 +103,7 @@ Issues des procédures globales WinDev originales — à implémenter côté API
 Pour les arbitrages métier validés au fil des sessions, consulter aussi `docs/regles_gestion_impl.md`.
 
 Le **solde progressif** affiché dans AG Grid est calculé localement côté frontend pour la fluidité d'affichage — le backend reste la source de vérité en cas d'écart.
+Pour les **statistiques détaillées** triées par date d'échéance, l'échéance la plus proche doit être en haut, la plus lointaine en bas, et le solde progressif doit être calculé de bas en haut.
 
 ## Variables d'environnement
 

@@ -2,7 +2,7 @@
 
 import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,6 +30,8 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
+import { OperationSplitModal } from './OperationSplitModal';
+import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -152,6 +154,9 @@ export function OperationsFiche({ id }: Props) {
   const router = useRouter();
   const isNew = !id;
   const compactFormVars = buildCrudFormCssVariables('operationsFiche');
+  const [splitSuggestionModalOpened, setSplitSuggestionModalOpened] = useState(false);
+  const [suggestedThirdPartyName, setSuggestedThirdPartyName] = useState<string | null>(null);
+  const [suggestedSplits, setSuggestedSplits] = useState<OperationSplitDraft[]>([]);
 
   const { data: operation, isLoading: loadingOperation } = useOperation(id ?? '');
   const { data: accounts = [], isLoading: loadingAccounts } = useAccountsAll();
@@ -195,7 +200,7 @@ export function OperationsFiche({ id }: Props) {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: 'splits',
   });
@@ -227,6 +232,8 @@ export function OperationsFiche({ id }: Props) {
           income: split.income,
         })),
       });
+      setSuggestedSplits([]);
+      setSuggestedThirdPartyName(null);
     }
   }, [operation, reset]);
 
@@ -258,6 +265,7 @@ export function OperationsFiche({ id }: Props) {
   const displayedMovementTypeOptions = [...currentMovementTypeOption, ...movementTypeOptions];
 
   const watchSplits = watch('splits');
+  const selectedThirdPartyId = watch('thirdPartyId');
   const hasSplitRows = watchSplits.length > 0;
   const expense = asNumber(watch('expense'));
   const income = asNumber(watch('income'));
@@ -269,6 +277,8 @@ export function OperationsFiche({ id }: Props) {
   const displayedEnveloppeOptions = hasSplitRows
     ? [{ value: '__split__', label: 'Ventilé' }]
     : enveloppeOptions;
+  const selectedThirdParty = thirdParties.find(tiers => tiers.id === selectedThirdPartyId) ?? null;
+  const suggestedTotals = sumSplitDrafts(suggestedSplits);
 
   const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
   const splitError =
@@ -314,6 +324,48 @@ export function OperationsFiche({ id }: Props) {
     } catch (err: unknown) {
       void err;
     }
+  };
+
+  const handleThirdPartyChange = (thirdPartyId: string | null) => {
+    setValue('thirdPartyId', thirdPartyId, { shouldDirty: true });
+
+    if (!thirdPartyId) {
+      setSuggestedSplits([]);
+      setSuggestedThirdPartyName(null);
+      return;
+    }
+
+    const thirdParty = thirdParties.find(tiers => tiers.id === thirdPartyId);
+    if (!thirdParty) {
+      setSuggestedSplits([]);
+      setSuggestedThirdPartyName(null);
+      return;
+    }
+
+    setValue('categoryId', thirdParty.categoryId, { shouldDirty: true });
+    setValue('budgetId', thirdParty.budgetId, { shouldDirty: true });
+
+    const nextSuggestedSplits = buildThirdPartySplitDrafts(thirdParty, watch('label'));
+    setSuggestedSplits(nextSuggestedSplits);
+    setSuggestedThirdPartyName(nextSuggestedSplits.length > 0 ? thirdParty.name : null);
+  };
+
+  const applySuggestedSplits = () => {
+    if (suggestedSplits.length === 0) {
+      return;
+    }
+
+    if (
+      watchSplits.length > 0
+      && !window.confirm('Cette opération contient déjà une ventilation. La nouvelle ventilation du tiers va la remplacer. Continuer ?')
+    ) {
+      return;
+    }
+
+    replace(suggestedSplits);
+    setValue('categoryId', null, { shouldDirty: true });
+    setValue('budgetId', null, { shouldDirty: true });
+    setSplitSuggestionModalOpened(false);
   };
 
   return (
@@ -485,7 +537,14 @@ export function OperationsFiche({ id }: Props) {
                         <TextInput {...register('income')} inputMode="decimal" styles={{ input: { ...fieldInputStyle, textAlign: 'right' } }} />
                       </Table.Td>
                       <Table.Td>
-                        <Select data={thirdPartyOptions} value={watch('thirdPartyId') ?? null} onChange={val => setValue('thirdPartyId', val)} clearable searchable styles={{ input: fieldInputStyle }} />
+                        <Select
+                          data={thirdPartyOptions}
+                          value={selectedThirdPartyId ?? null}
+                          onChange={handleThirdPartyChange}
+                          clearable
+                          searchable
+                          styles={{ input: fieldInputStyle }}
+                        />
                       </Table.Td>
                       <Table.Td>
                         <Select
@@ -529,6 +588,29 @@ export function OperationsFiche({ id }: Props) {
                 </Group>
               </Group>
             </Box>
+
+            {selectedThirdParty?.ventilated && suggestedSplits.length > 0 && (
+              <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+                <Group justify="space-between" align="center" wrap="wrap">
+                  <Box>
+                    <Text size="sm" fw={600}>
+                      Le tiers {suggestedThirdPartyName ?? selectedThirdParty.name} propose une ventilation de {suggestedSplits.length} ligne(s).
+                    </Text>
+                    <Text size="sm">
+                      Totaux proposés : {suggestedTotals.expense.toFixed(2)} en dépense et {suggestedTotals.income.toFixed(2)} en recette.
+                    </Text>
+                  </Box>
+                  <Group gap={8}>
+                    <Button variant="default" size="xs" onClick={() => setSplitSuggestionModalOpened(true)}>
+                      Voir / modifier
+                    </Button>
+                    <Button size="xs" onClick={applySuggestedSplits}>
+                      Générer
+                    </Button>
+                  </Group>
+                </Group>
+              </Alert>
+            )}
 
             <Box>
               <Group justify="space-between" mb={10}>
@@ -644,6 +726,42 @@ export function OperationsFiche({ id }: Props) {
           </Group>
         </form>
       </Box>
+
+      <OperationSplitModal
+        opened={splitSuggestionModalOpened}
+        onClose={() => setSplitSuggestionModalOpened(false)}
+        title={suggestedThirdPartyName ? `Ventilation proposée - ${suggestedThirdPartyName}` : "Ventilation proposée"}
+        editable
+        rows={suggestedSplits.map((split, index) => ({
+          id: `suggested-${index}`,
+          label: split.label,
+          expense: split.expense,
+          income: split.income,
+          budgetId: split.budgetId,
+          categoryId: split.categoryId,
+        }))}
+        remainingBalance={(income - expense) - (suggestedTotals.income - suggestedTotals.expense)}
+        splitExpense={suggestedTotals.expense}
+        splitIncome={suggestedTotals.income}
+        enveloppeOptions={enveloppeOptions}
+        categoryOptions={categoryOptions}
+        onAddRow={() => setSuggestedSplits(current => [
+          ...current,
+          { label: '', categoryId: null, budgetId: null, expense: '', income: '' },
+        ])}
+        onRemoveRow={index => setSuggestedSplits(current => current.filter((_, currentIndex) => currentIndex !== index))}
+        onChangeRow={(index, field, value) => {
+          setSuggestedSplits(current => current.map((split, currentIndex) => {
+            if (currentIndex !== index) return split;
+
+            if (field === 'budgetId' || field === 'categoryId') {
+              return { ...split, [field]: value };
+            }
+
+            return { ...split, [field]: value ?? '' };
+          }));
+        }}
+      />
     </Box>
   );
 }

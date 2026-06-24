@@ -28,6 +28,7 @@ import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { OperationSplitModal } from './OperationSplitModal';
+import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
 const FIELD_BG = '#fbfdff';
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
@@ -170,6 +171,9 @@ export function OperationsInlineEditor({
   const compactFormVars = buildCrudFormCssVariables('operationsInline');
   const [splitModalOpened, setSplitModalOpened] = useState(false);
   const [detailsOpened, setDetailsOpened] = useState(false);
+  const [splitSuggestionModalOpened, setSplitSuggestionModalOpened] = useState(false);
+  const [suggestedThirdPartyName, setSuggestedThirdPartyName] = useState<string | null>(null);
+  const [suggestedSplits, setSuggestedSplits] = useState<OperationSplitDraft[]>([]);
 
   const isNew = !id;
   const { data: operation, isLoading: loadingOperation } = useOperation(id ?? '');
@@ -215,7 +219,7 @@ export function OperationsInlineEditor({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: 'splits',
   });
@@ -249,6 +253,8 @@ export function OperationsInlineEditor({
           income: split.income,
         })),
       });
+      setSuggestedSplits([]);
+      setSuggestedThirdPartyName(null);
       return;
     }
 
@@ -304,6 +310,7 @@ export function OperationsInlineEditor({
   const displayedMovementTypeOptions = [...currentMovementTypeOption, ...movementTypeOptions];
 
   const watchSplits = watch('splits');
+  const selectedThirdPartyId = watch('thirdPartyId');
   const hasSplitRows = watchSplits.length > 0;
   const accountValue = watch('accountId');
   const dueDateValue = watch('dueDate');
@@ -320,6 +327,8 @@ export function OperationsInlineEditor({
   const displayedEnveloppeOptions = hasSplitRows
     ? [{ value: '__split__', label: 'Ventilé' }]
     : enveloppeOptions;
+  const selectedThirdParty = thirdParties.find(tiers => tiers.id === selectedThirdPartyId) ?? null;
+  const suggestedTotals = sumSplitDrafts(suggestedSplits);
 
   const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
   const splitError =
@@ -375,6 +384,12 @@ export function OperationsInlineEditor({
   }, [commentValue, dueDateValue, letteringValue]);
 
   useEffect(() => {
+    if (suggestedSplits.length > 0) {
+      setDetailsOpened(true);
+    }
+  }, [suggestedSplits.length]);
+
+  useEffect(() => {
     onDraftChange?.({
       id,
       accountId: accountValue || selectedAccountId || '',
@@ -411,6 +426,52 @@ export function OperationsInlineEditor({
 
   const appendSplitRow = () => {
     append({ label: '', categoryId: null, budgetId: null, expense: '', income: '' });
+  };
+
+  const handleThirdPartyChange = (thirdPartyId: string | null) => {
+    setValue('thirdPartyId', thirdPartyId, { shouldDirty: true });
+
+    if (!thirdPartyId) {
+      setSuggestedSplits([]);
+      setSuggestedThirdPartyName(null);
+      return;
+    }
+
+    const thirdParty = thirdParties.find(tiers => tiers.id === thirdPartyId);
+    if (!thirdParty) {
+      setSuggestedSplits([]);
+      setSuggestedThirdPartyName(null);
+      return;
+    }
+
+    setValue('categoryId', thirdParty.categoryId, { shouldDirty: true });
+    setValue('budgetId', thirdParty.budgetId, { shouldDirty: true });
+
+    const nextSuggestedSplits = buildThirdPartySplitDrafts(thirdParty, watch('label'));
+    setSuggestedSplits(nextSuggestedSplits);
+    setSuggestedThirdPartyName(nextSuggestedSplits.length > 0 ? thirdParty.name : null);
+
+    if (nextSuggestedSplits.length > 0) {
+      setSplitSuggestionModalOpened(true);
+    }
+  };
+
+  const applySuggestedSplits = () => {
+    if (suggestedSplits.length === 0) {
+      return;
+    }
+
+    if (
+      watchSplits.length > 0
+      && !window.confirm('Cette opération contient déjà une ventilation. La nouvelle ventilation du tiers va la remplacer. Continuer ?')
+    ) {
+      return;
+    }
+
+    replace(suggestedSplits);
+    setValue('categoryId', null, { shouldDirty: true });
+    setValue('budgetId', null, { shouldDirty: true });
+    setSplitSuggestionModalOpened(false);
   };
 
   const handleSplitRowEnter = (index: number) => (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -463,8 +524,8 @@ export function OperationsInlineEditor({
         <Table.Td style={inlineCellTdStyle}>
           <Select
             data={thirdPartyOptions}
-            value={watch('thirdPartyId') ?? null}
-            onChange={val => setValue('thirdPartyId', val, { shouldDirty: true })}
+            value={selectedThirdPartyId ?? null}
+            onChange={handleThirdPartyChange}
             placeholder="Tiers"
             clearable
             searchable
@@ -566,6 +627,43 @@ export function OperationsInlineEditor({
             {splitError && (
               <Alert color="orange" icon={<IconAlertCircle size={16} />}>
                 <Text size="sm">{splitError}</Text>
+              </Alert>
+            )}
+
+            {selectedThirdParty?.ventilated && suggestedSplits.length > 0 && (
+              <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+                <Group justify="space-between" align="center" wrap="wrap">
+                  <Box>
+                    <Text size="sm" fw={600}>
+                      Le tiers {suggestedThirdPartyName ?? selectedThirdParty.name} propose une ventilation de {suggestedSplits.length} ligne(s).
+                    </Text>
+                    <Text size="sm">
+                      Totaux proposés : {suggestedTotals.expense.toFixed(2)} en dépense et {suggestedTotals.income.toFixed(2)} en recette.
+                    </Text>
+                  </Box>
+                  <Group gap={8}>
+                    <ActionIcon
+                      size="md"
+                      radius="md"
+                      color="gray"
+                      variant="light"
+                      onClick={() => setSplitSuggestionModalOpened(true)}
+                      title="Voir / modifier la proposition"
+                    >
+                      <IconGitBranch size={14} />
+                    </ActionIcon>
+                    <ActionIcon
+                      size="md"
+                      radius="md"
+                      color="blue"
+                      variant="light"
+                      onClick={applySuggestedSplits}
+                      title="Générer la ventilation du tiers"
+                    >
+                      <IconPlus size={14} />
+                    </ActionIcon>
+                  </Group>
+                </Group>
               </Alert>
             )}
 
@@ -704,6 +802,42 @@ export function OperationsInlineEditor({
           setValue(`splits.${index}.${field}`, value ?? '', { shouldDirty: true });
         }}
         onRowEnter={handleSplitRowEnter}
+      />
+
+      <OperationSplitModal
+        opened={splitSuggestionModalOpened}
+        onClose={() => setSplitSuggestionModalOpened(false)}
+        title={suggestedThirdPartyName ? `Ventilation proposée - ${suggestedThirdPartyName}` : "Ventilation proposée"}
+        editable
+        rows={suggestedSplits.map((split, index) => ({
+          id: `suggested-${index}`,
+          label: split.label,
+          expense: split.expense,
+          income: split.income,
+          budgetId: split.budgetId,
+          categoryId: split.categoryId,
+        }))}
+        remainingBalance={remainingBalance}
+        splitExpense={suggestedTotals.expense}
+        splitIncome={suggestedTotals.income}
+        enveloppeOptions={enveloppeOptions}
+        categoryOptions={categoryOptions}
+        onAddRow={() => setSuggestedSplits(current => [
+          ...current,
+          { label: '', categoryId: null, budgetId: null, expense: '', income: '' },
+        ])}
+        onRemoveRow={index => setSuggestedSplits(current => current.filter((_, currentIndex) => currentIndex !== index))}
+        onChangeRow={(index, field, value) => {
+          setSuggestedSplits(current => current.map((split, currentIndex) => {
+            if (currentIndex !== index) return split;
+
+            if (field === 'budgetId' || field === 'categoryId') {
+              return { ...split, [field]: value };
+            }
+
+            return { ...split, [field]: value ?? '' };
+          }));
+        }}
       />
     </>
   );
