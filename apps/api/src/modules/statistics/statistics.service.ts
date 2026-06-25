@@ -135,7 +135,7 @@ export class StatisticsService {
       : Prisma.empty;
 
     const page = filters.page ?? 1;
-    const limit = filters.limit ?? 200;
+    const limit = filters.limit ?? 20;
     const offset = (page - 1) * limit;
     const baseSortKey: DetailedStatisticsSortKey = filters.sortByDueDate ? 'effectiveDueDate' : 'operationDate';
     const resolvedSortKey: DetailedStatisticsSortKey = filters.sortKey ?? baseSortKey;

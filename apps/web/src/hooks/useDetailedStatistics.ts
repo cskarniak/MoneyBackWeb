@@ -95,7 +95,7 @@ export function useDetailedStatistics(filters: DetailedStatisticsFilters | null)
       api.get('/statistics/detailed', { params: filters ?? {} }).then(response => ({
         total: Number(response.data.total ?? 0),
         page: Number(response.data.page ?? 1),
-        limit: Number(response.data.limit ?? 200),
+        limit: Number(response.data.limit ?? 20),
         totalBalance: String(response.data.totalBalance ?? '0'),
         items: (response.data.items as Record<string, unknown>[]).map(normalizeItem),
       })),

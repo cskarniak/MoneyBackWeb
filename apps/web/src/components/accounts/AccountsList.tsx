@@ -19,8 +19,9 @@ import {
   Stack,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2 } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconDownload } from '@tabler/icons-react';
 import { useAccounts, useDeleteAccount, type Account } from '@/hooks/useAccounts';
+import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -43,6 +44,7 @@ export function AccountsList() {
   const [recentId, setRecentId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (highlight) {
@@ -82,6 +84,29 @@ export function AccountsList() {
   };
   const handleLimitChange = (val: string | null) => {
     if (val) pushParams({ limit: val, page: '1' });
+  };
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const count = await exportPaginatedListToExcel({
+        endpoint: '/accounts',
+        params: { search, sortBy, sortOrder },
+        headers: ['Nom', 'Agence', 'Numéro', 'Autrui', 'Fermé'],
+        mapItem: item => [
+          item.name,
+          item.agency as string | null | undefined,
+          item.number as string | null | undefined,
+          item.managedForOther as boolean | undefined,
+          item.closed as boolean | undefined,
+        ],
+        filenameBase: 'comptes-bancaires',
+      });
+      notifications.show({ message: `${count} compte(s) exporté(s)`, color: 'green' });
+    } catch {
+      notifications.show({ message: "Impossible d'exporter les comptes.", color: 'red' });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleDelete = async (account: Account) => {
@@ -301,6 +326,9 @@ export function AccountsList() {
               </ActionIcon>
               <Button size="sm" radius="md" variant="default" onClick={handleClear} style={toolbarButtonStyle}>
                 Clear
+              </Button>
+              <Button size="sm" radius="md" variant="default" leftSection={<IconDownload size={13} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
+                Excel
               </Button>
             </Group>
           </Group>

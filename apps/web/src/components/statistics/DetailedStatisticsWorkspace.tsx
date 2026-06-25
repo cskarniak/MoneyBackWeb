@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Alert, Box, Button, Center, Checkbox, Group, Loader, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
-import { IconAlertCircle, IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp, IconPlayerPlay, IconSelector } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
+import { ActionIcon, Alert, Box, Button, Center, Checkbox, Group, Loader, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
+import { IconAlertCircle, IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp, IconDownload, IconPencil, IconPlayerPlay, IconSelector } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
+import api from '@/lib/api';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useGroupingsAll } from '@/hooks/useGroupings';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
-import { useDetailedStatistics, type DetailedStatisticsFilters } from '@/hooks/useDetailedStatistics';
+import { useDetailedStatistics, type DetailedStatisticsFilters, type DetailedStatisticsItem } from '@/hooks/useDetailedStatistics';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -17,12 +19,8 @@ const TEXT_MUTED = '#667085';
 const NEGATIVE_AMOUNT = '#c92a2a';
 const TABLE_FONT_SIZE = 12;
 const HEADER_FONT_SIZE = 10;
-const FILTER_INPUT_SIZE = 'sm';
-const LIMIT_OPTIONS = [
-  { value: '100', label: '100' },
-  { value: '200', label: '200' },
-  { value: '500', label: '500' },
-];
+const FILTER_INPUT_SIZE = 'xs';
+const LIMIT_OPTIONS = ['10', '20', '25', '50', '100', '200', '500', '1000'];
 
 type DraftFilters = {
   accountId: string | null;
@@ -31,6 +29,7 @@ type DraftFilters = {
   thirdPartyId: string | null;
   categoryGroupingId: string | null;
   budgetGroupingId: string | null;
+  search: string;
   pieceNumber: string;
   operationDateFrom: string;
   operationDateTo: string;
@@ -77,6 +76,85 @@ function getAmountColor(value: string) {
   return Number(value || 0) < 0 ? NEGATIVE_AMOUNT : undefined;
 }
 
+function escapeXml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
+function buildExcelXml(rows: DetailedStatisticsItem[]) {
+  const headers = [
+    'Compte',
+    'Date opération',
+    'Date échéance',
+    'No pièce',
+    'Libellé',
+    'Solde ligne',
+    'Solde progressif',
+    'Tiers',
+    'Enveloppe',
+    'Catégorie',
+  ];
+
+  const headerRow = `<Row>${headers.map(header => `<Cell ss:StyleID="header"><Data ss:Type="String">${escapeXml(header)}</Data></Cell>`).join('')}</Row>`;
+  const bodyRows = rows.map(item => `
+    <Row>
+      <Cell><Data ss:Type="String">${escapeXml(item.accountName)}</Data></Cell>
+      <Cell><Data ss:Type="String">${escapeXml(formatDate(item.operationDate))}</Data></Cell>
+      <Cell><Data ss:Type="String">${escapeXml(formatDate(item.effectiveDueDate))}</Data></Cell>
+      <Cell><Data ss:Type="String">${escapeXml(item.pieceNumber ?? '')}</Data></Cell>
+      <Cell><Data ss:Type="String">${escapeXml(item.label)}</Data></Cell>
+      <Cell ss:StyleID="amount"><Data ss:Type="Number">${Number(item.balance || 0)}</Data></Cell>
+      <Cell ss:StyleID="amount"><Data ss:Type="Number">${Number(item.runningBalance || 0)}</Data></Cell>
+      <Cell><Data ss:Type="String">${escapeXml(item.thirdPartyName ?? '')}</Data></Cell>
+      <Cell><Data ss:Type="String">${escapeXml(item.budgetLabel ?? '')}</Data></Cell>
+      <Cell><Data ss:Type="String">${escapeXml(item.categoryLabel ?? '')}</Data></Cell>
+    </Row>
+  `).join('');
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook
+  xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="header">
+      <Font ss:Bold="1"/>
+      <Interior ss:Color="#DCE6F1" ss:Pattern="Solid"/>
+    </Style>
+    <Style ss:ID="amount">
+      <NumberFormat ss:Format="0.00"/>
+    </Style>
+  </Styles>
+  <Worksheet ss:Name="Statistiques">
+    <Table>
+      ${headerRow}
+      ${bodyRows}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+}
+
+function downloadExcel(content: string, filename: string) {
+  const blob = new Blob([content], {
+    type: 'application/vnd.ms-excel;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function renderTruncatedCell(value: string, style: CSSProperties) {
   return (
     <Tooltip label={value} withArrow position="top-start" multiline maw={420} openDelay={150}>
@@ -93,7 +171,38 @@ function getBaseSortState(sortByDueDate: boolean): SortState {
     : { key: 'operationDate', direction: 'desc' };
 }
 
+function matchesPageSearch(search: string, values: Array<string | null | undefined>) {
+  const normalizedSearch = search.trim().toLocaleLowerCase('fr');
+
+  if (!normalizedSearch) {
+    return false;
+  }
+
+  return values.some(value => (value ?? '').toLocaleLowerCase('fr').includes(normalizedSearch));
+}
+
+function buildSubmittedFilters(filters: DraftFilters): DetailedStatisticsFilters {
+  return {
+    accountId: filters.accountId ?? undefined,
+    budgetId: filters.budgetId ?? undefined,
+    categoryId: filters.categoryId ?? undefined,
+    thirdPartyId: filters.thirdPartyId ?? undefined,
+    categoryGroupingId: filters.categoryGroupingId ?? undefined,
+    budgetGroupingId: filters.budgetGroupingId ?? undefined,
+    pieceNumber: filters.pieceNumber || undefined,
+    operationDateFrom: toIsoDate(filters.operationDateFrom),
+    operationDateTo: filters.operationDateTo ? new Date(`${filters.operationDateTo}T23:59:59.999Z`).toISOString() : undefined,
+    dueDateFrom: toIsoDate(filters.dueDateFrom),
+    dueDateTo: filters.dueDateTo ? new Date(`${filters.dueDateTo}T23:59:59.999Z`).toISOString() : undefined,
+    sortByDueDate: filters.sortByDueDate,
+  };
+}
+
 export function DetailedStatisticsWorkspace() {
+  const router = useRouter();
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [draftFilters, setDraftFilters] = useState<DraftFilters>({
     accountId: null,
     budgetId: null,
@@ -101,6 +210,7 @@ export function DetailedStatisticsWorkspace() {
     thirdPartyId: null,
     categoryGroupingId: null,
     budgetGroupingId: null,
+    search: '',
     pieceNumber: '',
     operationDateFrom: '',
     operationDateTo: '',
@@ -111,7 +221,7 @@ export function DetailedStatisticsWorkspace() {
   const [submittedFilters, setSubmittedFilters] = useState<DetailedStatisticsFilters | null>(null);
   const [sortState, setSortState] = useState<SortState>(getBaseSortState(true));
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(200);
+  const [limit, setLimit] = useState(20);
 
   const { data: accounts = [] } = useAccountsAll();
   const { data: enveloppes = [] } = useEnveloppesAll();
@@ -130,6 +240,10 @@ export function DetailedStatisticsWorkspace() {
       }
   ), [limit, page, sortState.direction, sortState.key, submittedFilters]);
   const statisticsQuery = useDetailedStatistics(queryFilters);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (submittedFilters === null) {
@@ -154,35 +268,173 @@ export function DetailedStatisticsWorkspace() {
 
     if (currentIndex === -1) {
       const fallbackIndex = direction === 'previous' ? enveloppeOptions.length - 1 : 0;
-      setDraftFilters(current => ({ ...current, budgetId: enveloppeOptions[fallbackIndex]?.value ?? null }));
+      const nextFilters = {
+        ...draftFilters,
+        budgetId: enveloppeOptions[fallbackIndex]?.value ?? null,
+      };
+      setDraftFilters(nextFilters);
+      if (submittedFilters !== null) {
+        setPage(1);
+        setSubmittedFilters(buildSubmittedFilters(nextFilters));
+      }
       return;
     }
 
     const delta = direction === 'previous' ? -1 : 1;
     const nextIndex = (currentIndex + delta + enveloppeOptions.length) % enveloppeOptions.length;
-    setDraftFilters(current => ({ ...current, budgetId: enveloppeOptions[nextIndex]?.value ?? null }));
+    const nextFilters = {
+      ...draftFilters,
+      budgetId: enveloppeOptions[nextIndex]?.value ?? null,
+    };
+    setDraftFilters(nextFilters);
+    if (submittedFilters !== null) {
+      setPage(1);
+      setSubmittedFilters(buildSubmittedFilters(nextFilters));
+    }
   };
   const currentRows = statisticsQuery.data?.items ?? [];
   const totalPages = statisticsQuery.data ? Math.max(1, Math.ceil(statisticsQuery.data.total / statisticsQuery.data.limit)) : 1;
+  const pageSearchMatches = useMemo(() => {
+    const search = draftFilters.search.trim();
+
+    if (!search) {
+      return [];
+    }
+
+    return currentRows.filter(item => matchesPageSearch(search, [
+      item.accountName,
+      formatDate(item.operationDate),
+      formatDate(item.effectiveDueDate),
+      item.pieceNumber,
+      item.label,
+      item.balance,
+      item.runningBalance,
+      item.thirdPartyName,
+      item.budgetLabel,
+      item.categoryLabel,
+    ]));
+  }, [currentRows, draftFilters.search]);
+  const highlightedRowKeys = useMemo(() => {
+    return new Set(pageSearchMatches.map(item => item.splitId ?? item.operationId));
+  }, [pageSearchMatches]);
 
   const applyFilters = () => {
     const nextBaseSort = getBaseSortState(draftFilters.sortByDueDate);
     setSortState(nextBaseSort);
     setPage(1);
-    setSubmittedFilters({
-      accountId: draftFilters.accountId ?? undefined,
-      budgetId: draftFilters.budgetId ?? undefined,
-      categoryId: draftFilters.categoryId ?? undefined,
-      thirdPartyId: draftFilters.thirdPartyId ?? undefined,
-      categoryGroupingId: draftFilters.categoryGroupingId ?? undefined,
-      budgetGroupingId: draftFilters.budgetGroupingId ?? undefined,
-      pieceNumber: draftFilters.pieceNumber || undefined,
-      operationDateFrom: toIsoDate(draftFilters.operationDateFrom),
-      operationDateTo: draftFilters.operationDateTo ? new Date(`${draftFilters.operationDateTo}T23:59:59.999Z`).toISOString() : undefined,
-      dueDateFrom: toIsoDate(draftFilters.dueDateFrom),
-      dueDateTo: draftFilters.dueDateTo ? new Date(`${draftFilters.dueDateTo}T23:59:59.999Z`).toISOString() : undefined,
-      sortByDueDate: draftFilters.sortByDueDate,
-    });
+    setSubmittedFilters(buildSubmittedFilters(draftFilters));
+  };
+
+  const openOperationEditor = (operationId: string, accountId: string) => {
+    const params = new URLSearchParams();
+    params.set('accountId', accountId);
+    params.set('operationId', operationId);
+    params.set('highlight', operationId);
+    router.push(`/operations?${params.toString()}`);
+  };
+
+  const handleExport = async () => {
+    if (submittedFilters === null) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const firstPageLimit = 1000;
+      const baseParams = {
+        ...submittedFilters,
+        sortKey: sortState.key,
+        sortDirection: sortState.direction,
+        page: 1,
+        limit: firstPageLimit,
+      };
+      const firstResponse = await api.get('/statistics/detailed', { params: baseParams });
+      const firstData = firstResponse.data as {
+        total?: number;
+        items?: Record<string, unknown>[];
+      };
+      const total = Number(firstData.total ?? 0);
+      const totalPages = Math.max(1, Math.ceil(total / firstPageLimit));
+      const allItems: DetailedStatisticsItem[] = ((firstData.items ?? []) as Record<string, unknown>[])
+        .map(item => ({
+          operationId: String(item.operationId),
+          splitId: item.splitId ? String(item.splitId) : null,
+          accountId: String(item.accountId),
+          accountName: String(item.accountName),
+          operationDate: String(item.operationDate),
+          dueDate: item.dueDate ? String(item.dueDate) : null,
+          effectiveDueDate: String(item.effectiveDueDate),
+          pieceNumber: item.pieceNumber ? String(item.pieceNumber) : null,
+          label: String(item.label),
+          expense: String(item.expense ?? '0'),
+          income: String(item.income ?? '0'),
+          balance: String(item.balance ?? '0'),
+          runningBalance: String(item.runningBalance ?? '0'),
+          thirdPartyId: item.thirdPartyId ? String(item.thirdPartyId) : null,
+          thirdPartyName: item.thirdPartyName ? String(item.thirdPartyName) : null,
+          budgetId: item.budgetId ? String(item.budgetId) : null,
+          budgetLabel: item.budgetLabel ? String(item.budgetLabel) : null,
+          categoryId: item.categoryId ? String(item.categoryId) : null,
+          categoryLabel: item.categoryLabel ? String(item.categoryLabel) : null,
+          categoryGroupingId: item.categoryGroupingId ? String(item.categoryGroupingId) : null,
+          categoryGroupingLabel: item.categoryGroupingLabel ? String(item.categoryGroupingLabel) : null,
+          budgetGroupingId: item.budgetGroupingId ? String(item.budgetGroupingId) : null,
+          budgetGroupingLabel: item.budgetGroupingLabel ? String(item.budgetGroupingLabel) : null,
+          operationType: item.operationType ? String(item.operationType) : null,
+          lettering: item.lettering ? String(item.lettering) : null,
+        }));
+
+      for (let pageIndex = 2; pageIndex <= totalPages; pageIndex += 1) {
+        const response = await api.get('/statistics/detailed', {
+          params: {
+            ...submittedFilters,
+            sortKey: sortState.key,
+            sortDirection: sortState.direction,
+            page: pageIndex,
+            limit: firstPageLimit,
+          },
+        });
+        const nextItems = ((response.data.items ?? []) as Record<string, unknown>[])
+          .map(item => ({
+            operationId: String(item.operationId),
+            splitId: item.splitId ? String(item.splitId) : null,
+            accountId: String(item.accountId),
+            accountName: String(item.accountName),
+            operationDate: String(item.operationDate),
+            dueDate: item.dueDate ? String(item.dueDate) : null,
+            effectiveDueDate: String(item.effectiveDueDate),
+            pieceNumber: item.pieceNumber ? String(item.pieceNumber) : null,
+            label: String(item.label),
+            expense: String(item.expense ?? '0'),
+            income: String(item.income ?? '0'),
+            balance: String(item.balance ?? '0'),
+            runningBalance: String(item.runningBalance ?? '0'),
+            thirdPartyId: item.thirdPartyId ? String(item.thirdPartyId) : null,
+            thirdPartyName: item.thirdPartyName ? String(item.thirdPartyName) : null,
+            budgetId: item.budgetId ? String(item.budgetId) : null,
+            budgetLabel: item.budgetLabel ? String(item.budgetLabel) : null,
+            categoryId: item.categoryId ? String(item.categoryId) : null,
+            categoryLabel: item.categoryLabel ? String(item.categoryLabel) : null,
+            categoryGroupingId: item.categoryGroupingId ? String(item.categoryGroupingId) : null,
+            categoryGroupingLabel: item.categoryGroupingLabel ? String(item.categoryGroupingLabel) : null,
+            budgetGroupingId: item.budgetGroupingId ? String(item.budgetGroupingId) : null,
+            budgetGroupingLabel: item.budgetGroupingLabel ? String(item.budgetGroupingLabel) : null,
+            operationType: item.operationType ? String(item.operationType) : null,
+            lettering: item.lettering ? String(item.lettering) : null,
+          }));
+        allItems.push(...nextItems);
+      }
+
+      const workbook = buildExcelXml(allItems);
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      downloadExcel(workbook, `statistiques-detaillees-${dateStamp}.xls`);
+    } catch {
+      setExportError("Impossible d'exporter les statistiques.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const thStyle = {
@@ -263,6 +515,56 @@ export function DetailedStatisticsWorkspace() {
     </Table.Th>
   );
 
+  const pageSizeControl = (
+    <Group gap={8} wrap="nowrap">
+      <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ whiteSpace: 'nowrap' }}>
+        {statisticsQuery.data ? `${statisticsQuery.data.total} ligne(s)` : '…'}
+      </Text>
+      <Select
+        size="sm"
+        radius="md"
+        value={String(limit)}
+        onChange={value => {
+          if (!value) return;
+          setLimit(Number(value));
+          setPage(1);
+        }}
+        data={LIMIT_OPTIONS}
+        style={{ width: 78 }}
+      />
+    </Group>
+  );
+
+  const paginationControls = isHydrated ? (
+    <Group gap={6} wrap="nowrap">
+      <Button
+        size="sm"
+        radius="md"
+        variant="default"
+        style={toolbarButtonStyle}
+        disabled={submittedFilters === null || page <= 1}
+        onClick={() => setPage(current => Math.max(1, current - 1))}
+      >
+        Précédent
+      </Button>
+      <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px', whiteSpace: 'nowrap' }}>
+        Page {submittedFilters === null ? 0 : page} sur {submittedFilters === null ? 0 : totalPages}
+      </Text>
+      <Button
+        size="sm"
+        radius="md"
+        variant="default"
+        style={toolbarButtonStyle}
+        disabled={submittedFilters === null || page >= totalPages}
+        onClick={() => setPage(current => Math.min(totalPages, current + 1))}
+      >
+        Suivant
+      </Button>
+    </Group>
+  ) : (
+    <Box w={220} h={34} />
+  );
+
   return (
     <Box style={{ maxWidth: 1440, margin: '0 auto' }}>
       <Stack gap={0}>
@@ -290,7 +592,82 @@ export function DetailedStatisticsWorkspace() {
             boxShadow: '0 18px 40px rgba(15, 23, 42, 0.06)',
           }}
         >
-          <Stack gap={6} style={{ padding: '10px 18px 12px' }}>
+          <Box
+            style={{
+              background: '#ffffff',
+              borderBottom: `1px solid ${GRAY_BORDER}`,
+              padding:
+                'var(--crud-list-toolbar-padding-top) var(--crud-list-toolbar-padding-x) var(--crud-list-toolbar-padding-bottom)',
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <Group gap={8} wrap="nowrap">
+                {pageSizeControl}
+                {paginationControls}
+              </Group>
+
+              <Group gap={8} wrap="nowrap" justify="flex-end">
+                <TextInput
+                  size="sm"
+                  value={draftFilters.search}
+                  onChange={event => {
+                    const value = event.currentTarget.value;
+                    setDraftFilters(current => ({ ...current, search: value }));
+                  }}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                    }
+                  }}
+                  placeholder="Recherche globale..."
+                  radius="md"
+                  w={240}
+                />
+                <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ whiteSpace: 'nowrap' }}>
+                  {draftFilters.search.trim()
+                    ? `${pageSearchMatches.length} occurrence(s) sur cette page`
+                    : 'Recherche dans la page'}
+                </Text>
+                <Button variant="default" onClick={() => {
+                  setDraftFilters({
+                    accountId: null,
+                    budgetId: null,
+                    categoryId: null,
+                    thirdPartyId: null,
+                    categoryGroupingId: null,
+                    budgetGroupingId: null,
+                    search: '',
+                    pieceNumber: '',
+                    operationDateFrom: '',
+                    operationDateTo: '',
+                    dueDateFrom: '',
+                    dueDateTo: '',
+                    sortByDueDate: true,
+                  });
+                  setPage(1);
+                  setSortState(getBaseSortState(true));
+                  setSubmittedFilters(null);
+                }} style={toolbarButtonStyle}>
+                  RAZ
+                </Button>
+                <Button
+                  variant="default"
+                  leftSection={<IconDownload size={14} />}
+                  onClick={handleExport}
+                  loading={isExporting}
+                  disabled={submittedFilters === null}
+                  style={toolbarButtonStyle}
+                >
+                  Excel
+                </Button>
+                <Button leftSection={<IconPlayerPlay size={14} />} onClick={applyFilters} style={primaryButtonStyle}>
+                  Lancer
+                </Button>
+              </Group>
+            </Group>
+          </Box>
+
+          <Stack gap={5} style={{ padding: '8px 16px 10px' }}>
             <Group grow align="end" gap={8}>
               <Group align="end" gap={6} wrap="nowrap">
                 <Button
@@ -439,32 +816,9 @@ export function DetailedStatisticsWorkspace() {
                   setDraftFilters(current => ({ ...current, sortByDueDate: checked }));
                 }}
               />
-              <Group gap={10}>
-                <Button variant="default" onClick={() => {
-                  setDraftFilters({
-                    accountId: null,
-                    budgetId: null,
-                    categoryId: null,
-                    thirdPartyId: null,
-                    categoryGroupingId: null,
-                    budgetGroupingId: null,
-                    pieceNumber: '',
-                    operationDateFrom: '',
-                    operationDateTo: '',
-                    dueDateFrom: '',
-                    dueDateTo: '',
-                    sortByDueDate: true,
-                  });
-                  setPage(1);
-                  setSortState(getBaseSortState(true));
-                  setSubmittedFilters(null);
-                }} style={toolbarButtonStyle}>
-                  RAZ
-                </Button>
-                <Button leftSection={<IconPlayerPlay size={14} />} onClick={applyFilters} style={primaryButtonStyle}>
-                  Lancer
-                </Button>
-              </Group>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>
+                Filtres complémentaires
+              </Text>
             </Group>
           </Stack>
 
@@ -482,6 +836,11 @@ export function DetailedStatisticsWorkspace() {
             </Center>
           ) : (
             <Stack gap={0}>
+              {exportError && (
+                <Alert color="red" icon={<IconAlertCircle size={16} />} m="md" mb={0}>
+                  <Text size="sm">{exportError}</Text>
+                </Alert>
+              )}
               <Group justify="space-between" style={{ padding: '14px 16px', borderBottom: `1px solid ${GRAY_BORDER}` }}>
                 <Text fw={600}>{statisticsQuery.data?.total ?? 0} ligne(s)</Text>
                 <Group gap={18}>
@@ -507,12 +866,15 @@ export function DetailedStatisticsWorkspace() {
                       {renderSortableHeader('Tiers', 'thirdPartyName', { width: 150 })}
                       {renderSortableHeader('Enveloppe', 'budgetLabel', { width: 150 })}
                       {renderSortableHeader('Catégorie', 'categoryLabel', { width: 170 })}
+                      <Table.Th style={{ ...thStyle, textAlign: 'center', width: 70 }}>
+                        Action
+                      </Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {currentRows.length === 0 ? (
                       <Table.Tr>
-                        <Table.Td colSpan={10} style={{ textAlign: 'center', padding: '18px 16px' }}>
+                        <Table.Td colSpan={11} style={{ textAlign: 'center', padding: '18px 16px' }}>
                           <Text c={TEXT_MUTED}>Aucun mouvement pour ces critères.</Text>
                         </Table.Td>
                       </Table.Tr>
@@ -521,8 +883,15 @@ export function DetailedStatisticsWorkspace() {
                         <Table.Tr
                           key={item.splitId ?? item.operationId}
                           style={{
-                            background: index % 2 === 1 ? CRUD.couleurs.fondLignePaire : CRUD.couleurs.fondLigneImpaire,
+                            background:
+                              highlightedRowKeys.has(item.splitId ?? item.operationId)
+                                ? '#fff3bf'
+                                : index % 2 === 1
+                                  ? CRUD.couleurs.fondLignePaire
+                                  : CRUD.couleurs.fondLigneImpaire,
+                            cursor: 'pointer',
                           }}
+                          onDoubleClick={() => openOperationEditor(item.operationId, item.accountId)}
                         >
                           <Table.Td
                             style={{ ...tdStyle, maxWidth: 170, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -555,6 +924,20 @@ export function DetailedStatisticsWorkspace() {
                           >
                             {renderTruncatedCell(item.categoryLabel ?? '—', { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' })}
                           </Table.Td>
+                          <Table.Td style={{ ...tdStyle, textAlign: 'center', width: 70 }}>
+                            <Tooltip label="Modifier l'opération" withArrow position="left">
+                              <ActionIcon
+                                variant="subtle"
+                                size="sm"
+                                onClick={event => {
+                                  event.stopPropagation();
+                                  openOperationEditor(item.operationId, item.accountId);
+                                }}
+                              >
+                                <IconPencil size={14} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Table.Td>
                         </Table.Tr>
                       ))
                     )}
@@ -576,47 +959,11 @@ export function DetailedStatisticsWorkspace() {
                   align="center"
                   style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
                 >
-                  <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
-                    {statisticsQuery.data ? `${statisticsQuery.data.total} ligne(s)` : '…'}
-                  </Text>
-                  <Select
-                    size="sm"
-                    radius="md"
-                    value={String(limit)}
-                    onChange={value => {
-                      if (!value) return;
-                      setLimit(Number(value));
-                      setPage(1);
-                    }}
-                    data={LIMIT_OPTIONS}
-                    style={{ width: 78 }}
-                  />
+                  {pageSizeControl}
                 </Group>
 
                 <Group gap={6} justify="center">
-                  <Button
-                    size="sm"
-                    radius="md"
-                    variant="default"
-                    style={toolbarButtonStyle}
-                    disabled={page <= 1}
-                    onClick={() => setPage(current => Math.max(1, current - 1))}
-                  >
-                    Précédent
-                  </Button>
-                  <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px', whiteSpace: 'nowrap' }}>
-                    Page {page} sur {totalPages}
-                  </Text>
-                  <Button
-                    size="sm"
-                    radius="md"
-                    variant="default"
-                    style={toolbarButtonStyle}
-                    disabled={page >= totalPages}
-                    onClick={() => setPage(current => Math.min(totalPages, current + 1))}
-                  >
-                    Suivant
-                  </Button>
+                  {paginationControls}
                 </Group>
               </Box>
             </Stack>

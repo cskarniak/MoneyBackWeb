@@ -59,6 +59,7 @@ export type OperationsResponse = {
 };
 
 export type OperationFilters = {
+  operationId?: string;
   search?: string;
   accountId?: string;
   hideLocked?: boolean;

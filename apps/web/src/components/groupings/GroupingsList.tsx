@@ -31,8 +31,10 @@ import {
   IconSearch,
   IconAlertCircle,
   IconMenu2,
+  IconDownload,
 } from '@tabler/icons-react';
 import { useRegroupements, useDeleteRegroupement, type Regroupement } from '@/hooks/useGroupings';
+import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
 const SALMON = '#ffe4d6';
 const GRAY_BG = '#f8f9fa';
@@ -59,6 +61,7 @@ export function GroupingsList() {
   const [recentId, setRecentId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (highlight) {
@@ -94,6 +97,28 @@ export function GroupingsList() {
   const handleSearch = () => pushParams({ search: searchInput, page: '1' });
   const handleClear = () => { setSearchInput(''); pushParams({ search: null, page: '1' }); };
   const handleLimitChange = (val: string | null) => { if (val) pushParams({ limit: val, page: '1' }); };
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const count = await exportPaginatedListToExcel({
+        endpoint: '/regroupements',
+        params: { search, sortBy, sortOrder },
+        headers: ['Libellé', 'Catégorie', 'Poste', 'Tableau de bord'],
+        mapItem: item => [
+          item.label,
+          item.income as boolean | undefined,
+          item.expense as boolean | undefined,
+          item.dashboard as boolean | undefined,
+        ],
+        filenameBase: 'regroupements',
+      });
+      notifications.show({ message: `${count} regroupement(s) exporté(s)`, color: 'green' });
+    } catch {
+      notifications.show({ message: "Impossible d'exporter les regroupements.", color: 'red' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleDelete = async (g: Regroupement) => {
     setDeleteError(null);
@@ -320,6 +345,9 @@ export function GroupingsList() {
               </ActionIcon>
               <Button size="sm" radius="md" variant="default" onClick={handleClear} style={toolbarButtonStyle}>
                 Clear
+              </Button>
+              <Button size="sm" radius="md" variant="default" leftSection={<IconDownload size={13} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
+                Excel
               </Button>
             </Group>
           </Group>

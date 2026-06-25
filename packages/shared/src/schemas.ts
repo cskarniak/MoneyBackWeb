@@ -82,6 +82,7 @@ export const UpdateOperationSchema = CreateOperationSchema.partial();
 export type UpdateOperationDto = z.infer<typeof UpdateOperationSchema>;
 
 export const OperationFiltersSchema = z.object({
+  operationId: z.string().uuid().optional(),
   accountId: z.string().uuid().optional(),
   budgetId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
@@ -131,7 +132,7 @@ export const DetailedStatisticsFiltersSchema = z.object({
     z.boolean().optional(),
   ).default(true),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
-  limit: z.preprocess(v => Number(v ?? 200), z.number().int().min(1).max(500)).default(200),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(1000)).default(20),
   sortKey: z.enum([
     'accountName',
     'operationDate',

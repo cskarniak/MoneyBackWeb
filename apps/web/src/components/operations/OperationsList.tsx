@@ -21,9 +21,10 @@ import {
   Stack,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconCheck, IconGitBranch } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconCheck, IconGitBranch, IconDownload } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
-import { useDeleteOperation, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
+import { useDeleteOperation, useOperation, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
+import { exportPaginatedListToExcel } from '@/lib/export-excel';
 import { OperationSplitModal } from './OperationSplitModal';
 import { OperationsInlineEditor } from './OperationsInlineEditor';
 
@@ -109,6 +110,7 @@ export function OperationsList() {
 
   const page = Number(searchParams.get('page') ?? '1');
   const limit = Number(searchParams.get('limit') ?? '20');
+  const operationId = searchParams.get('operationId') ?? '';
   const search = searchParams.get('search') ?? '';
   const accountId = searchParams.get('accountId') ?? '';
   const hideLocked = searchParams.get('hideLocked') === 'true';
@@ -128,6 +130,7 @@ export function OperationsList() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; operation: Operation } | null>(null);
   const [splitDetailsOperation, setSplitDetailsOperation] = useState<Operation | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [mode, setMode] = useState<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
@@ -136,6 +139,7 @@ export function OperationsList() {
   const listStateRef = useRef<{
     page: string;
     limit: string;
+    operationId: string | null;
     search: string | null;
     accountId: string | null;
     hideLocked: string | null;
@@ -151,6 +155,17 @@ export function OperationsList() {
 
   useEffect(() => {
     if (!editParam && !modeParam) return;
+
+    if (modeParam === 'new') {
+      setDraftOperation(null);
+      setEditId(null);
+      setMode('new');
+    } else if (editParam) {
+      setDraftOperation(null);
+      setMode(null);
+      setEditId(editParam);
+      setRecentId(editParam);
+    }
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete('edit');
@@ -208,6 +223,7 @@ export function OperationsList() {
   const { data, isLoading, error } = useOperations({
     page,
     limit,
+    operationId: operationId || undefined,
     search,
     accountId: accountId || undefined,
     hideLocked,
@@ -216,9 +232,18 @@ export function OperationsList() {
     sortBy,
     sortOrder,
   }, { enabled: !!accountId });
+  const operationQuery = useOperation(operationId);
   const { data: accounts = [] } = useAccountsAll();
   const selectedAccount = accounts.find(account => account.id === accountId) ?? null;
   const hasSelectedAccount = !!accountId;
+  const effectiveItems = useMemo(() => (
+    operationId
+      ? (operationQuery.data ? [operationQuery.data] : [])
+      : (data?.items ?? [])
+  ), [data?.items, operationId, operationQuery.data]);
+  const effectiveTotal = operationId ? effectiveItems.length : (data?.total ?? 0);
+  const listLoading = operationId ? operationQuery.isLoading : isLoading;
+  const listError = operationId ? operationQuery.error : error;
   const deleteMutation = useDeleteOperation();
   const updateMutation = useUpdateOperation();
   const persistedBalance = Number(selectedAccount?.currentBalance ?? 0);
@@ -228,18 +253,18 @@ export function OperationsList() {
     }
 
     const originalOperation = draftOperation.id
-      ? (data?.items ?? []).find(operation => operation.id === draftOperation.id)
+      ? effectiveItems.find(operation => operation.id === draftOperation.id)
       : null;
     const originalNet = originalOperation ? getOperationNet(originalOperation) : 0;
     const draftNet = draftOperation.income - draftOperation.expense;
 
     return persistedBalance - originalNet + draftNet;
-  }, [accountId, data?.items, draftOperation, persistedBalance]);
+  }, [accountId, draftOperation, effectiveItems, persistedBalance]);
 
   useEffect(() => {
-    if (!draftOperation?.id || !data?.items) return;
+    if (!draftOperation?.id || effectiveItems.length === 0) return;
 
-    const persistedOperation = data.items.find(operation => operation.id === draftOperation.id);
+    const persistedOperation = effectiveItems.find(operation => operation.id === draftOperation.id);
     if (!persistedOperation) return;
 
     const persistedNet = getOperationNet(persistedOperation);
@@ -248,14 +273,14 @@ export function OperationsList() {
     if (Math.abs(persistedNet - draftNet) < 0.005) {
       setDraftOperation(null);
     }
-  }, [data?.items, draftOperation]);
+  }, [draftOperation, effectiveItems]);
 
   const rememberViewportAnchor = useCallback((excludedOperationId?: string) => {
     if (typeof window === 'undefined') return;
 
     scrollTopRef.current = window.scrollY;
 
-    const visibleRows = (data?.items ?? [])
+    const visibleRows = effectiveItems
       .map(operation => {
         const element = rowRefs.current[operation.id];
         if (!element) return null;
@@ -283,12 +308,13 @@ export function OperationsList() {
       operationId: anchor.operationId,
       top: anchor.rect.top,
     };
-  }, [data?.items]);
+  }, [effectiveItems]);
 
   const captureListState = useCallback(() => {
     listStateRef.current = {
       page: String(page),
       limit: String(limit),
+      operationId: operationId || null,
       search: search || null,
       accountId: accountId || null,
       hideLocked: hideLocked ? 'true' : null,
@@ -302,6 +328,7 @@ export function OperationsList() {
     emptyEnvelopeOnly,
     hideLocked,
     limit,
+    operationId,
     page,
     search,
     sortBy,
@@ -338,7 +365,7 @@ export function OperationsList() {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [isLoading, data?.items, editId, mode, highlight]);
+  }, [listLoading, effectiveItems, editId, mode, highlight]);
 
   const pushParams = useCallback(
     (
@@ -396,6 +423,7 @@ export function OperationsList() {
   const handleClear = () => {
     setSearchInput('');
     pushParams({
+      operationId: null,
       search: null,
       accountId: null,
       hideLocked: null,
@@ -403,6 +431,55 @@ export function OperationsList() {
       unvalidatedOnly: null,
       page: '1',
     });
+  };
+  const handleExport = async () => {
+    if (!accountId) {
+      notifications.show({ message: 'Sélectionnez un compte avant export.', color: 'orange' });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const count = await exportPaginatedListToExcel({
+        endpoint: '/operations',
+        params: {
+          operationId: operationId || undefined,
+          search,
+          accountId,
+          hideLocked,
+          emptyEnvelopeOnly,
+          unvalidatedOnly,
+          sortBy,
+          sortOrder,
+        },
+        headers: ['Date', 'Libellé', 'Tiers', 'Catégorie', 'Enveloppe', 'Dépense', 'Recette'],
+        mapItem: item => [
+          formatDate(String(item.operationDate ?? '')),
+          item.label,
+          ((item.tiers as { name?: string } | null | undefined)?.name)
+            ?? ((item.thirdParty as { name?: string } | null | undefined)?.name)
+            ?? '',
+          ((item.splits as unknown[] | undefined)?.length ?? 0) > 0
+            ? 'Ventilé'
+            : (((item.categorie as { label?: string } | null | undefined)?.label)
+              ?? ((item.category as { label?: string } | null | undefined)?.label)
+              ?? ''),
+          ((item.splits as unknown[] | undefined)?.length ?? 0) > 0
+            ? 'Ventilé'
+            : (((item.enveloppe as { label?: string } | null | undefined)?.label)
+              ?? ((item.budget as { label?: string } | null | undefined)?.label)
+              ?? ''),
+          Number(item.expense ?? 0),
+          Number(item.income ?? 0),
+        ],
+        filenameBase: 'operations',
+      });
+      notifications.show({ message: `${count} opération(s) exportée(s)`, color: 'green' });
+    } catch {
+      notifications.show({ message: "Impossible d'exporter les opérations.", color: 'red' });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleNew = () => {
@@ -680,14 +757,14 @@ export function OperationsList() {
   );
 
   const table = useReactTable({
-    data: hasSelectedAccount ? (data?.items ?? []) : [],
+    data: hasSelectedAccount ? effectiveItems : [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
     manualPagination: true,
   });
 
-  const totalPages = data ? Math.ceil(data.total / limit) : 1;
+  const totalPages = operationId ? 1 : (data ? Math.ceil(data.total / limit) : 1);
   const paginationHasSelectedAccount = isHydrated && hasSelectedAccount;
   const rows = table.getRowModel().rows;
   const showTopEditor = hasSelectedAccount && (isCreating || (isEditing && !rows.some(row => row.original.id === editId)));
@@ -795,6 +872,9 @@ export function OperationsList() {
                 <Button variant="default" radius="md" onClick={handleClear}>
                   Clear
                 </Button>
+                <Button variant="default" radius="md" leftSection={<IconDownload size={14} />} onClick={handleExport} loading={isExporting} disabled={!accountId} style={toolbarButtonStyle}>
+                  Excel
+                </Button>
               </Group>
             </Group>
 
@@ -868,7 +948,7 @@ export function OperationsList() {
               {deleteError}
             </Alert>
           )}
-          {hasSelectedAccount && error && (
+          {hasSelectedAccount && listError && (
             <Alert color="red" icon={<IconAlertCircle size={16} />} m="md">
               Erreur lors du chargement des opérations.
             </Alert>
@@ -880,7 +960,7 @@ export function OperationsList() {
                 Sélectionnez un compte pour afficher les opérations.
               </Text>
             </Center>
-          ) : isLoading ? (
+          ) : listLoading ? (
             <Center style={{ minHeight: 180 }}>
               <Loader size="sm" />
             </Center>

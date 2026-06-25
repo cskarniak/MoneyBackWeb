@@ -26,12 +26,14 @@ import {
   IconSearch,
   IconAlertCircle,
   IconMenu2,
+  IconDownload,
 } from '@tabler/icons-react';
 import {
   useDeletePaymentMethod,
   usePaymentMethods,
   type PaymentMethod,
 } from '@/hooks/usePaymentMethods';
+import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -54,6 +56,7 @@ export function PaymentMethodsList() {
   const [recentId, setRecentId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (highlight) {
@@ -93,6 +96,23 @@ export function PaymentMethodsList() {
   };
   const handleLimitChange = (val: string | null) => {
     if (val) pushParams({ limit: val, page: '1' });
+  };
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const count = await exportPaginatedListToExcel({
+        endpoint: '/payment-methods',
+        params: { search, sortBy, sortOrder },
+        headers: ['Code', 'Libellé', 'Actif'],
+        mapItem: item => [item.code as string | null | undefined, item.label, item.active as boolean | undefined],
+        filenameBase: 'moyens-paiement',
+      });
+      notifications.show({ message: `${count} moyen(s) de paiement exporté(s)`, color: 'green' });
+    } catch {
+      notifications.show({ message: "Impossible d'exporter les moyens de paiement.", color: 'red' });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleDelete = async (paymentMethod: PaymentMethod) => {
@@ -320,6 +340,9 @@ export function PaymentMethodsList() {
               </ActionIcon>
               <Button size="sm" radius="md" variant="default" onClick={handleClear} style={toolbarButtonStyle}>
                 Clear
+              </Button>
+              <Button size="sm" radius="md" variant="default" leftSection={<IconDownload size={13} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
+                Excel
               </Button>
             </Group>
           </Group>

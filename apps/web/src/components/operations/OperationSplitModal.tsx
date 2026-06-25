@@ -250,7 +250,6 @@ export function OperationSplitModal({
                           placeholder="Libellé"
                           radius={0}
                           readOnly={!editable}
-                          disabled={!editable}
                           styles={{ input: splitGridInputStyle }}
                         />
                       </Table.Td>
@@ -263,7 +262,6 @@ export function OperationSplitModal({
                           placeholder="0,00"
                           radius={0}
                           readOnly={!editable}
-                          disabled={!editable}
                           styles={{ input: { ...splitGridInputStyle, textAlign: 'right' } }}
                         />
                       </Table.Td>
@@ -276,7 +274,6 @@ export function OperationSplitModal({
                           placeholder="0,00"
                           radius={0}
                           readOnly={!editable}
-                          disabled={!editable}
                           styles={{ input: { ...splitGridInputStyle, textAlign: 'right' } }}
                         />
                       </Table.Td>
@@ -291,7 +288,6 @@ export function OperationSplitModal({
                           searchable={editable}
                           radius={0}
                           readOnly={!editable}
-                          disabled={!editable}
                           styles={{ input: splitGridInputStyle }}
                         />
                       </Table.Td>
@@ -306,7 +302,6 @@ export function OperationSplitModal({
                           searchable={editable}
                           radius={0}
                           readOnly={!editable}
-                          disabled={!editable}
                           styles={{ input: splitGridInputStyle }}
                         />
                       </Table.Td>

@@ -105,6 +105,7 @@ export class OperationsService {
 
   async findAll(filters: OperationFiltersDto) {
     const {
+      operationId,
       accountId,
       budgetId,
       categoryId,
@@ -129,6 +130,7 @@ export class OperationsService {
     const hasNumericSearch = Number.isFinite(numericSearch);
 
     const where = {
+      ...(operationId && { id: operationId }),
       ...(accountId && { accountId }),
       ...(budgetId && { budgetId }),
       ...(categoryId && { categoryId }),

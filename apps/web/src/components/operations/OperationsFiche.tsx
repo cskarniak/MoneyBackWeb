@@ -427,8 +427,7 @@ export function OperationsFiche({ id }: Props) {
                   style={{ flex: 1 }}
                   tabIndex={-1}
                   readOnly
-                  disabled
-                  styles={{ input: { ...fieldInputStyle, background: '#f1f3f5', color: '#6b7280', cursor: 'not-allowed' } }}
+                  styles={{ input: { ...fieldInputStyle, background: '#f1f3f5', color: '#495057' } }}
                 />
               </Group>
             )}

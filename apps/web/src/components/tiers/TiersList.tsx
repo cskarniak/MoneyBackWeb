@@ -31,8 +31,10 @@ import {
   IconSearch,
   IconAlertCircle,
   IconMenu2,
+  IconDownload,
 } from '@tabler/icons-react';
 import { useDeleteThirdParty, useThirdParties, type ThirdParty } from '@/hooks/useThirdParties';
+import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -56,6 +58,7 @@ export function TiersList() {
   const [recentId, setRecentId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (highlight) {
@@ -95,6 +98,23 @@ export function TiersList() {
   };
   const handleLimitChange = (val: string | null) => {
     if (val) pushParams({ limit: val, page: '1' });
+  };
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const count = await exportPaginatedListToExcel({
+        endpoint: '/third-parties',
+        params: { search, sortBy, sortOrder },
+        headers: ['Nom', 'Commentaire', 'Actif'],
+        mapItem: item => [item.name, item.comment as string | null | undefined, item.active as boolean | undefined],
+        filenameBase: 'tiers',
+      });
+      notifications.show({ message: `${count} tiers exporté(s)`, color: 'green' });
+    } catch {
+      notifications.show({ message: "Impossible d'exporter les tiers.", color: 'red' });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleDelete = async (tiers: ThirdParty) => {
@@ -290,6 +310,9 @@ export function TiersList() {
               </ActionIcon>
               <Button variant="default" radius="md" onClick={handleClear}>
                 Clear
+              </Button>
+              <Button variant="default" radius="md" leftSection={<IconDownload size={14} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
+                Excel
               </Button>
             </Group>
           </Group>

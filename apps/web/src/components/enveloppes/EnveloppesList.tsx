@@ -26,8 +26,10 @@ import {
   IconSearch,
   IconAlertCircle,
   IconMenu2,
+  IconDownload,
 } from '@tabler/icons-react';
 import { useDeleteEnveloppe, useEnveloppes, type Enveloppe } from '@/hooks/useEnveloppes';
+import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -50,6 +52,7 @@ export function EnveloppesList() {
   const [recentId, setRecentId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (highlight) {
@@ -89,6 +92,33 @@ export function EnveloppesList() {
   };
   const handleLimitChange = (val: string | null) => {
     if (val) pushParams({ limit: val, page: '1' });
+  };
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const count = await exportPaginatedListToExcel({
+        endpoint: '/budgets',
+        params: { search, sortBy, sortOrder },
+        headers: ['Libellé', 'Regroupement', 'Synthèse', 'Regroupement TB', 'Actif'],
+        mapItem: item => [
+          item.label,
+          ((item.regroupement as { label?: string } | null | undefined)?.label)
+            ?? ((item.grouping as { label?: string } | null | undefined)?.label)
+            ?? '',
+          item.summary as boolean | undefined,
+          ((item.regroupementTableauDeBord as { label?: string } | null | undefined)?.label)
+            ?? ((item.dashboardGrouping as { label?: string } | null | undefined)?.label)
+            ?? '',
+          item.active as boolean | undefined,
+        ],
+        filenameBase: 'enveloppes',
+      });
+      notifications.show({ message: `${count} enveloppe(s) exportée(s)`, color: 'green' });
+    } catch {
+      notifications.show({ message: "Impossible d'exporter les enveloppes.", color: 'red' });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleDelete = async (enveloppe: Enveloppe) => {
@@ -312,6 +342,9 @@ export function EnveloppesList() {
               </ActionIcon>
               <Button size="sm" radius="md" variant="default" onClick={handleClear} style={toolbarButtonStyle}>
                 Clear
+              </Button>
+              <Button size="sm" radius="md" variant="default" leftSection={<IconDownload size={13} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
+                Excel
               </Button>
             </Group>
           </Group>
