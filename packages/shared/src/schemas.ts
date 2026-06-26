@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  ImportSource,
   Periodicity,
   SubscriptionType,
   ThirdPartyMatchingField,
@@ -114,6 +115,16 @@ export const OperationFiltersSchema = z.object({
 });
 
 export type OperationFiltersDto = z.infer<typeof OperationFiltersSchema>;
+
+export const AutoAssignOperationThirdPartiesSchema = z.object({
+  accountId: z.string().uuid().optional(),
+  operationDateFrom: z.string().datetime().optional(),
+  operationDateTo: z.string().datetime().optional(),
+  onlyWithoutBudget: z.boolean().default(true),
+  applyChanges: z.boolean().default(false),
+});
+
+export type AutoAssignOperationThirdPartiesDto = z.infer<typeof AutoAssignOperationThirdPartiesSchema>;
 
 export const DetailedStatisticsFiltersSchema = z.object({
   accountId: z.string().uuid().optional(),
@@ -493,3 +504,171 @@ export const StatisticsFiltersSchema = z.object({
 });
 
 export type StatisticsFiltersDto = z.infer<typeof StatisticsFiltersSchema>;
+
+// ─── Import Profiles ─────────────────────────────────────────────────────────
+
+const CsvColumnSelectorSchema = z.object({
+  headerName: z.string().min(1).optional(),
+  columnIndex: z.number().int().min(0).optional(),
+}).refine(
+  value => value.headerName !== undefined || value.columnIndex !== undefined,
+  'Un selecteur de colonne doit definir headerName ou columnIndex',
+);
+
+const LearnedBankCsvColumnSchema = z.object({
+  headerName: z.string().min(1),
+  columnIndex: z.number().int().min(0),
+  field: z.enum([
+    'ignore',
+    'operationDate',
+    'label',
+    'comment',
+    'pieceNumber',
+    'amount',
+    'expense',
+    'income',
+    'statementRef',
+  ]),
+  type: z.enum(['text', 'date', 'decimal', 'signedAmount']),
+});
+
+const BankCsvFileConfigSchema = z.object({
+  delimiter: z.string().min(1).max(1),
+  encoding: z.string().min(1).default('utf-8'),
+  hasHeader: z.boolean().default(true),
+  startLine: z.number().int().min(1).default(2),
+});
+
+const BankCsvDateMappingSchema = z.object({
+  column: CsvColumnSelectorSchema,
+  format: z.string().min(1),
+});
+
+const BankCsvLabelMappingSchema = z.object({
+  column: CsvColumnSelectorSchema,
+});
+
+const BankCsvCommentMappingSchema = z.object({
+  column: CsvColumnSelectorSchema,
+}).optional();
+
+const BankCsvPieceNumberMappingSchema = z.object({
+  column: CsvColumnSelectorSchema,
+}).optional();
+
+const BankCsvStatementRefMappingSchema = z.object({
+  column: CsvColumnSelectorSchema,
+}).optional();
+
+const BankCsvSingleAmountMappingSchema = z.object({
+  mode: z.literal('singleAmountSigned'),
+  column: CsvColumnSelectorSchema,
+  decimalSeparator: z.string().min(1).max(1).default(','),
+  thousandsSeparator: z.string().max(1).nullable().optional(),
+  negativeIsExpense: z.boolean().default(true),
+  positiveIsIncome: z.boolean().default(true),
+});
+
+const BankCsvSeparateAmountMappingSchema = z.object({
+  mode: z.literal('separateExpenseIncome'),
+  expenseColumn: CsvColumnSelectorSchema,
+  incomeColumn: CsvColumnSelectorSchema,
+  decimalSeparator: z.string().min(1).max(1).default(','),
+  thousandsSeparator: z.string().max(1).nullable().optional(),
+});
+
+const BankCsvAmountMappingSchema = z.discriminatedUnion('mode', [
+  BankCsvSingleAmountMappingSchema,
+  BankCsvSeparateAmountMappingSchema,
+]);
+
+const BankCsvDedupeSchema = z.object({
+  strategy: z.enum(['account-date-amount-label']).default('account-date-amount-label'),
+  includeStatementRef: z.boolean().default(true),
+});
+
+export const BankCsvMappingSchema = z.object({
+  version: z.literal(1).default(1),
+  kind: z.literal('bank-csv'),
+  bankKey: z.string().min(1),
+  bankLabel: z.string().min(1),
+  file: BankCsvFileConfigSchema,
+  date: BankCsvDateMappingSchema,
+  label: BankCsvLabelMappingSchema,
+  comment: BankCsvCommentMappingSchema,
+  pieceNumber: BankCsvPieceNumberMappingSchema,
+  statementRef: BankCsvStatementRefMappingSchema,
+  amount: BankCsvAmountMappingSchema,
+  dedupe: BankCsvDedupeSchema.default({
+    strategy: 'account-date-amount-label',
+    includeStatementRef: true,
+  }),
+  learnedColumns: z.array(LearnedBankCsvColumnSchema).optional(),
+});
+
+export type BankCsvMappingDto = z.infer<typeof BankCsvMappingSchema>;
+
+export const CreateImportProfileSchema = z.object({
+  name: z.string().min(1, 'Le nom du masque est obligatoire'),
+  source: z.literal(ImportSource.BANK_FILE).default(ImportSource.BANK_FILE),
+  mapping: BankCsvMappingSchema,
+  active: z.boolean().default(true),
+});
+
+export type CreateImportProfileDto = z.infer<typeof CreateImportProfileSchema>;
+
+export const UpdateImportProfileSchema = CreateImportProfileSchema.partial();
+export type UpdateImportProfileDto = z.infer<typeof UpdateImportProfileSchema>;
+
+export const ImportProfileFiltersSchema = z.object({
+  source: z.enum([ImportSource.BANK_FILE]).optional(),
+  bankKey: z.string().optional(),
+  active: z.preprocess(
+    v => (v === 'true' ? true : v === 'false' ? false : undefined),
+    z.boolean().optional(),
+  ),
+  search: z.string().optional(),
+  page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
+  sortBy: z.enum(['name', 'createdAt', 'updatedAt']).default('updatedAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export type ImportProfileFiltersDto = z.infer<typeof ImportProfileFiltersSchema>;
+
+export const BankCsvPreviewSchema = z.object({
+  profileId: z.string().uuid().optional(),
+  mapping: BankCsvMappingSchema.optional(),
+  csvContent: z.string().min(1, 'Le contenu CSV est obligatoire'),
+  accountId: z.string().uuid().optional().nullable(),
+  integrationDate: z.string().datetime().optional(),
+  reference: z.string().optional().nullable(),
+}).refine(
+  value => value.profileId !== undefined || value.mapping !== undefined,
+  'Un profileId ou un mapping inline est obligatoire',
+);
+
+export type BankCsvPreviewDto = z.infer<typeof BankCsvPreviewSchema>;
+
+export const BankCsvConfirmLineSchema = z.object({
+  lineNum: z.number().int().min(1),
+  operationDate: z.string().datetime(),
+  label: z.string().min(1),
+  comment: z.string().nullable().optional(),
+  pieceNumber: z.string().nullable().optional(),
+  expense: z.string().nullable().optional(),
+  income: z.string().nullable().optional(),
+  statementRef: z.string().nullable().optional(),
+});
+
+export type BankCsvConfirmLineDto = z.infer<typeof BankCsvConfirmLineSchema>;
+
+export const BankCsvConfirmSchema = z.object({
+  accountId: z.string().uuid(),
+  profileId: z.string().uuid().optional(),
+  integrationDate: z.string().datetime(),
+  reference: z.string().trim().length(9, 'Le numéro de lot doit contenir exactement 9 caractères'),
+  lines: z.array(BankCsvConfirmLineSchema).min(1, 'Au moins une ligne doit être sélectionnée'),
+});
+
+export type BankCsvConfirmDto = z.infer<typeof BankCsvConfirmSchema>;

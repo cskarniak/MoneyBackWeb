@@ -16,18 +16,25 @@ import {
   IconTool,
   IconCalendarRepeat,
   IconDatabaseExport,
+  IconFileImport,
   IconSettings,
+  IconUserCheck,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
   { label: 'Opérations', prefix: '/operations' },
   { label: 'Statistiques', prefix: '/statistiques' },
-  { label: 'Imports', prefix: '/imports' },
   { label: 'Portefeuille', prefix: '/portefeuille' },
+];
+
+const IMPORT_ITEMS = [
+  { label: "Masques d'import", href: '/imports', icon: IconDatabaseExport },
+  { label: 'Import bancaire', href: '/imports/bancaire', icon: IconFileImport },
 ];
 
 const OUTILS_ITEMS = [
   { label: 'Environnement actif', href: '/outils/environnement', icon: IconSettings },
+  { label: 'Affectation tiers', href: '/outils/affectation-tiers', icon: IconUserCheck },
   { label: 'Génération abonnements', href: '/outils/generation-abonnements', icon: IconCalendarRepeat },
   { label: 'Sauvegarde base', href: '/outils/sauvegarde-base', icon: IconDatabaseExport },
 ];
@@ -48,12 +55,25 @@ const ACTIVE_COLOR = '#51cf66';
 const APP_ENV_LABEL = process.env.NEXT_PUBLIC_APP_ENV_LABEL;
 const APP_ENV_DESCRIPTION = process.env.NEXT_PUBLIC_APP_ENV_DESCRIPTION;
 
+function isImportItemActive(pathname: string, href: string) {
+  if (href === '/imports') {
+    return (
+      pathname === '/imports'
+      || pathname === '/imports/new'
+      || (pathname !== '/imports/bancaire' && /^\/imports\/[^/]+$/.test(pathname))
+    );
+  }
+
+  return pathname.startsWith(href);
+}
+
 export function AppNavbar() {
   const pathname = usePathname();
   const router = useRouter();
 
   const fichiersActive = FICHIERS_ITEMS.some(item => pathname.startsWith(item.href));
   const outilsActive = OUTILS_ITEMS.some(item => pathname.startsWith(item.href));
+  const importsActive = IMPORT_ITEMS.some(item => isImportItemActive(pathname, item.href));
 
   return (
     <Box
@@ -97,6 +117,48 @@ export function AppNavbar() {
               </Button>
             );
           })}
+
+          <Menu
+            position="bottom-start"
+            offset={4}
+            styles={{
+              dropdown: { background: '#25262b', border: '1px solid #373a40', padding: '4px 0' },
+              item: { color: '#c1c2c5', padding: '7px 14px', fontSize: 13 },
+            }}
+          >
+            <Menu.Target>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={<IconFileImport size={12} />}
+                rightSection={<IconChevronDown size={11} />}
+                style={{
+                  color: importsActive ? ACTIVE_COLOR : '#adb5bd',
+                  fontWeight: importsActive ? 700 : 400,
+                  background: 'transparent',
+                  whiteSpace: 'nowrap',
+                  padding: '4px 10px',
+                }}
+              >
+                Imports
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {IMPORT_ITEMS.map(item => {
+                const active = isImportItemActive(pathname, item.href);
+                return (
+                  <Menu.Item
+                    key={item.href}
+                    leftSection={<item.icon size={14} />}
+                    onClick={() => router.push(item.href)}
+                    style={{ color: active ? ACTIVE_COLOR : '#c1c2c5', fontWeight: active ? 600 : 400 }}
+                  >
+                    {item.label}
+                  </Menu.Item>
+                );
+              })}
+            </Menu.Dropdown>
+          </Menu>
 
           <Menu
             position="bottom-start"

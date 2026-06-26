@@ -31,6 +31,7 @@ export type Operation = {
   comment: string | null;
   statementRef: string | null;
   operationType: string | null;
+  entryMode: string | null;
   operationValidated: string | null;
   locked: boolean;
   closed: boolean;
@@ -62,6 +63,7 @@ export type OperationFilters = {
   operationId?: string;
   search?: string;
   accountId?: string;
+  statementRef?: string;
   hideLocked?: boolean;
   emptyEnvelopeOnly?: boolean;
   unvalidatedOnly?: boolean;
@@ -133,6 +135,7 @@ function normalizeOperation(operation: Record<string, unknown>): Operation {
     simulation: Boolean(operation.simulation),
     lettering: (operation.lettering as string | null | undefined) ?? null,
     comment: (operation.comment as string | null | undefined) ?? null,
+    entryMode: (operation.entryMode as string | null | undefined) ?? null,
     operationValidated: (operation.operationValidated as string | null | undefined) ?? null,
     budgetId: (operation.budgetId as string | null | undefined) ?? null,
     categoryId: (operation.categoryId as string | null | undefined) ?? null,
@@ -166,6 +169,21 @@ export function useOperation(id: string) {
     queryKey: [KEY, id],
     queryFn: () => api.get(`/operations/${id}`).then(r => normalizeOperation(r.data)),
     enabled: !!id,
+  });
+}
+
+export function useOperationStatementRefs(accountId?: string) {
+  return useQuery<string[]>({
+    queryKey: [KEY, 'statement-refs', accountId ?? 'all'],
+    queryFn: () =>
+      api.get('/operations/statement-refs', {
+        params: accountId ? { accountId } : undefined,
+      }).then(r => r.data as string[]),
+    enabled: !!accountId,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 

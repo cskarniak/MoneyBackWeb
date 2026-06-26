@@ -18,6 +18,11 @@ type LoadedRule = {
     name: string;
     ventilated: boolean;
     active: boolean;
+    categoryId: string | null;
+    budgetId: string | null;
+    budget: {
+      label: string;
+    } | null;
   };
   conditions: Array<{
     id: string;
@@ -41,6 +46,9 @@ export type ThirdPartyMatchResult = {
   thirdPartyId: string;
   thirdPartyName: string;
   ventilated: boolean;
+  categoryId: string | null;
+  budgetId: string | null;
+  budgetLabel: string | null;
   matchedRuleId: string;
   matchedRuleLabel: string;
   matchedConditions: ThirdPartyMatchConditionResult[];
@@ -50,9 +58,8 @@ export type ThirdPartyMatchResult = {
 export class ThirdPartyMatchingService {
   constructor(private prisma: PrismaService) {}
 
-  async matchCandidate(candidate: ThirdPartyMatchingCandidateDto): Promise<ThirdPartyMatchResult | null> {
-    const normalizedCandidate = this.normalizeCandidate(candidate);
-    const rules = await this.prisma.thirdPartyMatchingRule.findMany({
+  async loadActiveRules(): Promise<LoadedRule[]> {
+    return this.prisma.thirdPartyMatchingRule.findMany({
       where: {
         active: true,
         thirdParty: {
@@ -66,6 +73,13 @@ export class ThirdPartyMatchingService {
             name: true,
             ventilated: true,
             active: true,
+            categoryId: true,
+            budgetId: true,
+            budget: {
+              select: {
+                label: true,
+              },
+            },
           },
         },
         conditions: {
@@ -74,6 +88,18 @@ export class ThirdPartyMatchingService {
       },
       orderBy: { createdAt: 'asc' },
     });
+  }
+
+  async matchCandidate(candidate: ThirdPartyMatchingCandidateDto): Promise<ThirdPartyMatchResult | null> {
+    const rules = await this.loadActiveRules();
+    return this.matchCandidateWithRules(candidate, rules);
+  }
+
+  matchCandidateWithRules(
+    candidate: ThirdPartyMatchingCandidateDto,
+    rules: LoadedRule[],
+  ): ThirdPartyMatchResult | null {
+    const normalizedCandidate = this.normalizeCandidate(candidate);
 
     let lastMatch: ThirdPartyMatchResult | null = null;
 
@@ -124,6 +150,9 @@ export class ThirdPartyMatchingService {
       thirdPartyId: rule.thirdParty.id,
       thirdPartyName: rule.thirdParty.name,
       ventilated: rule.thirdParty.ventilated,
+      categoryId: rule.thirdParty.categoryId,
+      budgetId: rule.thirdParty.budgetId,
+      budgetLabel: rule.thirdParty.budget?.label ?? null,
       matchedRuleId: rule.id,
       matchedRuleLabel: rule.label,
       matchedConditions,

@@ -2,14 +2,40 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OperationType } from '@moneyback/shared';
 import type {
+  AutoAssignOperationThirdPartiesDto,
   CreateOperationDto,
   OperationFiltersDto,
   UpdateOperationDto,
 } from '@moneyback/shared';
+import { ThirdPartyMatchingService } from '../third-parties/third-party-matching.service';
 
 @Injectable()
 export class OperationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private thirdPartyMatchingService: ThirdPartyMatchingService,
+  ) {}
+
+  async findUsedStatementRefs(accountId?: string) {
+    const rows = await this.prisma.operation.findMany({
+      where: {
+        ...(accountId ? { accountId } : {}),
+        statementRef: { not: null },
+      },
+      select: {
+        statementRef: true,
+      },
+      distinct: ['statementRef'],
+    });
+
+    return Array.from(
+      new Set(
+        rows
+          .map(row => row.statementRef?.trim() ?? '')
+          .filter((statementRef): statementRef is string => statementRef.length > 0),
+      ),
+    ).sort((left, right) => right.localeCompare(left, 'fr-FR', { numeric: true, sensitivity: 'base' }));
+  }
 
   private resolveValidationFields(operationValidated?: string | null) {
     return operationValidated === 'V'
@@ -54,6 +80,7 @@ export class OperationsService {
     comment: string | null;
     statementRef: string | null;
     operationType: string | null;
+    entryMode: string | null;
     operationValidated: string | null;
     locked: boolean;
     closed: boolean;
@@ -216,6 +243,128 @@ export class OperationsService {
     ]);
 
     return { items: items.map(item => this.presenter(item)), total, page, limit };
+  }
+
+  async autoAssignThirdParties(dto: AutoAssignOperationThirdPartiesDto) {
+    const rules = await this.thirdPartyMatchingService.loadActiveRules();
+    const operations = await this.prisma.operation.findMany({
+      where: {
+        deletedAt: null,
+        ...(dto.accountId ? { accountId: dto.accountId } : {}),
+        ...(dto.onlyWithoutBudget ? { budgetId: null } : {}),
+        ...((dto.operationDateFrom || dto.operationDateTo)
+          ? {
+              operationDate: {
+                ...(dto.operationDateFrom ? { gte: new Date(dto.operationDateFrom) } : {}),
+                ...(dto.operationDateTo ? { lte: new Date(dto.operationDateTo) } : {}),
+              },
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        label: true,
+        comment: true,
+        expense: true,
+        income: true,
+        operationDate: true,
+        accountId: true,
+        statementRef: true,
+        thirdPartyId: true,
+        categoryId: true,
+        budgetId: true,
+        budget: {
+          select: {
+            label: true,
+          },
+        },
+        thirdParty: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: { operationDate: 'desc' },
+    });
+
+    let matchedCount = 0;
+    let updatedCount = 0;
+    const details: Array<{
+      operationId: string;
+      operationDate: string;
+      label: string;
+      previousThirdPartyName: string | null;
+      previousBudgetLabel: string | null;
+      thirdPartyName: string;
+      nextBudgetLabel: string | null;
+      matchedRuleLabel: string;
+      updated: boolean;
+    }> = [];
+
+    for (const operation of operations) {
+      if (dto.onlyWithoutBudget && operation.budgetId) {
+        continue;
+      }
+
+      const amount = Number(operation.income) > 0 ? Number(operation.income) : Number(operation.expense);
+      const match = this.thirdPartyMatchingService.matchCandidateWithRules({
+        label: operation.label,
+        amount,
+        direction: Number(operation.income) > 0 ? 'income' : 'expense',
+        accountId: operation.accountId,
+        statementRef: operation.statementRef,
+        memo: operation.comment,
+        dayOfMonth: operation.operationDate.getUTCDate(),
+      }, rules);
+
+      if (!match) {
+        continue;
+      }
+
+      matchedCount += 1;
+
+      const nextCategoryId = match.categoryId;
+      const nextBudgetId = match.budgetId;
+      const needsUpdate =
+        operation.thirdPartyId !== match.thirdPartyId
+        || operation.categoryId !== nextCategoryId
+        || operation.budgetId !== nextBudgetId;
+
+      if (dto.applyChanges && needsUpdate) {
+        await this.prisma.operation.update({
+          where: { id: operation.id },
+          data: {
+            thirdPartyId: match.thirdPartyId,
+            categoryId: nextCategoryId,
+            budgetId: nextBudgetId,
+          },
+        });
+        updatedCount += 1;
+      }
+
+      if (needsUpdate) {
+        details.push({
+          operationId: operation.id,
+          operationDate: operation.operationDate.toISOString(),
+          label: operation.label,
+          previousThirdPartyName: operation.thirdParty?.name ?? null,
+          previousBudgetLabel: operation.budget?.label ?? null,
+          thirdPartyName: match.thirdPartyName,
+          nextBudgetLabel: match.budgetLabel,
+          matchedRuleLabel: match.matchedRuleLabel,
+          updated: needsUpdate,
+        });
+      }
+    }
+
+    return {
+      onlyWithoutBudget: dto.onlyWithoutBudget,
+      applyChanges: dto.applyChanges,
+      scannedCount: operations.length,
+      matchedCount,
+      updatedCount,
+      details: details.slice(0, 100),
+    };
   }
 
   async findOne(id: string) {

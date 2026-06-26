@@ -23,7 +23,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconCheck, IconGitBranch, IconDownload } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
-import { useDeleteOperation, useOperation, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
+import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
 import { OperationSplitModal } from './OperationSplitModal';
 import { OperationsInlineEditor } from './OperationsInlineEditor';
@@ -113,6 +113,7 @@ export function OperationsList() {
   const operationId = searchParams.get('operationId') ?? '';
   const search = searchParams.get('search') ?? '';
   const accountId = searchParams.get('accountId') ?? '';
+  const statementRef = searchParams.get('statementRef') ?? '';
   const hideLocked = searchParams.get('hideLocked') === 'true';
   const emptyEnvelopeOnly = searchParams.get('emptyEnvelopeOnly') === 'true';
   const unvalidatedOnly = searchParams.get('unvalidatedOnly') === 'true';
@@ -142,6 +143,7 @@ export function OperationsList() {
     operationId: string | null;
     search: string | null;
     accountId: string | null;
+    statementRef: string | null;
     hideLocked: string | null;
     emptyEnvelopeOnly: string | null;
     unvalidatedOnly: string | null;
@@ -226,6 +228,7 @@ export function OperationsList() {
     operationId: operationId || undefined,
     search,
     accountId: accountId || undefined,
+    statementRef: statementRef || undefined,
     hideLocked,
     emptyEnvelopeOnly,
     unvalidatedOnly,
@@ -234,6 +237,7 @@ export function OperationsList() {
   }, { enabled: !!accountId });
   const operationQuery = useOperation(operationId);
   const { data: accounts = [] } = useAccountsAll();
+  const { data: usedStatementRefs = [] } = useOperationStatementRefs(accountId || undefined);
   const selectedAccount = accounts.find(account => account.id === accountId) ?? null;
   const hasSelectedAccount = !!accountId;
   const effectiveItems = useMemo(() => (
@@ -317,6 +321,7 @@ export function OperationsList() {
       operationId: operationId || null,
       search: search || null,
       accountId: accountId || null,
+      statementRef: statementRef || null,
       hideLocked: hideLocked ? 'true' : null,
       emptyEnvelopeOnly: emptyEnvelopeOnly ? 'true' : null,
       unvalidatedOnly: unvalidatedOnly ? 'true' : null,
@@ -330,6 +335,7 @@ export function OperationsList() {
     limit,
     operationId,
     page,
+    statementRef,
     search,
     sortBy,
     sortOrder,
@@ -426,6 +432,7 @@ export function OperationsList() {
       operationId: null,
       search: null,
       accountId: null,
+      statementRef: null,
       hideLocked: null,
       emptyEnvelopeOnly: null,
       unvalidatedOnly: null,
@@ -446,6 +453,7 @@ export function OperationsList() {
           operationId: operationId || undefined,
           search,
           accountId,
+          statementRef: statementRef || undefined,
           hideLocked,
           emptyEnvelopeOnly,
           unvalidatedOnly,
@@ -602,6 +610,16 @@ export function OperationsList() {
   };
 
   const accountOptions = accounts.map(account => ({ value: account.id, label: account.name }));
+  const statementRefOptions = useMemo(() => {
+    if (!statementRef) {
+      return usedStatementRefs.map(value => ({ value, label: value }));
+    }
+
+    const options = usedStatementRefs.map(value => ({ value, label: value }));
+    return options.some(option => option.value === statementRef)
+      ? options
+      : [{ value: statementRef, label: statementRef }, ...options];
+  }, [statementRef, usedStatementRefs]);
   const cursorTargetId = getCursorTargetId(editId, recentId);
 
   const columns = useMemo<ColumnDef<Operation>[]>(
@@ -813,7 +831,7 @@ export function OperationsList() {
   );
 
   return (
-    <Box style={{ maxWidth: 'var(--crud-list-max-width)', margin: '0 auto' }}>
+    <Box style={{ maxWidth: 'calc(var(--crud-list-max-width) * 1.2)', margin: '0 auto' }}>
       <Stack gap={0}>
         <Box
           style={{
@@ -888,7 +906,7 @@ export function OperationsList() {
                     placeholder="Sélectionner un compte"
                     data={accountOptions}
                     value={accountId || null}
-                    onChange={val => pushParams({ accountId: val, page: '1' })}
+                    onChange={val => pushParams({ accountId: val, statementRef: null, page: '1' })}
                     clearable
                     radius="md"
                     w={280}
@@ -928,6 +946,22 @@ export function OperationsList() {
                 checked={unvalidatedOnly}
                 onChange={event => pushParams({ unvalidatedOnly: event.currentTarget.checked ? 'true' : null, page: '1' })}
               />
+              <Group gap={8} wrap="nowrap" align="center">
+                <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} c={TEXT_MUTED} tt="uppercase">
+                  LOT
+                </Text>
+                <Select
+                  placeholder={accountId ? 'Tous les lots' : 'Choisir un compte'}
+                  data={statementRefOptions}
+                  value={statementRef || null}
+                  onChange={value => pushParams({ statementRef: value, page: '1' })}
+                  clearable
+                  searchable
+                  disabled={!accountId}
+                  radius="md"
+                  w={220}
+                />
+              </Group>
             </Group>
           </Stack>
         </Box>
