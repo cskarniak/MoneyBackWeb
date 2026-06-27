@@ -126,6 +126,13 @@ export const AutoAssignOperationThirdPartiesSchema = z.object({
 
 export type AutoAssignOperationThirdPartiesDto = z.infer<typeof AutoAssignOperationThirdPartiesSchema>;
 
+export const DeleteStatementImportSchema = z.object({
+  accountId: z.string().uuid(),
+  statementRef: z.string().trim().min(1, 'La référence du relevé est obligatoire'),
+});
+
+export type DeleteStatementImportDto = z.infer<typeof DeleteStatementImportSchema>;
+
 export const DetailedStatisticsFiltersSchema = z.object({
   accountId: z.string().uuid().optional(),
   budgetId: z.string().uuid().optional(),
@@ -159,6 +166,13 @@ export const DetailedStatisticsFiltersSchema = z.object({
 });
 
 export type DetailedStatisticsFiltersDto = z.infer<typeof DetailedStatisticsFiltersSchema>;
+
+export const EnvelopeSummaryFiltersSchema = z.object({
+  accountId: z.string().uuid().optional(),
+  referenceDate: z.string().datetime().optional(),
+});
+
+export type EnvelopeSummaryFiltersDto = z.infer<typeof EnvelopeSummaryFiltersSchema>;
 
 // ─── Subscription ─────────────────────────────────────────────────────────────
 

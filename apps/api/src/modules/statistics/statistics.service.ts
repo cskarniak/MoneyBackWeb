@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { DetailedStatisticsFiltersDto } from '@moneyback/shared';
+import type { DetailedStatisticsFiltersDto, EnvelopeSummaryFiltersDto } from '@moneyback/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type DetailedStatisticsRow = {
@@ -47,9 +47,102 @@ type DetailedStatisticsSortKey =
   | 'budgetLabel'
   | 'categoryLabel';
 
+type EnvelopeSummaryRow = {
+  budgetId: string;
+  budgetLabel: string;
+  budgetActive: boolean;
+  budgetGroupingId: string | null;
+  budgetGroupingLabel: string | null;
+  totalExpense: Prisma.Decimal | null;
+  totalIncome: Prisma.Decimal | null;
+  totalBalance: Prisma.Decimal | null;
+  operationCount: bigint | number;
+  lastEffectiveDate: Date | null;
+};
+
 @Injectable()
 export class StatisticsService {
   constructor(private prisma: PrismaService) {}
+
+  async findEnvelopeSummary(filters: EnvelopeSummaryFiltersDto) {
+    const referenceDate = filters.referenceDate ? new Date(filters.referenceDate) : new Date();
+    const whereClauses: Prisma.Sql[] = [
+      Prisma.sql`o.date_suppression IS NULL`,
+      Prisma.sql`entry.budget_id IS NOT NULL`,
+      Prisma.sql`entry.effective_date <= ${referenceDate}`,
+    ];
+
+    if (filters.accountId) {
+      whereClauses.push(Prisma.sql`o.compte_id = ${filters.accountId}`);
+    }
+
+    const whereSql = Prisma.sql`WHERE ${Prisma.join(whereClauses, ' AND ')}`;
+
+    const rows = await this.prisma.$queryRaw<EnvelopeSummaryRow[]>(Prisma.sql`
+      WITH entry AS (
+        SELECT
+          o.id AS operation_id,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.budget_id
+            ELSE o.budget_id
+          END AS budget_id,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.depense
+            ELSE o.depense
+          END AS expense,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.recette
+            ELSE o.recette
+          END AS income,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN (s.recette - s.depense)
+            ELSE (o.recette - o.depense)
+          END AS balance,
+          COALESCE(s.date_periode, o.date_echeance, o.date_operation) AS effective_date
+        FROM operations o
+        LEFT JOIN operations_ventilees s ON s.operation_id = o.id
+        WHERE (
+          o.type_operation IS NULL
+          OR o.type_operation NOT IN ('V', 'P')
+          OR s.id IS NOT NULL
+        )
+      )
+      SELECT
+        b.id AS "budgetId",
+        b.libelle AS "budgetLabel",
+        b.actif AS "budgetActive",
+        g.id AS "budgetGroupingId",
+        g.libelle AS "budgetGroupingLabel",
+        SUM(entry.expense) AS "totalExpense",
+        SUM(entry.income) AS "totalIncome",
+        SUM(entry.balance) AS "totalBalance",
+        COUNT(*) AS "operationCount",
+        MAX(entry.effective_date) AS "lastEffectiveDate"
+      FROM entry
+      INNER JOIN operations o ON o.id = entry.operation_id
+      INNER JOIN budgets b ON b.id = entry.budget_id
+      LEFT JOIN regroupements g ON g.id = b.regroupement_id
+      ${whereSql}
+      GROUP BY b.id, b.libelle, b.actif, g.id, g.libelle
+      ORDER BY b.libelle ASC
+    `);
+
+    return {
+      referenceDate: referenceDate.toISOString(),
+      items: rows.map(row => ({
+        budgetId: row.budgetId,
+        budgetLabel: row.budgetLabel,
+        budgetActive: row.budgetActive,
+        budgetGroupingId: row.budgetGroupingId,
+        budgetGroupingLabel: row.budgetGroupingLabel,
+        totalExpense: String(row.totalExpense ?? 0),
+        totalIncome: String(row.totalIncome ?? 0),
+        totalBalance: String(row.totalBalance ?? 0),
+        operationCount: Number(row.operationCount ?? 0),
+        lastEffectiveDate: row.lastEffectiveDate?.toISOString() ?? null,
+      })),
+    };
+  }
 
   async findDetailed(filters: DetailedStatisticsFiltersDto) {
     const whereClauses: Prisma.Sql[] = [Prisma.sql`o.date_suppression IS NULL`];

@@ -266,6 +266,7 @@ export function OperationsFiche({ id }: Props) {
 
   const watchSplits = watch('splits');
   const selectedThirdPartyId = watch('thirdPartyId');
+  const currentLabel = watch('label');
   const hasSplitRows = watchSplits.length > 0;
   const expense = asNumber(watch('expense'));
   const income = asNumber(watch('income'));
@@ -285,6 +286,14 @@ export function OperationsFiche({ id }: Props) {
     watchSplits.length > 0 && (!amountsMatch(expense, splitExpense) || !amountsMatch(income, splitIncome))
       ? `La ventilation doit totaliser ${expense.toFixed(2)} en dépense et ${income.toFixed(2)} en recette. Actuel: ${splitExpense.toFixed(2)} / ${splitIncome.toFixed(2)}.`
       : null;
+  const originalLabel = operation?.label?.trim() ?? '';
+  const currentNormalizedLabel = currentLabel?.trim() ?? '';
+  const isElectronicImportedOperation = !isNew && operation?.entryMode === 'E';
+  const isImportedLabelModified =
+    isElectronicImportedOperation
+    && originalLabel.length > 0
+    && currentNormalizedLabel.length > 0
+    && currentNormalizedLabel !== originalLabel;
 
   const isLoading =
     (!isNew && loadingOperation)
@@ -369,7 +378,7 @@ export function OperationsFiche({ id }: Props) {
   };
 
   return (
-    <Box style={{ ...compactFormVars, maxWidth: 'var(--crud-list-max-width)', margin: '0 auto' }}>
+    <Box style={{ ...compactFormVars, maxWidth: 2534, margin: '0 auto' }}>
       <Box
         style={{
           background: PANEL_BG,
@@ -409,6 +418,15 @@ export function OperationsFiche({ id }: Props) {
                 <Text size="sm">{splitError}</Text>
               </Alert>
             )}
+            {isImportedLabelModified && (
+              <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
+                <Text size="sm">
+                  Cette écriture a été importée électroniquement (`mode de saisie = E`).
+                  Modifier son libellé peut empêcher la détection de doublon lors d&apos;un prochain import.
+                  Si tu as besoin d&apos;ajouter une précision, préfère le champ commentaire.
+                </Text>
+              </Alert>
+            )}
 
             {!isNew && (
               <Group gap={0} align="center">
@@ -433,7 +451,16 @@ export function OperationsFiche({ id }: Props) {
             )}
 
             <Group justify="space-between" align="center">
-              <Text fw={700} c={LABEL_COLOR}>
+              <Text
+                fw={700}
+                c={LABEL_COLOR}
+                style={{
+                  maxWidth: '60%',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
                 {isNew ? 'Nouvelle opération' : `Modification: ${operation?.label ?? ''}`}
               </Text>
               <Group gap={8}>
@@ -475,8 +502,8 @@ export function OperationsFiche({ id }: Props) {
                       <Table.Th>Tiers</Table.Th>
                       <Table.Th>Catégorie</Table.Th>
                       <Table.Th>Enveloppe</Table.Th>
-                      <Table.Th>Pièce</Table.Th>
-                      <Table.Th>Réf. relevé</Table.Th>
+                      <Table.Th style={{ width: 160 }}>Numéro de pièce</Table.Th>
+                      <Table.Th style={{ width: 140 }}>Réf. relevé</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>

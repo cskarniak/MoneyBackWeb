@@ -13,6 +13,7 @@ import { MovementTypesModule } from './modules/movement-types/movement-types.mod
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { DatabaseBackupsModule } from './modules/database-backups/database-backups.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
+import { ImportProfilesModule } from './modules/import-profiles/import-profiles.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
     SubscriptionsModule,
     DatabaseBackupsModule,
     StatisticsModule,
+    ImportProfilesModule,
   ],
   controllers: [AppController],
 })

@@ -1,9 +1,14 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AutoAssignOperationThirdPartiesSchema, OperationFiltersSchema } from '@moneyback/shared';
+import {
+  AutoAssignOperationThirdPartiesSchema,
+  DeleteStatementImportSchema,
+  OperationFiltersSchema,
+} from '@moneyback/shared';
 import type {
   AutoAssignOperationThirdPartiesDto,
   CreateOperationDto,
+  DeleteStatementImportDto,
   UpdateOperationDto,
 } from '@moneyback/shared';
 import { OperationsService } from './operations.service';
@@ -42,6 +47,13 @@ export class OperationsController {
   autoAssignThirdParties(@Body() body: AutoAssignOperationThirdPartiesDto) {
     const dto = AutoAssignOperationThirdPartiesSchema.parse(body);
     return this.service.autoAssignThirdParties(dto);
+  }
+
+  @Delete('statement-import')
+  @ApiOperation({ summary: "Supprime un relevé importé à partir de sa référence" })
+  removeStatementImport(@Body() body: DeleteStatementImportDto) {
+    const dto = DeleteStatementImportSchema.parse(body);
+    return this.service.removeStatementImport(dto);
   }
 
   @Patch(':id')

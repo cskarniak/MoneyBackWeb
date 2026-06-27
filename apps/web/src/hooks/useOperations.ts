@@ -108,6 +108,17 @@ export type OperationPayload = {
   splits?: OperationSplitPayload[];
 };
 
+export type DeleteStatementImportPayload = {
+  accountId: string;
+  statementRef: string;
+};
+
+export type DeleteStatementImportResult = {
+  accountId: string;
+  statementRef: string;
+  deletedCount: number;
+};
+
 const KEY = 'operations';
 
 function normalizeOperationSplit(split: Record<string, unknown>): OperationSplit {
@@ -214,6 +225,18 @@ export function useDeleteOperation() {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: id => api.delete(`/operations/${id}`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+    },
+  });
+}
+
+export function useDeleteStatementImport() {
+  const qc = useQueryClient();
+  return useMutation<DeleteStatementImportResult, Error, DeleteStatementImportPayload>({
+    mutationFn: payload =>
+      api.delete('/operations/statement-import', { data: payload }).then(r => r.data as DeleteStatementImportResult),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
       qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });

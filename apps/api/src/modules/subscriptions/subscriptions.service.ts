@@ -140,13 +140,13 @@ export class SubscriptionsService {
       return null;
     }
 
-    const operationAmount = income > 0 ? income : expense;
-    const splitAmount = splits.reduce(
-      (total, split) => total + (split.income > 0 ? split.income : split.expense),
+    const operationBalance = income - expense;
+    const splitBalance = splits.reduce(
+      (total, split) => total + (split.income - split.expense),
       0,
     );
 
-    return Math.abs(operationAmount - splitAmount) < 0.005
+    return Math.abs(operationBalance - splitBalance) < 0.005
       ? OperationType.SPLIT
       : OperationType.PARTIAL;
   }
@@ -404,8 +404,8 @@ export class SubscriptionsService {
             accountId: subscription.accountId,
             label:
               subscription.subscriptionType === 'simulation'
-                ? `[SIMULATION] ${subscription.entryLabel || subscription.label}`
-                : (subscription.entryLabel || subscription.label),
+                ? `[SIMULATION] ${subscription.label}`
+                : subscription.label,
             expense: subscription.expense,
             income: subscription.income,
             simulation: subscription.subscriptionType === 'simulation',
@@ -416,8 +416,8 @@ export class SubscriptionsService {
             thirdPartyId: subscription.thirdPartyId,
             movementTypeId: subscription.movementTypeId,
             subscriptionId: subscription.id,
-            operationValidated: 'V',
-            entryMode: 'E',
+            operationValidated: null,
+            entryMode: 'T',
             comment:
               subscription.subscriptionType === 'simulation'
                 ? 'Écriture générée en mode simulation.'

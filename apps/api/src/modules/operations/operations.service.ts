@@ -4,6 +4,7 @@ import { OperationType } from '@moneyback/shared';
 import type {
   AutoAssignOperationThirdPartiesDto,
   CreateOperationDto,
+  DeleteStatementImportDto,
   OperationFiltersDto,
   UpdateOperationDto,
 } from '@moneyback/shared';
@@ -51,15 +52,13 @@ export class OperationsService {
       return null;
     }
 
-    const operationAmount = Number(operation.income ?? 0) > 0
-      ? Number(operation.income ?? 0)
-      : Number(operation.expense ?? 0);
-    const splitAmount = splits.reduce(
-      (total, split) => total + (Number(split.income ?? 0) > 0 ? Number(split.income ?? 0) : Number(split.expense ?? 0)),
+    const operationBalance = Number(operation.income ?? 0) - Number(operation.expense ?? 0);
+    const splitBalance = splits.reduce(
+      (total, split) => total + (Number(split.income ?? 0) - Number(split.expense ?? 0)),
       0,
     );
 
-    return Math.abs(operationAmount - splitAmount) < 0.005
+    return Math.abs(operationBalance - splitBalance) < 0.005
       ? OperationType.SPLIT
       : OperationType.PARTIAL;
   }
@@ -515,6 +514,23 @@ export class OperationsService {
     });
 
     return this.presenter(operation);
+  }
+
+  async removeStatementImport(dto: DeleteStatementImportDto) {
+    const statementRef = dto.statementRef.trim();
+
+    const deleted = await this.prisma.operation.deleteMany({
+      where: {
+        accountId: dto.accountId,
+        statementRef,
+      },
+    });
+
+    return {
+      accountId: dto.accountId,
+      statementRef,
+      deletedCount: deleted.count,
+    };
   }
 
   async remove(id: string) {

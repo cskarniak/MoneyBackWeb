@@ -606,10 +606,17 @@ export function DetailedStatisticsWorkspace() {
                 {paginationControls}
               </Group>
 
-              <Group gap={8} wrap="nowrap" justify="flex-end">
-                <TextInput
-                  size="sm"
-                  value={draftFilters.search}
+            <Group gap={8} wrap="nowrap" justify="flex-end">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => router.push('/statistiques/synthese-enveloppes')}
+              >
+                Synthèse par enveloppe
+              </Button>
+              <TextInput
+                size="sm"
+                value={draftFilters.search}
                   onChange={event => {
                     const value = event.currentTarget.value;
                     setDraftFilters(current => ({ ...current, search: value }));

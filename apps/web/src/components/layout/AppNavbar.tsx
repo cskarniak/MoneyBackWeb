@@ -19,12 +19,18 @@ import {
   IconFileImport,
   IconSettings,
   IconUserCheck,
+  IconReceiptOff,
+  IconChartBar,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
   { label: 'Opérations', prefix: '/operations' },
-  { label: 'Statistiques', prefix: '/statistiques' },
   { label: 'Portefeuille', prefix: '/portefeuille' },
+];
+
+const STATISTICS_ITEMS = [
+  { label: 'Statistiques détaillées', href: '/statistiques', icon: IconChartBar },
+  { label: 'Synthèse par enveloppe', href: '/statistiques/synthese-enveloppes', icon: IconBriefcase },
 ];
 
 const IMPORT_ITEMS = [
@@ -36,6 +42,7 @@ const OUTILS_ITEMS = [
   { label: 'Environnement actif', href: '/outils/environnement', icon: IconSettings },
   { label: 'Affectation tiers', href: '/outils/affectation-tiers', icon: IconUserCheck },
   { label: 'Génération abonnements', href: '/outils/generation-abonnements', icon: IconCalendarRepeat },
+  { label: "Suppression relevé", href: '/outils/suppression-releve', icon: IconReceiptOff },
   { label: 'Sauvegarde base', href: '/outils/sauvegarde-base', icon: IconDatabaseExport },
 ];
 
@@ -74,6 +81,7 @@ export function AppNavbar() {
   const fichiersActive = FICHIERS_ITEMS.some(item => pathname.startsWith(item.href));
   const outilsActive = OUTILS_ITEMS.some(item => pathname.startsWith(item.href));
   const importsActive = IMPORT_ITEMS.some(item => isImportItemActive(pathname, item.href));
+  const statisticsActive = STATISTICS_ITEMS.some(item => pathname.startsWith(item.href));
 
   return (
     <Box
@@ -117,6 +125,48 @@ export function AppNavbar() {
               </Button>
             );
           })}
+
+          <Menu
+            position="bottom-start"
+            offset={4}
+            styles={{
+              dropdown: { background: '#25262b', border: '1px solid #373a40', padding: '4px 0' },
+              item: { color: '#c1c2c5', padding: '7px 14px', fontSize: 13 },
+            }}
+          >
+            <Menu.Target>
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={<IconChartBar size={12} />}
+                rightSection={<IconChevronDown size={11} />}
+                style={{
+                  color: statisticsActive ? ACTIVE_COLOR : '#adb5bd',
+                  fontWeight: statisticsActive ? 700 : 400,
+                  background: 'transparent',
+                  whiteSpace: 'nowrap',
+                  padding: '4px 10px',
+                }}
+              >
+                Statistiques
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {STATISTICS_ITEMS.map(item => {
+                const active = pathname.startsWith(item.href);
+                return (
+                  <Menu.Item
+                    key={item.href}
+                    leftSection={<item.icon size={14} />}
+                    onClick={() => router.push(item.href)}
+                    style={{ color: active ? ACTIVE_COLOR : '#c1c2c5', fontWeight: active ? 600 : 400 }}
+                  >
+                    {item.label}
+                  </Menu.Item>
+                );
+              })}
+            </Menu.Dropdown>
+          </Menu>
 
           <Menu
             position="bottom-start"
