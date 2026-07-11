@@ -29,6 +29,7 @@ export const CRUD = {
     fondLignePaire: '#edf3fb', // fond des lignes paires
     fondLigneSurvol: '#dce8f8', // fond au survol d'une ligne
     fondLigneActive: '#e5d0b6', // fond de mise en évidence d'un enregistrement
+    fondMiseEnEvidenceZoom: '#ffe066', // fond de mise en évidence de la ligne source lors d'un zoom
   },
   typographie: {
     tailleTexte: 14, // taille standard du texte CRUD

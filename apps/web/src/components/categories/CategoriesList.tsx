@@ -46,6 +46,10 @@ const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
 export function CategoriesList() {
   const router = useRouter();
+
+  const handleClose = () => {
+    router.push('/');
+  };
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -287,7 +291,12 @@ export function CategoriesList() {
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.14)',
           }}
         >
-          Liste des catégories
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Liste des catégories</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={handleClose}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         {/* Barre d'outils */}

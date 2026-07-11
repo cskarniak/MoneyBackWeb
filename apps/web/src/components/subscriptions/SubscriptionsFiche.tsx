@@ -332,7 +332,12 @@ export function SubscriptionsFiche({ id }: Props) {
             fontSize: 'var(--crud-header-font-size)',
           }}
         >
-          Fiche abonnement
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Fiche abonnement</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/abonnements')}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <form onSubmit={handleSubmit(onSubmit)}>

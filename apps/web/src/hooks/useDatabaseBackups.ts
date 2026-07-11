@@ -39,3 +39,19 @@ export function useCreateDatabaseBackup() {
     },
   });
 }
+
+export type RestoreDatabaseBackupResponse = {
+  filename: string;
+  message: string;
+};
+
+export function useRestoreDatabaseBackup() {
+  const qc = useQueryClient();
+  return useMutation<RestoreDatabaseBackupResponse, Error, string>({
+    mutationFn: (filename: string) =>
+      api.post(`/database-backups/${encodeURIComponent(filename)}/restore`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries();
+    },
+  });
+}

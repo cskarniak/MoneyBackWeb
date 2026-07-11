@@ -14,6 +14,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { DatabaseBackupsModule } from './modules/database-backups/database-backups.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
 import { ImportProfilesModule } from './modules/import-profiles/import-profiles.module';
+import { AnomaliesModule } from './modules/anomalies/anomalies.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ImportProfilesModule } from './modules/import-profiles/import-profiles.
     DatabaseBackupsModule,
     StatisticsModule,
     ImportProfilesModule,
+    AnomaliesModule,
   ],
   controllers: [AppController],
 })

@@ -791,7 +791,12 @@ export function ImportsFiche({ id }: Props) {
               Commence par lire le fichier, puis mappe chaque colonne avec un champ métier et un type de champ pour simuler le résultat.
             </Text>
           </Box>
-          <Badge variant="light" color="blue">Apprentissage colonne par colonne</Badge>
+          <Group gap="sm" align="center">
+            <Badge variant="light" color="blue">Apprentissage colonne par colonne</Badge>
+            <Button variant="default" size="xs" onClick={() => router.push('/imports')}>
+              Fermer
+            </Button>
+          </Group>
         </Group>
 
         <Alert color="orange" variant="light" icon={<IconAlertTriangle size={16} />}>

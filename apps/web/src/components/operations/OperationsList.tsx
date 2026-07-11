@@ -21,7 +21,7 @@ import {
   Stack,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconCheck, IconGitBranch, IconDownload } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
@@ -121,6 +121,8 @@ export function OperationsList() {
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'desc';
 
   const highlight = searchParams.get('highlight');
+  const returnTo = searchParams.get('returnTo');
+  const isZoomTarget = returnTo === 'detailed-statistics';
   const editParam = searchParams.get('edit');
   const modeParam = searchParams.get('mode');
   const [searchInput, setSearchInput] = useState(search);
@@ -178,6 +180,48 @@ export function OperationsList() {
 
   const isCreating = mode === 'new';
   const isEditing = !!editId;
+
+  const goBackToDetailedStatistics = () => {
+    const params = new URLSearchParams();
+    const mappings: Array<[string, string]> = [
+      ['returnAccountId', 'accountId'],
+      ['returnBudgetId', 'budgetId'],
+      ['returnCategoryId', 'categoryId'],
+      ['returnThirdPartyId', 'thirdPartyId'],
+      ['returnCategoryGroupingId', 'categoryGroupingId'],
+      ['returnBudgetGroupingId', 'budgetGroupingId'],
+      ['returnPieceNumber', 'pieceNumber'],
+      ['returnOperationDateFrom', 'operationDateFrom'],
+      ['returnOperationDateTo', 'operationDateTo'],
+      ['returnDueDateFrom', 'dueDateFrom'],
+      ['returnDueDateTo', 'dueDateTo'],
+      ['returnSortByDueDate', 'sortByDueDate'],
+      ['returnPage', 'page'],
+      ['returnLimit', 'limit'],
+      ['returnSortKey', 'sortKey'],
+      ['returnSortDirection', 'sortDirection'],
+      ['returnAutoRun', 'autoRun'],
+      ['returnHighlightOperationId', 'highlightOperationId'],
+    ];
+
+    mappings.forEach(([source, target]) => {
+      const value = searchParams.get(source);
+      if (value) {
+        params.set(target, value);
+      }
+    });
+
+    router.push(`/statistiques?${params.toString()}`);
+  };
+
+  const handleClose = () => {
+    if (returnTo === 'detailed-statistics') {
+      goBackToDetailedStatistics();
+      return;
+    }
+
+    router.push('/');
+  };
 
   useEffect(() => {
     if (highlight) {
@@ -509,9 +553,20 @@ export function OperationsList() {
     rememberViewportAnchor(operation.id);
     setContextMenu(null);
     setDeleteError(null);
-    if (!window.confirm(`Supprimer l'opération "${operation.label}" ?`)) return;
+    const hasSplits = isSplitOperation(operation);
+    const message = hasSplits
+      ? `Supprimer l'opération "${operation.label}" ?\n\nAttention : cette opération est ventilée, ses lignes de ventilation seront également supprimées.`
+      : `Supprimer l'opération "${operation.label}" ?`;
+    if (!window.confirm(message)) return;
     try {
       await deleteMutation.mutateAsync(operation.id);
+      if (operationId) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('operationId');
+        params.delete('highlight');
+        const qs = params.toString();
+        router.replace(`${pathname}${qs ? '?' + qs : ''}`, { scroll: false });
+      }
       notifications.show({ message: `"${operation.label}" supprimée`, color: 'red' });
     } catch {
       setDeleteError(`Impossible de supprimer "${operation.label}".`);
@@ -843,7 +898,20 @@ export function OperationsList() {
             borderRadius: 'var(--crud-list-title-radius-top) var(--crud-list-title-radius-top) 0 0',
           }}
         >
-          Liste des opérations
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Liste des opérations</Text>
+            <Button
+              variant="subtle"
+              size="xs"
+              color="rgba(255,255,255,0.92)"
+              onClick={handleClose}
+              disabled={isZoomTarget}
+              style={{ paddingInline: 8 }}
+              title={isZoomTarget ? "Ferme l'onglet ouvert par le zoom pour revenir à l'écran précédent." : undefined}
+            >
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <Box
@@ -859,9 +927,6 @@ export function OperationsList() {
           <Stack gap={12}>
             <Group justify="space-between" align="center" wrap="nowrap">
               <Group gap={8}>
-                <Button variant="default" leftSection={<IconMenu2 size={14} />} radius="md" style={toolbarButtonStyle}>
-                  Menu
-                </Button>
                 <Button
                   leftSection={<IconPlus size={14} />}
                   radius="md"
@@ -898,10 +963,10 @@ export function OperationsList() {
 
             <Group justify="flex-start" align="flex-end" wrap="nowrap">
               <Box style={{ minWidth: 320 }}>
-                <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} c={TEXT_MUTED} mb={4} tt="uppercase">
-                  Compte
-                </Text>
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" align="center">
+                  <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} c={TEXT_MUTED} tt="uppercase">
+                    Compte
+                  </Text>
                   <Select
                     placeholder="Sélectionner un compte"
                     data={accountOptions}

@@ -60,16 +60,28 @@ type EnvelopeSummaryRow = {
   lastEffectiveDate: Date | null;
 };
 
+function toLocalDateOnly(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 @Injectable()
 export class StatisticsService {
   constructor(private prisma: PrismaService) {}
 
   async findEnvelopeSummary(filters: EnvelopeSummaryFiltersDto) {
-    const referenceDate = filters.referenceDate ? new Date(filters.referenceDate) : new Date();
+    const referenceDateOnly = filters.referenceDate
+      ? filters.referenceDate.slice(0, 10)
+      : toLocalDateOnly(new Date());
+    const effectiveDateSql = filters.useDueDate
+      ? Prisma.sql`COALESCE(s.date_periode, o.date_echeance, o.date_operation)`
+      : Prisma.sql`o.date_operation`;
     const whereClauses: Prisma.Sql[] = [
       Prisma.sql`o.date_suppression IS NULL`,
       Prisma.sql`entry.budget_id IS NOT NULL`,
-      Prisma.sql`entry.effective_date <= ${referenceDate}`,
+      Prisma.sql`entry.effective_date::date <= ${referenceDateOnly}::date`,
     ];
 
     if (filters.accountId) {
@@ -98,7 +110,7 @@ export class StatisticsService {
             WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN (s.recette - s.depense)
             ELSE (o.recette - o.depense)
           END AS balance,
-          COALESCE(s.date_periode, o.date_echeance, o.date_operation) AS effective_date
+          ${effectiveDateSql} AS effective_date
         FROM operations o
         LEFT JOIN operations_ventilees s ON s.operation_id = o.id
         WHERE (
@@ -128,7 +140,7 @@ export class StatisticsService {
     `);
 
     return {
-      referenceDate: referenceDate.toISOString(),
+      referenceDate: referenceDateOnly,
       items: rows.map(row => ({
         budgetId: row.budgetId,
         budgetLabel: row.budgetLabel,

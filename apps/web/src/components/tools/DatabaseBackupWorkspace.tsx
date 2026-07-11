@@ -1,9 +1,10 @@
 'use client';
 
-import { Alert, Box, Button, Center, Group, Loader, Stack, Table, Text } from '@mantine/core';
-import { IconAlertCircle, IconDeviceFloppy, IconDownload } from '@tabler/icons-react';
+import { useState } from 'react';
+import { Alert, Box, Button, Center, Group, Loader, Modal, Stack, Table, Text } from '@mantine/core';
+import { IconAlertCircle, IconDeviceFloppy, IconDownload, IconDatabaseImport } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
-import { useCreateDatabaseBackup, useDatabaseBackups } from '@/hooks/useDatabaseBackups';
+import { useCreateDatabaseBackup, useDatabaseBackups, useRestoreDatabaseBackup } from '@/hooks/useDatabaseBackups';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -30,6 +31,8 @@ function getDownloadUrl(filename: string) {
 export function DatabaseBackupWorkspace() {
   const backupsQuery = useDatabaseBackups();
   const createMutation = useCreateDatabaseBackup();
+  const restoreMutation = useRestoreDatabaseBackup();
+  const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
 
   return (
     <Box style={{ padding: '20px 24px' }}>
@@ -146,7 +149,7 @@ export function DatabaseBackupWorkspace() {
                         <Table.Td>{formatDate(item.createdAt)}</Table.Td>
                         <Table.Td>{item.path}</Table.Td>
                         <Table.Td>
-                          <Group gap={0}>
+                          <Group gap={6}>
                             <Button
                               component="a"
                               href={getDownloadUrl(item.filename)}
@@ -155,6 +158,15 @@ export function DatabaseBackupWorkspace() {
                               leftSection={<IconDownload size={14} />}
                             >
                               Télécharger
+                            </Button>
+                            <Button
+                              size="xs"
+                              variant="light"
+                              color="orange"
+                              leftSection={<IconDatabaseImport size={14} />}
+                              onClick={() => setRestoreTarget(item.filename)}
+                            >
+                              Restaurer
                             </Button>
                           </Group>
                         </Table.Td>
@@ -166,7 +178,52 @@ export function DatabaseBackupWorkspace() {
             </Stack>
           )}
         </Box>
+        {restoreMutation.isSuccess ? (
+          <Alert color="green" icon={<IconDatabaseImport size={16} />}>
+            <Text size="sm">{restoreMutation.data.message}</Text>
+            <Text size="sm" c={TEXT_MUTED}>{restoreMutation.data.filename}</Text>
+          </Alert>
+        ) : null}
+
+        {restoreMutation.isError ? (
+          <Alert color="red" icon={<IconAlertCircle size={16} />}>
+            <Text size="sm">{restoreMutation.error.message}</Text>
+          </Alert>
+        ) : null}
       </Stack>
+
+      <Modal
+        opened={restoreTarget !== null}
+        onClose={() => setRestoreTarget(null)}
+        title="Confirmer la restauration"
+        centered
+      >
+        <Stack gap={16}>
+          <Text size="sm">
+            La base de données actuelle sera <strong>entièrement remplacée</strong> par le contenu de la sauvegarde :
+          </Text>
+          <Text size="sm" fw={600}>{restoreTarget}</Text>
+          <Text size="sm" c="red">Cette opération est irréversible. Pensez à créer une sauvegarde avant de continuer.</Text>
+          <Group justify="flex-end" gap={8}>
+            <Button variant="default" onClick={() => setRestoreTarget(null)}>
+              Annuler
+            </Button>
+            <Button
+              color="orange"
+              loading={restoreMutation.isPending}
+              onClick={() => {
+                if (restoreTarget) {
+                  restoreMutation.mutate(restoreTarget, {
+                    onSuccess: () => setRestoreTarget(null),
+                  });
+                }
+              }}
+            >
+              Restaurer
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

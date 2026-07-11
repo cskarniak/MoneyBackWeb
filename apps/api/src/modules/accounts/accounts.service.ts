@@ -110,6 +110,8 @@ export class AccountsService {
   }
 
   async create(dto: CreateAccountDto) {
+    const showOnHome = 'showOnHome' in dto ? dto.showOnHome : undefined;
+
     const account = await this.prisma.account.create({
       data: {
         name: dto.name,
@@ -121,6 +123,7 @@ export class AccountsService {
         comment: dto.comment ?? null,
         openingBalance: dto.openingBalance ?? null,
         managedForOther: dto.managedForOther ?? false,
+        showOnHome: showOnHome ?? false,
         closed: dto.closed ?? false,
       },
     });
@@ -130,6 +133,7 @@ export class AccountsService {
 
   async update(id: string, dto: UpdateAccountDto) {
     await this.findOne(id);
+    const showOnHome = 'showOnHome' in dto ? dto.showOnHome : undefined;
     const account = await this.prisma.account.update({
       where: { id },
       data: {
@@ -142,6 +146,7 @@ export class AccountsService {
         ...(dto.comment !== undefined && { comment: dto.comment ?? null }),
         ...(dto.openingBalance !== undefined && { openingBalance: dto.openingBalance ?? null }),
         ...(dto.managedForOther !== undefined && { managedForOther: dto.managedForOther }),
+        ...(showOnHome !== undefined && { showOnHome }),
         ...(dto.closed !== undefined && { closed: dto.closed }),
       },
     });

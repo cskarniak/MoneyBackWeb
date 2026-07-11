@@ -21,6 +21,7 @@ import {
   IconUserCheck,
   IconReceiptOff,
   IconChartBar,
+  IconBug,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
@@ -44,6 +45,7 @@ const OUTILS_ITEMS = [
   { label: 'Génération abonnements', href: '/outils/generation-abonnements', icon: IconCalendarRepeat },
   { label: "Suppression relevé", href: '/outils/suppression-releve', icon: IconReceiptOff },
   { label: 'Sauvegarde base', href: '/outils/sauvegarde-base', icon: IconDatabaseExport },
+  { label: 'Anomalies', href: '/outils/anomalies', icon: IconBug },
 ];
 
 const FICHIERS_ITEMS = [

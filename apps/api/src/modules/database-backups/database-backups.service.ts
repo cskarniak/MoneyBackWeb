@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, readdir, stat, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -227,5 +227,99 @@ export class DatabaseBackupsService {
       }
       throw new NotFoundException('Sauvegarde introuvable.');
     }
+  }
+
+  private async restoreWithLocalPsql(databaseUrl: string, filePath: string) {
+    await execFileAsync('psql', ['--dbname', databaseUrl, '--single-transaction', '--file', filePath], {
+      env: { ...process.env, ON_ERROR_STOP: '1' },
+    });
+  }
+
+  private async restoreWithDockerPsql(databaseUrl: string, filePath: string) {
+    const parsedUrl = new URL(databaseUrl);
+    const username = decodeURIComponent(parsedUrl.username);
+    const password = decodeURIComponent(parsedUrl.password);
+    const database = parsedUrl.pathname.replace(/^\//, '');
+
+    if (!username || !database) {
+      throw new Error('DATABASE_URL invalide pour le fallback Docker.');
+    }
+
+    await new Promise<void>((resolvePromise, rejectPromise) => {
+      const child = spawn(
+        'docker',
+        [
+          'exec',
+          '-i',
+          '-e',
+          `PGPASSWORD=${password}`,
+          this.postgresContainerName,
+          'psql',
+          '-U',
+          username,
+          '-d',
+          database,
+          '--single-transaction',
+        ],
+        { stdio: ['pipe', 'pipe', 'pipe'] },
+      );
+
+      let stderr = '';
+      child.stderr.on('data', chunk => {
+        stderr += chunk.toString();
+      });
+      child.on('error', rejectPromise);
+
+      const fileStream = createReadStream(filePath);
+      fileStream.pipe(child.stdin);
+      fileStream.on('error', rejectPromise);
+
+      child.on('close', code => {
+        if (code === 0) {
+          resolvePromise();
+          return;
+        }
+        rejectPromise(new Error(stderr.trim() || `psql exited with code ${code}`));
+      });
+    });
+  }
+
+  async restoreBackup(filename: string) {
+    const backup = await this.getBackupFile(filename);
+
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new InternalServerErrorException('DATABASE_URL manquante pour lancer la restauration.');
+    }
+
+    try {
+      await this.restoreWithLocalPsql(databaseUrl, backup.path);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      const shouldFallbackToDocker = message.includes('ENOENT') || message.includes('spawn psql');
+
+      if (shouldFallbackToDocker) {
+        try {
+          await this.restoreWithDockerPsql(databaseUrl, backup.path);
+        } catch (dockerError) {
+          throw new InternalServerErrorException(
+            dockerError instanceof Error
+              ? `Restauration impossible: ${dockerError.message}`
+              : 'Restauration impossible.',
+          );
+        }
+      } else {
+        throw new InternalServerErrorException(
+          error instanceof Error
+            ? `Restauration impossible: ${error.message}`
+            : 'Restauration impossible.',
+        );
+      }
+    }
+
+    return {
+      filename: backup.filename,
+      message: 'Base de données restaurée avec succès.',
+    };
   }
 }

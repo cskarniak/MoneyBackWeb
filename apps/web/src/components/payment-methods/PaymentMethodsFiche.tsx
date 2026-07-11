@@ -144,7 +144,12 @@ export function PaymentMethodsFiche({ id }: Props) {
             fontSize: 'var(--crud-header-font-size)',
           }}
         >
-          Fiche moyen de paiement
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Fiche moyen de paiement</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/referentiels/moyens-paiement')}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <form onSubmit={handleSubmit(onSubmit)}>

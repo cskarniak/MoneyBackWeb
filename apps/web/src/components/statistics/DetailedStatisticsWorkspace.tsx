@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ActionIcon, Alert, Box, Button, Center, Checkbox, Group, Loader, Select, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import { IconAlertCircle, IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp, IconDownload, IconPencil, IconPlayerPlay, IconSelector } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
@@ -200,7 +200,10 @@ function buildSubmittedFilters(filters: DraftFilters): DetailedStatisticsFilters
 
 export function DetailedStatisticsWorkspace() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isZoomTarget = searchParams.get('returnTo') === 'envelope-summary';
   const [isHydrated, setIsHydrated] = useState(false);
+  const [hasAppliedInitialParams, setHasAppliedInitialParams] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [draftFilters, setDraftFilters] = useState<DraftFilters>({
@@ -222,6 +225,7 @@ export function DetailedStatisticsWorkspace() {
   const [sortState, setSortState] = useState<SortState>(getBaseSortState(true));
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
   const { data: accounts = [] } = useAccountsAll();
   const { data: enveloppes = [] } = useEnveloppesAll();
@@ -244,6 +248,103 @@ export function DetailedStatisticsWorkspace() {
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (hasAppliedInitialParams) {
+      return;
+    }
+
+    const budgetId = searchParams.get('budgetId');
+    const accountId = searchParams.get('accountId');
+    const operationDateFrom = searchParams.get('operationDateFrom') ?? '';
+    const operationDateTo = searchParams.get('operationDateTo') ?? '';
+    const dueDateFrom = searchParams.get('dueDateFrom') ?? '';
+    const dueDateTo = searchParams.get('dueDateTo') ?? '';
+    const sortByDueDate = searchParams.get('sortByDueDate');
+    const autoRun = searchParams.get('autoRun') === 'true';
+    const pageParam = searchParams.get('page');
+    const limitParam = searchParams.get('limit');
+    const sortKeyParam = searchParams.get('sortKey');
+    const sortDirectionParam = searchParams.get('sortDirection');
+    const highlightOperationIdParam = searchParams.get('highlightOperationId');
+
+    if (
+      !budgetId
+      && !accountId
+      && !operationDateFrom
+      && !operationDateTo
+      && !dueDateFrom
+      && !dueDateTo
+      && sortByDueDate === null
+      && !pageParam
+      && !limitParam
+      && !sortKeyParam
+      && !sortDirectionParam
+      && !highlightOperationIdParam
+    ) {
+      setHasAppliedInitialParams(true);
+      return;
+    }
+
+    const nextFilters: DraftFilters = {
+      accountId,
+      budgetId,
+      categoryId: null,
+      thirdPartyId: null,
+      categoryGroupingId: null,
+      budgetGroupingId: null,
+      search: '',
+      pieceNumber: '',
+      operationDateFrom,
+      operationDateTo,
+      dueDateFrom,
+      dueDateTo,
+      sortByDueDate: sortByDueDate === null ? true : sortByDueDate === 'true',
+    };
+
+    setDraftFilters(nextFilters);
+    const baseSortState = getBaseSortState(nextFilters.sortByDueDate);
+    setSortState({
+      key:
+        sortKeyParam === 'accountName'
+        || sortKeyParam === 'operationDate'
+        || sortKeyParam === 'effectiveDueDate'
+        || sortKeyParam === 'pieceNumber'
+        || sortKeyParam === 'label'
+        || sortKeyParam === 'balance'
+        || sortKeyParam === 'thirdPartyName'
+        || sortKeyParam === 'budgetLabel'
+        || sortKeyParam === 'categoryLabel'
+          ? sortKeyParam
+          : baseSortState.key,
+      direction:
+        sortDirectionParam === 'asc' || sortDirectionParam === 'desc'
+          ? sortDirectionParam
+          : baseSortState.direction,
+    });
+    setPage(pageParam ? Number(pageParam) || 1 : 1);
+    setLimit(limitParam ? Number(limitParam) || 20 : 20);
+    setHighlightedRowId(highlightOperationIdParam);
+
+    if (autoRun) {
+      setSubmittedFilters(buildSubmittedFilters(nextFilters));
+    }
+
+    setHasAppliedInitialParams(true);
+  }, [hasAppliedInitialParams, searchParams]);
+
+  useEffect(() => {
+    const highlightOperationIdParam = searchParams.get('highlightOperationId');
+    if (!highlightOperationIdParam) {
+      return;
+    }
+
+    setHighlightedRowId(highlightOperationIdParam);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('highlightOperationId');
+    const qs = params.toString();
+    router.replace(`/statistiques${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (submittedFilters === null) {
@@ -325,12 +426,32 @@ export function DetailedStatisticsWorkspace() {
     setSubmittedFilters(buildSubmittedFilters(draftFilters));
   };
 
-  const openOperationEditor = (operationId: string, accountId: string) => {
+  const openOperationEditor = (operationId: string, accountId: string, rowId: string) => {
+    setHighlightedRowId(rowId);
     const params = new URLSearchParams();
     params.set('accountId', accountId);
     params.set('operationId', operationId);
     params.set('highlight', operationId);
-    router.push(`/operations?${params.toString()}`);
+    params.set('returnTo', 'detailed-statistics');
+    params.set('returnAccountId', draftFilters.accountId ?? '');
+    params.set('returnBudgetId', draftFilters.budgetId ?? '');
+    params.set('returnCategoryId', draftFilters.categoryId ?? '');
+    params.set('returnThirdPartyId', draftFilters.thirdPartyId ?? '');
+    params.set('returnCategoryGroupingId', draftFilters.categoryGroupingId ?? '');
+    params.set('returnBudgetGroupingId', draftFilters.budgetGroupingId ?? '');
+    params.set('returnPieceNumber', draftFilters.pieceNumber);
+    params.set('returnOperationDateFrom', draftFilters.operationDateFrom);
+    params.set('returnOperationDateTo', draftFilters.operationDateTo);
+    params.set('returnDueDateFrom', draftFilters.dueDateFrom);
+    params.set('returnDueDateTo', draftFilters.dueDateTo);
+    params.set('returnSortByDueDate', draftFilters.sortByDueDate ? 'true' : 'false');
+    params.set('returnPage', String(page));
+    params.set('returnLimit', String(limit));
+    params.set('returnSortKey', sortState.key);
+    params.set('returnSortDirection', sortState.direction);
+    params.set('returnAutoRun', submittedFilters !== null ? 'true' : 'false');
+    params.set('returnHighlightOperationId', rowId);
+    window.open(`/operations?${params.toString()}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleExport = async () => {
@@ -535,6 +656,48 @@ export function DetailedStatisticsWorkspace() {
     </Group>
   );
 
+  const goBackToEnvelopeSummary = () => {
+    const params = new URLSearchParams();
+    const returnAccountId = searchParams.get('returnAccountId');
+    const returnDateMode = searchParams.get('returnDateMode');
+    const returnReferenceDate = searchParams.get('returnReferenceDate');
+    const returnUseDueDate = searchParams.get('returnUseDueDate');
+    const returnShowOnlyNonZeroDifferences = searchParams.get('returnShowOnlyNonZeroDifferences');
+    const returnHideZeroCurrentBalances = searchParams.get('returnHideZeroCurrentBalances');
+    const returnGroupByGrouping = searchParams.get('returnGroupByGrouping');
+    const returnSortKey = searchParams.get('returnSortKey');
+    const returnSortDirection = searchParams.get('returnSortDirection');
+    const returnAutoRun = searchParams.get('returnAutoRun');
+
+    if (returnAccountId) params.set('accountId', returnAccountId);
+    if (returnDateMode === 'today' || returnDateMode === 'date') params.set('dateMode', returnDateMode);
+    if (returnReferenceDate) params.set('referenceDate', returnReferenceDate);
+    if (returnUseDueDate === 'true' || returnUseDueDate === 'false') params.set('useDueDate', returnUseDueDate);
+    if (returnShowOnlyNonZeroDifferences === 'true' || returnShowOnlyNonZeroDifferences === 'false') {
+      params.set('showOnlyNonZeroDifferences', returnShowOnlyNonZeroDifferences);
+    }
+    if (returnHideZeroCurrentBalances === 'true' || returnHideZeroCurrentBalances === 'false') {
+      params.set('hideZeroCurrentBalances', returnHideZeroCurrentBalances);
+    }
+    if (returnGroupByGrouping === 'true' || returnGroupByGrouping === 'false') {
+      params.set('groupByGrouping', returnGroupByGrouping);
+    }
+    if (returnSortKey) params.set('sortKey', returnSortKey);
+    if (returnSortDirection === 'asc' || returnSortDirection === 'desc') params.set('sortDirection', returnSortDirection);
+    if (returnAutoRun === 'true') params.set('autoRun', 'true');
+
+    router.push(`/statistiques/synthese-enveloppes${params.size > 0 ? `?${params.toString()}` : ''}`);
+  };
+
+  const handleClose = () => {
+    if (searchParams.get('returnTo') === 'envelope-summary') {
+      goBackToEnvelopeSummary();
+      return;
+    }
+
+    router.push('/');
+  };
+
   const paginationControls = isHydrated ? (
     <Group gap={6} wrap="nowrap">
       <Button
@@ -579,7 +742,20 @@ export function DetailedStatisticsWorkspace() {
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.14)',
           }}
         >
-          Statistiques détaillées
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Statistiques détaillées</Text>
+            <Button
+              variant="subtle"
+              size="xs"
+              color="rgba(255,255,255,0.92)"
+              onClick={handleClose}
+              disabled={isZoomTarget}
+              style={{ paddingInline: 8 }}
+              title={isZoomTarget ? "Ferme l'onglet ouvert par le zoom pour revenir à l'écran précédent." : undefined}
+            >
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <Box
@@ -607,13 +783,6 @@ export function DetailedStatisticsWorkspace() {
               </Group>
 
             <Group gap={8} wrap="nowrap" justify="flex-end">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => router.push('/statistiques/synthese-enveloppes')}
-              >
-                Synthèse par enveloppe
-              </Button>
               <TextInput
                 size="sm"
                 value={draftFilters.search}
@@ -662,7 +831,7 @@ export function DetailedStatisticsWorkspace() {
                   leftSection={<IconDownload size={14} />}
                   onClick={handleExport}
                   loading={isExporting}
-                  disabled={submittedFilters === null}
+                  disabled={isHydrated ? submittedFilters === null : undefined}
                   style={toolbarButtonStyle}
                 >
                   Excel
@@ -784,7 +953,10 @@ export function DetailedStatisticsWorkspace() {
                 label="Date opération du"
                 type="date"
                 value={draftFilters.operationDateFrom}
-                onChange={event => setDraftFilters(current => ({ ...current, operationDateFrom: event.currentTarget.value }))}
+                onChange={event => {
+                  const value = event.currentTarget.value;
+                  setDraftFilters(current => ({ ...current, operationDateFrom: value }));
+                }}
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
               />
               <TextInput
@@ -792,7 +964,10 @@ export function DetailedStatisticsWorkspace() {
                 label="au"
                 type="date"
                 value={draftFilters.operationDateTo}
-                onChange={event => setDraftFilters(current => ({ ...current, operationDateTo: event.currentTarget.value }))}
+                onChange={event => {
+                  const value = event.currentTarget.value;
+                  setDraftFilters(current => ({ ...current, operationDateTo: value }));
+                }}
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
               />
               <TextInput
@@ -800,7 +975,10 @@ export function DetailedStatisticsWorkspace() {
                 label="Date échéance du"
                 type="date"
                 value={draftFilters.dueDateFrom}
-                onChange={event => setDraftFilters(current => ({ ...current, dueDateFrom: event.currentTarget.value }))}
+                onChange={event => {
+                  const value = event.currentTarget.value;
+                  setDraftFilters(current => ({ ...current, dueDateFrom: value }));
+                }}
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
               />
               <TextInput
@@ -808,7 +986,10 @@ export function DetailedStatisticsWorkspace() {
                 label="au"
                 type="date"
                 value={draftFilters.dueDateTo}
-                onChange={event => setDraftFilters(current => ({ ...current, dueDateTo: event.currentTarget.value }))}
+                onChange={event => {
+                  const value = event.currentTarget.value;
+                  setDraftFilters(current => ({ ...current, dueDateTo: value }));
+                }}
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
               />
             </Group>
@@ -886,19 +1067,24 @@ export function DetailedStatisticsWorkspace() {
                         </Table.Td>
                       </Table.Tr>
                     ) : (
-                      currentRows.map((item, index) => (
+                      currentRows.map((item, index) => {
+                        const rowId = item.splitId ?? item.operationId;
+
+                        return (
                         <Table.Tr
-                          key={item.splitId ?? item.operationId}
+                          key={rowId}
                           style={{
                             background:
-                              highlightedRowKeys.has(item.splitId ?? item.operationId)
+                              highlightedRowId === rowId
+                                ? CRUD.couleurs.fondMiseEnEvidenceZoom
+                                : highlightedRowKeys.has(rowId)
                                 ? '#fff3bf'
                                 : index % 2 === 1
                                   ? CRUD.couleurs.fondLignePaire
                                   : CRUD.couleurs.fondLigneImpaire,
                             cursor: 'pointer',
                           }}
-                          onDoubleClick={() => openOperationEditor(item.operationId, item.accountId)}
+                          onDoubleClick={() => openOperationEditor(item.operationId, item.accountId, rowId)}
                         >
                           <Table.Td
                             style={{ ...tdStyle, maxWidth: 170, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -938,7 +1124,7 @@ export function DetailedStatisticsWorkspace() {
                                 size="sm"
                                 onClick={event => {
                                   event.stopPropagation();
-                                  openOperationEditor(item.operationId, item.accountId);
+                                  openOperationEditor(item.operationId, item.accountId, rowId);
                                 }}
                               >
                                 <IconPencil size={14} />
@@ -946,7 +1132,8 @@ export function DetailedStatisticsWorkspace() {
                             </Tooltip>
                           </Table.Td>
                         </Table.Tr>
-                      ))
+                      );
+                      })
                     )}
                   </Table.Tbody>
                 </Table>

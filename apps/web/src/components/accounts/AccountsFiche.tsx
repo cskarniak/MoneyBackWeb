@@ -37,6 +37,7 @@ const schema = z.object({
   comment: z.string().optional(),
   openingBalance: z.string().optional(),
   managedForOther: z.boolean(),
+  showOnHome: z.boolean(),
   closed: z.boolean(),
 });
 
@@ -53,6 +54,7 @@ function toPayload(values: FormValues): AccountPayload {
     comment: values.comment || null,
     openingBalance: values.openingBalance ? Number(values.openingBalance) : null,
     managedForOther: values.managedForOther,
+    showOnHome: values.showOnHome,
     closed: values.closed,
   };
 }
@@ -87,6 +89,7 @@ export function AccountsFiche({ id }: Props) {
       comment: '',
       openingBalance: '',
       managedForOther: false,
+      showOnHome: false,
       closed: false,
     },
   });
@@ -103,6 +106,7 @@ export function AccountsFiche({ id }: Props) {
         comment: account.comment ?? '',
         openingBalance: account.openingBalance ?? '',
         managedForOther: account.managedForOther,
+        showOnHome: account.showOnHome,
         closed: account.closed,
       });
     }
@@ -174,7 +178,12 @@ export function AccountsFiche({ id }: Props) {
             fontSize: 'var(--crud-header-font-size)',
           }}
         >
-          Fiche compte bancaire
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Fiche compte bancaire</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/comptes')}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -252,6 +261,11 @@ export function AccountsFiche({ id }: Props) {
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Géré pour autrui</Text>
               <Checkbox size="md" checked={watch('managedForOther')} onChange={e => setValue('managedForOther', e.currentTarget.checked)} />
+            </Group>
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Afficher à l'accueil</Text>
+              <Checkbox size="md" checked={watch('showOnHome')} onChange={e => setValue('showOnHome', e.currentTarget.checked)} />
             </Group>
 
             <Group gap={0} align="center">

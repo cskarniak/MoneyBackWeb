@@ -20,6 +20,7 @@ export const CreateAccountSchema = z.object({
   comment: z.string().optional().nullable(),
   openingBalance: z.number().optional().nullable(),
   managedForOther: z.boolean().default(false),
+  showOnHome: z.boolean().default(false),
   closed: z.boolean().default(false),
 });
 
@@ -170,6 +171,10 @@ export type DetailedStatisticsFiltersDto = z.infer<typeof DetailedStatisticsFilt
 export const EnvelopeSummaryFiltersSchema = z.object({
   accountId: z.string().uuid().optional(),
   referenceDate: z.string().datetime().optional(),
+  useDueDate: z.preprocess(
+    value => (value === undefined ? true : value === 'true' || value === true),
+    z.boolean(),
+  ).default(true),
 });
 
 export type EnvelopeSummaryFiltersDto = z.infer<typeof EnvelopeSummaryFiltersSchema>;

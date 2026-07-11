@@ -169,7 +169,12 @@ export function EnveloppesFiche({ id }: Props) {
             fontSize: 'var(--crud-header-font-size)',
           }}
         >
-          Fiche enveloppe
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Fiche enveloppe</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/referentiels/enveloppes')}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <form onSubmit={handleSubmit(onSubmit)}>

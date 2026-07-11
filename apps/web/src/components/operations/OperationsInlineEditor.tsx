@@ -8,6 +8,7 @@ import {
   ActionIcon,
   Alert,
   Box,
+  Button,
   Checkbox,
   Group,
   Loader,
@@ -19,7 +20,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { IconAlertCircle, IconCheck, IconGitBranch, IconMinus, IconPlus, IconX } from '@tabler/icons-react';
+import { IconAlertCircle, IconCheck, IconGitBranch, IconMinus, IconPlus } from '@tabler/icons-react';
 import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useCreateOperation, useOperation, useUpdateOperation, type Operation, type OperationPayload } from '@/hooks/useOperations';
@@ -606,9 +607,9 @@ export function OperationsInlineEditor({
             >
               <IconCheck size={14} />
             </ActionIcon>
-            <ActionIcon size="md" radius="md" color="gray" variant="light" onClick={onCancel} title="Annuler">
-              <IconX size={14} />
-            </ActionIcon>
+            <Button size="sm" radius="md" variant="default" onClick={onCancel}>
+              Fermer
+            </Button>
           </Group>
         </Table.Td>
       </Table.Tr>

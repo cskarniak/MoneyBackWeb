@@ -397,7 +397,12 @@ export function OperationsFiche({ id }: Props) {
             fontSize: 'var(--crud-header-font-size)',
           }}
         >
-          Saisie opération
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Saisie opération</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/operations')}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <form onSubmit={handleSubmit(onSubmit)}>

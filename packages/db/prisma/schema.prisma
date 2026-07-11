@@ -266,6 +266,7 @@ model Account {
   syncDate         DateTime? @map("date_synchro")
   lastStatementRef String?   @map("reference_dernier_releve")
   openingBalance   Decimal?  @map("solde_depart") @db.Decimal(15, 2)
+  showOnHome       Boolean   @default(false) @map("afficher_accueil")
   createdAt        DateTime  @default(now()) @map("date_creation")
   updatedAt        DateTime  @updatedAt @map("date_modification")
 

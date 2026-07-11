@@ -14,6 +14,7 @@ export type Account = {
   openingBalance: string | null;
   currentBalance: string;
   managedForOther: boolean;
+  showOnHome: boolean;
   closed: boolean;
   createdAt: string;
   updatedAt: string;
@@ -45,6 +46,7 @@ export type AccountPayload = {
   comment?: string | null;
   openingBalance?: number | null;
   managedForOther: boolean;
+  showOnHome: boolean;
   closed: boolean;
 };
 

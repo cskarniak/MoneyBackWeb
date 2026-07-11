@@ -4,6 +4,7 @@ import api from '@/lib/api';
 export type EnvelopeSummaryFilters = {
   accountId?: string;
   referenceDate?: string;
+  useDueDate?: boolean;
 };
 
 export type EnvelopeSummaryItem = {

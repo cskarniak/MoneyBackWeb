@@ -38,6 +38,10 @@ const TEXT_MUTED = '#667085';
 
 export function ImportsList() {
   const router = useRouter();
+
+  const handleClose = () => {
+    router.push('/');
+  };
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -287,7 +291,12 @@ export function ImportsList() {
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.14)',
           }}
         >
-          Liste des masques d&apos;import
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Liste des masques d&apos;import</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={handleClose}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <Box

@@ -342,9 +342,10 @@ export function OperationSplitModal({
               <Group gap={20}>
                 <Text size="sm">Dépense: <strong>{splitExpense.toFixed(2)}</strong></Text>
                 <Text size="sm">Recette: <strong>{splitIncome.toFixed(2)}</strong></Text>
-                {remainingBalance !== null && remainingBalance !== undefined && (
-                  <Text size="sm" c={Math.abs(remainingBalance) < 0.005 ? 'teal' : 'orange'}>
-                    Solde: <strong>{remainingBalance.toFixed(2)}</strong>
+                <Text size="sm">Solde: <strong>{(splitIncome - splitExpense).toFixed(2)}</strong></Text>
+                {remainingBalance !== null && remainingBalance !== undefined && Math.abs(remainingBalance) >= 0.005 && (
+                  <Text size="sm" c="orange">
+                    Reste à ventiler: <strong>{remainingBalance.toFixed(2)}</strong>
                   </Text>
                 )}
               </Group>

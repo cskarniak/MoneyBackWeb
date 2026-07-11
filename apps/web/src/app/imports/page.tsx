@@ -1,4 +1,5 @@
-import { Box, Title } from '@mantine/core';
+import { Suspense } from 'react';
+import { Box, Center, Loader, Title } from '@mantine/core';
 import { ImportsList } from '@/components/imports/ImportsList';
 
 export default function ImportsPage() {
@@ -7,7 +8,9 @@ export default function ImportsPage() {
       <Title order={2} mb="md" style={{ fontSize: 22, fontWeight: 700 }}>
         Imports
       </Title>
-      <ImportsList />
+      <Suspense fallback={<Center style={{ minHeight: 200 }}><Loader size="sm" /></Center>}>
+        <ImportsList />
+      </Suspense>
     </Box>
   );
 }

@@ -291,6 +291,14 @@ Pattern actuel de navigation/etat :
 - `highlight` sert a mettre en evidence l'enregistrement venant d'etre cree ou modifie ;
 - `router.replace(...)` nettoie `highlight` apres usage.
 
+Regle de mise en evidence :
+- la mise en evidence d'un enregistrement cree ou modifie reste celle deja en place dans les listes CRUD ;
+- elle conserve son comportement historique : curseur en premiere colonne, ligne en gras, et fond `CRUD.couleurs.fondLigneActive` ;
+- la mise en evidence d'un zoom de navigation est un cas distinct ;
+- elle doit utiliser `CRUD.couleurs.fondMiseEnEvidenceZoom` ;
+- elle ne doit pas remplacer ni redefinir la convention visuelle d'un enregistrement mis a jour ;
+- sur une vue de statistiques detaillees ou ventilees, elle doit viser la ligne source exacte du zoom, pas toutes les lignes partageant le meme enregistrement.
+
 Pattern UI :
 - `useReactTable(...)` pour les listes secondaires ;
 - boutons et icones Mantine ;
@@ -301,6 +309,8 @@ Elements visuels a reutiliser :
 - `CRUD.couleurs.fondBandeau`
 - `CRUD.couleurs.fondEnteteTableau`
 - `CRUD.couleurs.grilleTableau`
+- `CRUD.couleurs.fondLigneActive`
+- `CRUD.couleurs.fondMiseEnEvidenceZoom`
 - `CRUD.typographie.tailleTexte`
 - `CRUD.liste.*`
 

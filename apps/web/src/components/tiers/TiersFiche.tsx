@@ -514,7 +514,12 @@ export function TiersFiche({ id }: Props) {
             fontSize: 'var(--crud-header-font-size)',
           }}
         >
-          Fiche tiers
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Fiche tiers</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/referentiels/tiers')}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <form onSubmit={handleSubmit(onSubmit)}>

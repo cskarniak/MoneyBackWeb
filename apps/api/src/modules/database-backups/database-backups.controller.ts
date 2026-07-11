@@ -30,4 +30,10 @@ export class DatabaseBackupsController {
     response.setHeader('Content-Length', String(backup.sizeBytes));
     return new StreamableFile(createReadStream(backup.path));
   }
+
+  @Post(':filename/restore')
+  @ApiOperation({ summary: 'Restaure la base PostgreSQL à partir d\'une sauvegarde' })
+  restore(@Param('filename') filename: string) {
+    return this.service.restoreBackup(filename);
+  }
 }

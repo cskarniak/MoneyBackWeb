@@ -38,6 +38,10 @@ const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
 export function EnveloppesList() {
   const router = useRouter();
+
+  const handleClose = () => {
+    router.push('/');
+  };
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -297,7 +301,12 @@ export function EnveloppesList() {
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.14)',
           }}
         >
-          Liste des enveloppes
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text inherit fw={700}>Liste des enveloppes</Text>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={handleClose}>
+              Fermer
+            </Button>
+          </Group>
         </Box>
 
         <Box
