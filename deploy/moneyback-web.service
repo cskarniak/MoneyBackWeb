@@ -1,0 +1,14 @@
+[Unit]
+Description=MoneyBack Web (Next.js)
+After=network.target moneyback-api.service
+
+[Service]
+Type=simple
+User=christian
+WorkingDirectory=/home/christian/moneyback/apps/web
+ExecStart=/home/christian/moneyback/apps/web/node_modules/.bin/next start -p 4002
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

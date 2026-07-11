@@ -1,0 +1,1 @@
+christian ALL=(root) NOPASSWD: /usr/bin/systemctl restart moneyback-api, /usr/bin/systemctl restart moneyback-web, /usr/bin/systemctl restart moneyback-api moneyback-web, /usr/bin/systemctl status moneyback-api, /usr/bin/systemctl status moneyback-web
