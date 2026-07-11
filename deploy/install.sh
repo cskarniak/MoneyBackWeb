@@ -46,7 +46,7 @@ DATABASE_URL="postgresql://moneyback:${DB_PASSWORD}@localhost:5432/moneyback"
 REDIS_URL="redis://localhost:6379/1"
 API_PORT=${API_PORT}
 API_URL="http://${LAN_IP}:${API_PORT}"
-NEXT_PUBLIC_API_URL="http://${LAN_IP}:${API_PORT}"
+NEXT_PUBLIC_API_URL="http://${LAN_IP}:${API_PORT}/api"
 CORS_ORIGIN="http://${LAN_IP}:${WEB_PORT}"
 AUTH_SECRET="${AUTH_SECRET}"
 DATABASE_BACKUPS_DIR="${BACKUPS_DIR}"
@@ -58,7 +58,7 @@ ln -sf ../../.env packages/db/.env
 pnpm db:generate
 pnpm db:deploy
 pnpm build:packages
-NEXT_PUBLIC_API_URL="http://${LAN_IP}:${API_PORT}" pnpm build
+NEXT_PUBLIC_API_URL="http://${LAN_IP}:${API_PORT}/api" pnpm build
 
 echo "5. Services systemd..."
 sudo cp deploy/moneyback-api.service deploy/moneyback-web.service /etc/systemd/system/
