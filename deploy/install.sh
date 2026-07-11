@@ -57,6 +57,7 @@ ln -sf ../../.env packages/db/.env
 
 pnpm db:generate
 pnpm db:deploy
+pnpm build:packages
 NEXT_PUBLIC_API_URL="http://${LAN_IP}:${API_PORT}" pnpm build
 
 echo "5. Services systemd..."

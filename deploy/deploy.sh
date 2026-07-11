@@ -17,6 +17,7 @@ pnpm db:generate
 pnpm db:deploy
 
 echo "4. Build..."
+pnpm build:packages
 NEXT_PUBLIC_API_URL="$(grep NEXT_PUBLIC_API_URL .env | cut -d= -f2- | tr -d '"')" pnpm build
 
 echo "5. Redémarrage des services..."
