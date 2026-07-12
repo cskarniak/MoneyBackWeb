@@ -24,5 +24,5 @@ echo "5. Redémarrage des services..."
 sudo systemctl restart moneyback-api moneyback-web
 
 echo "=== Déploiement terminé ==="
-sudo systemctl status moneyback-api --no-pager || true
-sudo systemctl status moneyback-web --no-pager || true
+sudo systemctl status moneyback-api || true
+sudo systemctl status moneyback-web || true
