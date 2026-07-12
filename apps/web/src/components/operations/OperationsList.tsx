@@ -21,12 +21,13 @@ import {
   Stack,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload, IconWand } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
 import { OperationSplitModal } from './OperationSplitModal';
 import { OperationsInlineEditor } from './OperationsInlineEditor';
+import { CreateMatchingRuleModal } from './CreateMatchingRuleModal';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -132,6 +133,7 @@ export function OperationsList() {
   const [draftOperation, setDraftOperation] = useState<{ id?: string; accountId: string; expense: number; income: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; operation: Operation } | null>(null);
   const [splitDetailsOperation, setSplitDetailsOperation] = useState<Operation | null>(null);
+  const [ruleModalOperation, setRuleModalOperation] = useState<Operation | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -599,6 +601,11 @@ export function OperationsList() {
   const handleOpenSplitDetails = (operation: Operation) => {
     setContextMenu(null);
     setSplitDetailsOperation(operation);
+  };
+
+  const handleOpenCreateRule = (operation: Operation) => {
+    setContextMenu(null);
+    setRuleModalOperation(operation);
   };
 
   const handleOpenThirdParty = (operation: Operation) => {
@@ -1279,6 +1286,7 @@ export function OperationsList() {
                 root: {
                   height: 40,
                   color: '#334155',
+                  borderBottom: `1px solid ${GRAY_BORDER}`,
                 },
                 inner: {
                   justifyContent: 'flex-start',
@@ -1288,8 +1296,33 @@ export function OperationsList() {
             >
               {isOperationValidated(contextMenu.operation) ? 'Passer en non validée' : 'Valider'}
             </Button>
+            <Button
+              variant="subtle"
+              fullWidth
+              justify="flex-start"
+              leftSection={<IconWand size={14} />}
+              radius={0}
+              styles={{
+                root: {
+                  height: 40,
+                  color: '#334155',
+                },
+                inner: {
+                  justifyContent: 'flex-start',
+                },
+              }}
+              onClick={() => handleOpenCreateRule(contextMenu.operation)}
+            >
+              Créer une règle de tiers…
+            </Button>
           </Box>
         )}
+
+        <CreateMatchingRuleModal
+          opened={!!ruleModalOperation}
+          onClose={() => setRuleModalOperation(null)}
+          operation={ruleModalOperation}
+        />
 
         <OperationSplitModal
           opened={!!splitDetailsOperation}
