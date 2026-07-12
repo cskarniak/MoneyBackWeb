@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Box, Button, Checkbox, Group, Modal, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Box, Button, Checkbox, Group, Modal, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useThirdParty, useThirdPartiesAll, useUpdateThirdParty } from '@/hooks/useThirdParties';
+import { useThirdParty, useThirdPartiesAll, useCreateThirdParty, useUpdateThirdParty } from '@/hooks/useThirdParties';
+import { useCategoriesAll } from '@/hooks/useCategories';
+import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import type { Operation } from '@/hooks/useOperations';
 
 type ConditionDraft = {
@@ -40,6 +42,19 @@ const MATCHING_MATCHER_OPTIONS = [
   { value: 'in', label: 'Dans la liste' },
 ];
 
+const DIRECTION_OPTIONS = [
+  { value: 'expense', label: 'Dépense' },
+  { value: 'income', label: 'Recette' },
+];
+
+function operationAmount(operation: Operation) {
+  return Number(operation.income) > 0 ? Number(operation.income) : Number(operation.expense);
+}
+
+function operationDirection(operation: Operation): 'income' | 'expense' {
+  return Number(operation.income) > 0 ? 'income' : 'expense';
+}
+
 function defaultCondition(operation: Operation): ConditionDraft {
   return {
     field: 'normalizedLabel',
@@ -58,9 +73,20 @@ type Props = {
 
 export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
   const { data: thirdParties = [] } = useThirdPartiesAll();
+  const { data: categories = [] } = useCategoriesAll();
+  const { data: enveloppes = [] } = useEnveloppesAll();
+
+  const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const [thirdPartyId, setThirdPartyId] = useState<string | null>(null);
-  const { data: selectedThirdParty, isFetching: loadingSelectedThirdParty } = useThirdParty(thirdPartyId ?? '');
+  const { data: selectedThirdParty, isFetching: loadingSelectedThirdParty } = useThirdParty(
+    mode === 'existing' ? thirdPartyId ?? '' : '',
+  );
   const updateMutation = useUpdateThirdParty();
+  const createMutation = useCreateThirdParty();
+
+  const [newThirdPartyName, setNewThirdPartyName] = useState('');
+  const [newCategoryId, setNewCategoryId] = useState<string | null>(null);
+  const [newBudgetId, setNewBudgetId] = useState<string | null>(null);
 
   const [ruleLabel, setRuleLabel] = useState('');
   const [operator, setOperator] = useState<'AND' | 'OR'>('AND');
@@ -71,7 +97,11 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
 
   useEffect(() => {
     if (!opened || !operation) return;
+    setMode('existing');
     setThirdPartyId(operation.thirdPartyId ?? null);
+    setNewThirdPartyName('');
+    setNewCategoryId(null);
+    setNewBudgetId(null);
     setRuleLabel(operation.label.trim());
     setOperator('AND');
     setStopOnMatch(false);
@@ -81,14 +111,24 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
   }, [opened, operation]);
 
   const thirdPartyOptions = thirdParties.map(tp => ({ value: tp.id, label: tp.name }));
+  const categoryOptions = categories.map(category => ({ value: category.id, label: category.label }));
+  const budgetOptions = enveloppes.map(budget => ({ value: budget.id, label: budget.label }));
 
   const updateCondition = (index: number, patch: Partial<ConditionDraft>) => {
     setConditions(current => current.map((condition, i) => (i === index ? { ...condition, ...patch } : condition)));
   };
 
   const addCondition = () => {
-    if (!operation) return;
     setConditions(current => [...current, { field: 'normalizedLabel', matcher: 'contains', value: '', value2: '', negate: false }]);
+  };
+
+  const addAmountCondition = () => {
+    if (!operation) return;
+    setConditions(current => [
+      ...current,
+      { field: 'amount', matcher: 'equals', value: String(operationAmount(operation)), value2: '', negate: false },
+      { field: 'direction', matcher: 'equals', value: operationDirection(operation), value2: '', negate: false },
+    ]);
   };
 
   const removeCondition = (index: number) => {
@@ -97,15 +137,19 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
 
   const handleSubmit = async () => {
     if (!operation) return;
-    if (!thirdPartyId) {
-      setError('Sélectionne un tiers.');
-      return;
-    }
     if (!ruleLabel.trim()) {
       setError('Indique un libellé pour la règle.');
       return;
     }
-    if (!selectedThirdParty || selectedThirdParty.id !== thirdPartyId) {
+    if (mode === 'existing' && !thirdPartyId) {
+      setError('Sélectionne un tiers.');
+      return;
+    }
+    if (mode === 'new' && !newThirdPartyName.trim()) {
+      setError('Indique le nom du nouveau tiers.');
+      return;
+    }
+    if (mode === 'existing' && (!selectedThirdParty || selectedThirdParty.id !== thirdPartyId)) {
       setError('Chargement des règles du tiers en cours, réessaie dans un instant.');
       return;
     }
@@ -118,22 +162,6 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
       return;
     }
     setError(null);
-
-    const existingRules = selectedThirdParty.matchingRules.map(rule => ({
-      label: rule.label,
-      description: rule.description,
-      active: rule.active,
-      operator: rule.operator,
-      stopOnMatch: rule.stopOnMatch,
-      conditions: rule.conditions.map((condition, index) => ({
-        field: condition.field,
-        matcher: condition.matcher,
-        value: condition.value,
-        value2: condition.value2,
-        negate: condition.negate,
-        position: index,
-      })),
-    }));
 
     const newRule = {
       label: ruleLabel.trim(),
@@ -152,34 +180,102 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
     };
 
     try {
-      await updateMutation.mutateAsync({
-        id: thirdPartyId,
-        matchingRules: [...existingRules, newRule],
-      });
-      notifications.show({ message: `Règle "${newRule.label}" ajoutée au tiers.`, color: 'green' });
+      if (mode === 'new') {
+        const created = await createMutation.mutateAsync({
+          name: newThirdPartyName.trim(),
+          budgetBearer: false,
+          ventilated: false,
+          active: true,
+          categoryId: newCategoryId,
+          budgetId: newBudgetId,
+          matchingRules: [newRule],
+        });
+        notifications.show({ message: `Tiers "${created.name}" créé avec la règle "${newRule.label}".`, color: 'green' });
+      } else {
+        const existingRules = selectedThirdParty!.matchingRules.map(rule => ({
+          label: rule.label,
+          description: rule.description,
+          active: rule.active,
+          operator: rule.operator,
+          stopOnMatch: rule.stopOnMatch,
+          conditions: rule.conditions.map((condition, index) => ({
+            field: condition.field,
+            matcher: condition.matcher,
+            value: condition.value,
+            value2: condition.value2,
+            negate: condition.negate,
+            position: index,
+          })),
+        }));
+        await updateMutation.mutateAsync({
+          id: thirdPartyId!,
+          matchingRules: [...existingRules, newRule],
+        });
+        notifications.show({ message: `Règle "${newRule.label}" ajoutée au tiers.`, color: 'green' });
+      }
       onClose();
     } catch {
-      setError('Impossible de créer la règle.');
+      setError("Impossible de créer la règle.");
     }
   };
+
+  const isSubmitting = updateMutation.isPending || createMutation.isPending;
 
   return (
     <Modal opened={opened} onClose={onClose} title="Créer une règle d'affectation à partir de cette opération" size="lg" centered>
       {!operation ? null : (
         <Stack gap={14}>
           <Text size="sm" c="dimmed">
-            {operation.label} — {new Date(operation.operationDate).toLocaleDateString('fr-FR')}
+            {operation.label} — {new Date(operation.operationDate).toLocaleDateString('fr-FR')} — {operationAmount(operation).toFixed(2)} € ({operationDirection(operation) === 'income' ? 'recette' : 'dépense'})
           </Text>
 
-          <Select
-            label="Tiers cible"
-            placeholder="Sélectionner un tiers"
-            data={thirdPartyOptions}
-            value={thirdPartyId}
-            onChange={setThirdPartyId}
-            searchable
-            required
+          <SegmentedControl
+            value={mode}
+            onChange={value => setMode(value as 'existing' | 'new')}
+            data={[
+              { value: 'existing', label: 'Tiers existant' },
+              { value: 'new', label: 'Nouveau tiers' },
+            ]}
           />
+
+          {mode === 'existing' ? (
+            <Select
+              label="Tiers cible"
+              placeholder="Sélectionner un tiers"
+              data={thirdPartyOptions}
+              value={thirdPartyId}
+              onChange={setThirdPartyId}
+              searchable
+              required
+            />
+          ) : (
+            <Group grow align="flex-end">
+              <TextInput
+                label="Nom du nouveau tiers"
+                value={newThirdPartyName}
+                onChange={event => setNewThirdPartyName(event.currentTarget.value)}
+                required
+              />
+              <Select
+                label="Catégorie"
+                placeholder="Aucune"
+                data={categoryOptions}
+                value={newCategoryId}
+                onChange={setNewCategoryId}
+                searchable
+                clearable
+              />
+              <Select
+                label="Enveloppe"
+                placeholder="Aucune"
+                data={budgetOptions}
+                value={newBudgetId}
+                onChange={setNewBudgetId}
+                searchable
+                clearable
+              />
+            </Group>
+          )}
 
           <TextInput
             label="Libellé de la règle"
@@ -209,14 +305,20 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
           <Box style={{ borderTop: '1px solid #e9eef5', paddingTop: 10 }}>
             <Group justify="space-between" align="center" mb={8}>
               <Text fw={600} size="sm">Conditions</Text>
-              <Button type="button" variant="light" size="xs" onClick={addCondition}>
-                Ajouter une condition
-              </Button>
+              <Group gap={8}>
+                <Button type="button" variant="light" size="xs" onClick={addAmountCondition}>
+                  Ajouter le montant et le sens
+                </Button>
+                <Button type="button" variant="light" size="xs" onClick={addCondition}>
+                  Ajouter une condition
+                </Button>
+              </Group>
             </Group>
 
             <Stack gap={8}>
               {conditions.map((condition, index) => {
                 const showSecondValue = condition.matcher === 'between';
+                const isDirectionField = condition.field === 'direction';
                 return (
                   <Box key={index} style={{ border: '1px solid #edf2f7', borderRadius: 8, padding: 10, background: '#fff' }}>
                     <Stack gap={8}>
@@ -233,11 +335,20 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
                           value={condition.matcher}
                           onChange={value => updateCondition(index, { matcher: value ?? 'contains' })}
                         />
-                        <TextInput
-                          label="Valeur 1"
-                          value={condition.value}
-                          onChange={event => updateCondition(index, { value: event.currentTarget.value })}
-                        />
+                        {isDirectionField ? (
+                          <Select
+                            label="Valeur 1"
+                            data={DIRECTION_OPTIONS}
+                            value={condition.value || null}
+                            onChange={value => updateCondition(index, { value: value ?? '' })}
+                          />
+                        ) : (
+                          <TextInput
+                            label="Valeur 1"
+                            value={condition.value}
+                            onChange={event => updateCondition(index, { value: event.currentTarget.value })}
+                          />
+                        )}
                         {showSecondValue && (
                           <TextInput
                             label="Valeur 2"
@@ -277,8 +388,8 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
             <Button variant="default" onClick={onClose}>Annuler</Button>
             <Button
               onClick={handleSubmit}
-              loading={updateMutation.isPending}
-              disabled={!thirdPartyId || loadingSelectedThirdParty}
+              loading={isSubmitting}
+              disabled={(mode === 'existing' && (!thirdPartyId || loadingSelectedThirdParty)) || (mode === 'new' && !newThirdPartyName.trim())}
             >
               Créer la règle
             </Button>
