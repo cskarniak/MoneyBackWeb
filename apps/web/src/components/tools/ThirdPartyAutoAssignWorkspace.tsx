@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Alert, Box, Button, Center, Group, Loader, Modal, ScrollArea, Select, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Alert, Box, Button, Center, Checkbox, Group, Loader, Modal, ScrollArea, Select, Stack, Table, Text, TextInput } from '@mantine/core';
 import { IconAlertCircle, IconListDetails, IconPlayerPlay } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { CRUD } from '@/lib/crud-tokens';
@@ -32,6 +32,7 @@ export function ThirdPartyAutoAssignWorkspace() {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [operationDateFrom, setOperationDateFrom] = useState('');
   const [operationDateTo, setOperationDateTo] = useState('');
+  const [onlyWithoutBudget, setOnlyWithoutBudget] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   const [logOpened, setLogOpened] = useState(false);
   const [lastRunApplied, setLastRunApplied] = useState(false);
@@ -51,7 +52,7 @@ export function ThirdPartyAutoAssignWorkspace() {
         accountId: accountId ?? undefined,
         operationDateFrom: operationDateFrom ? toIsoDate(operationDateFrom) : undefined,
         operationDateTo: operationDateTo ? toIsoDate(operationDateTo) : undefined,
-        onlyWithoutBudget: true,
+        onlyWithoutBudget,
         applyChanges,
       });
 
@@ -139,9 +140,18 @@ export function ThirdPartyAutoAssignWorkspace() {
               </Button>
             </Group>
 
+            <Checkbox
+              label="Cibler uniquement les opérations sans enveloppe"
+              checked={onlyWithoutBudget}
+              onChange={event => setOnlyWithoutBudget(event.currentTarget.checked)}
+            />
+
             <Text fz={13} c={TEXT_MUTED}>
               Le premier lancement n’écrit rien en base : il analyse les libellés avec les règles définies sur les fiches tiers
-              et affiche le log. Le traitement cible uniquement les opérations sans enveloppe, puis tu peux confirmer l’application.
+              et affiche le log, puis tu peux confirmer l’application.
+              {onlyWithoutBudget
+                ? ' Le traitement cible uniquement les opérations sans enveloppe.'
+                : ' Décoché : toutes les opérations sont réanalysées, y compris celles déjà affectées — utile après correction d’une règle.'}
             </Text>
           </Stack>
         </Box>
@@ -186,13 +196,13 @@ export function ThirdPartyAutoAssignWorkspace() {
                     {result.matchedCount} match(s) sur {result.scannedCount} opération(s) analysée(s)
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
-                    Taux d’affectation (opérations sans enveloppe ayant reçu une enveloppe) : {formatRate(result.assignedBudgetCount, result.scannedCount)}
+                    Taux d’affectation ({result.onlyWithoutBudget ? 'opérations sans enveloppe' : 'opérations analysées'} ayant reçu une enveloppe) : {formatRate(result.assignedBudgetCount, result.scannedCount)}
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
                     Mode : {result.applyChanges ? 'application réelle' : 'analyse seule'}
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
-                    Filtre : opérations sans enveloppe uniquement
+                    Filtre : {result.onlyWithoutBudget ? 'opérations sans enveloppe uniquement' : 'toutes les opérations (y compris déjà affectées)'}
                   </Text>
                 </Box>
                 <Group gap={8}>
