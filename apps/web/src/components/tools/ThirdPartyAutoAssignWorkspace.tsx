@@ -21,6 +21,11 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString('fr-FR');
 }
 
+function formatRate(count: number, total: number) {
+  if (total === 0) return '0 %';
+  return `${((count / total) * 100).toFixed(1).replace('.', ',')} %`;
+}
+
 export function ThirdPartyAutoAssignWorkspace() {
   const { data: accounts = [], isLoading: loadingAccounts } = useAccountsAll();
   const mutation = useAutoAssignOperationThirdParties();
@@ -53,8 +58,8 @@ export function ThirdPartyAutoAssignWorkspace() {
       notifications.show({
         color: applyChanges && response.updatedCount > 0 ? 'green' : 'blue',
         message: applyChanges
-          ? `Traitement appliqué : ${response.updatedCount} opération(s) mise(s) à jour sur ${response.scannedCount} analysée(s).`
-          : `Analyse terminée : ${response.matchedCount} correspondance(s) trouvée(s) sur ${response.scannedCount} opération(s) analysée(s).`,
+          ? `Traitement appliqué : ${response.updatedCount} opération(s) mise(s) à jour sur ${response.scannedCount} analysée(s) (taux d’affectation : ${formatRate(response.updatedCount, response.scannedCount)}).`
+          : `Analyse terminée : ${response.matchedCount} correspondance(s) trouvée(s) sur ${response.scannedCount} opération(s) analysée(s) (taux d’affectation : ${formatRate(response.matchedCount, response.scannedCount)}).`,
       });
     } catch (error) {
       void error;
@@ -179,6 +184,9 @@ export function ThirdPartyAutoAssignWorkspace() {
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
                     {result.matchedCount} match(s) sur {result.scannedCount} opération(s) analysée(s)
+                  </Text>
+                  <Text c={TEXT_MUTED} fz={13}>
+                    Taux d’affectation : {formatRate(result.applyChanges ? result.updatedCount : result.matchedCount, result.scannedCount)}
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
                     Mode : {result.applyChanges ? 'application réelle' : 'analyse seule'}
