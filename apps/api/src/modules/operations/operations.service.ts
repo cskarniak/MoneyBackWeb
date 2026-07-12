@@ -288,6 +288,7 @@ export class OperationsService {
 
     let matchedCount = 0;
     let updatedCount = 0;
+    let assignedBudgetCount = 0;
     const details: Array<{
       operationId: string;
       operationDate: string;
@@ -324,6 +325,9 @@ export class OperationsService {
 
       const nextCategoryId = match.categoryId;
       const nextBudgetId = match.budgetId;
+      if (nextBudgetId) {
+        assignedBudgetCount += 1;
+      }
       const needsUpdate =
         operation.thirdPartyId !== match.thirdPartyId
         || operation.categoryId !== nextCategoryId
@@ -362,6 +366,7 @@ export class OperationsService {
       scannedCount: operations.length,
       matchedCount,
       updatedCount,
+      assignedBudgetCount,
       details: details.slice(0, 100),
     };
   }

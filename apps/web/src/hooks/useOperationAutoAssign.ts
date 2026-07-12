@@ -15,6 +15,7 @@ export type AutoAssignOperationThirdPartiesResult = {
   scannedCount: number;
   matchedCount: number;
   updatedCount: number;
+  assignedBudgetCount: number;
   details: Array<{
     operationId: string;
     operationDate: string;

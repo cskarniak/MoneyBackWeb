@@ -58,8 +58,8 @@ export function ThirdPartyAutoAssignWorkspace() {
       notifications.show({
         color: applyChanges && response.updatedCount > 0 ? 'green' : 'blue',
         message: applyChanges
-          ? `Traitement appliqué : ${response.updatedCount} opération(s) mise(s) à jour sur ${response.scannedCount} analysée(s) (taux d’affectation : ${formatRate(response.updatedCount, response.scannedCount)}).`
-          : `Analyse terminée : ${response.matchedCount} correspondance(s) trouvée(s) sur ${response.scannedCount} opération(s) analysée(s) (taux d’affectation : ${formatRate(response.matchedCount, response.scannedCount)}).`,
+          ? `Traitement appliqué : ${response.updatedCount} opération(s) mise(s) à jour sur ${response.scannedCount} analysée(s) (taux d’affectation : ${formatRate(response.assignedBudgetCount, response.scannedCount)}).`
+          : `Analyse terminée : ${response.matchedCount} correspondance(s) trouvée(s) sur ${response.scannedCount} opération(s) analysée(s) (taux d’affectation : ${formatRate(response.assignedBudgetCount, response.scannedCount)}).`,
       });
     } catch (error) {
       void error;
@@ -186,7 +186,7 @@ export function ThirdPartyAutoAssignWorkspace() {
                     {result.matchedCount} match(s) sur {result.scannedCount} opération(s) analysée(s)
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
-                    Taux d’affectation : {formatRate(result.applyChanges ? result.updatedCount : result.matchedCount, result.scannedCount)}
+                    Taux d’affectation (opérations sans enveloppe ayant reçu une enveloppe) : {formatRate(result.assignedBudgetCount, result.scannedCount)}
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
                     Mode : {result.applyChanges ? 'application réelle' : 'analyse seule'}
