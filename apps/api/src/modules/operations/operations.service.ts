@@ -282,9 +282,36 @@ export class OperationsService {
             name: true,
           },
         },
+        _count: {
+          select: { splits: true },
+        },
       },
       orderBy: { operationDate: 'desc' },
     });
+
+    const ventilatedThirdPartyIds = Array.from(
+      new Set(rules.filter(rule => rule.thirdParty.ventilated).map(rule => rule.thirdPartyId)),
+    );
+    const splitTemplatesByThirdParty = new Map<
+      string,
+      Array<{ label: string | null; expense: number; income: number; categoryId: string | null; budgetId: string | null }>
+    >();
+    if (ventilatedThirdPartyIds.length > 0) {
+      const splitTemplates = await this.prisma.thirdPartySplit.findMany({
+        where: { thirdPartyId: { in: ventilatedThirdPartyIds } },
+      });
+      for (const template of splitTemplates) {
+        const list = splitTemplatesByThirdParty.get(template.thirdPartyId) ?? [];
+        list.push({
+          label: template.label,
+          expense: Number(template.expense),
+          income: Number(template.income),
+          categoryId: template.categoryId,
+          budgetId: template.budgetId,
+        });
+        splitTemplatesByThirdParty.set(template.thirdPartyId, list);
+      }
+    }
 
     let matchedCount = 0;
     let updatedCount = 0;
@@ -323,15 +350,23 @@ export class OperationsService {
 
       matchedCount += 1;
 
-      const nextCategoryId = match.categoryId;
-      const nextBudgetId = match.budgetId;
-      if (nextBudgetId) {
+      const templateSplits = match.ventilated ? splitTemplatesByThirdParty.get(match.thirdPartyId) ?? [] : [];
+      const hasSplitTemplate = templateSplits.length > 0;
+
+      const nextCategoryId = match.ventilated ? null : match.categoryId;
+      const nextBudgetId = match.ventilated ? null : match.budgetId;
+      const assignsBudget = match.ventilated
+        ? templateSplits.some(split => split.budgetId)
+        : Boolean(nextBudgetId);
+      if (assignsBudget) {
         assignedBudgetCount += 1;
       }
+
       const needsUpdate =
         operation.thirdPartyId !== match.thirdPartyId
         || operation.categoryId !== nextCategoryId
-        || operation.budgetId !== nextBudgetId;
+        || operation.budgetId !== nextBudgetId
+        || (hasSplitTemplate && operation._count.splits === 0);
 
       if (dto.applyChanges && needsUpdate) {
         await this.prisma.operation.update({
@@ -340,6 +375,26 @@ export class OperationsService {
             thirdPartyId: match.thirdPartyId,
             categoryId: nextCategoryId,
             budgetId: nextBudgetId,
+            operationType: hasSplitTemplate
+              ? this.resolveOperationType(
+                  { expense: Number(operation.expense), income: Number(operation.income) },
+                  templateSplits,
+                )
+              : null,
+            ...(hasSplitTemplate
+              ? {
+                  splits: {
+                    deleteMany: {},
+                    create: templateSplits.map(split => ({
+                      label: split.label,
+                      expense: split.expense,
+                      income: split.income,
+                      categoryId: split.categoryId,
+                      budgetId: split.budgetId,
+                    })),
+                  },
+                }
+              : {}),
           },
         });
         updatedCount += 1;
@@ -353,7 +408,9 @@ export class OperationsService {
           previousThirdPartyName: operation.thirdParty?.name ?? null,
           previousBudgetLabel: operation.budget?.label ?? null,
           thirdPartyName: match.thirdPartyName,
-          nextBudgetLabel: match.budgetLabel,
+          nextBudgetLabel: match.ventilated
+            ? (hasSplitTemplate ? `Ventilé (${templateSplits.length} ligne(s))` : 'Ventilé (aucun modèle de ventilation)')
+            : match.budgetLabel,
           matchedRuleLabel: match.matchedRuleLabel,
           updated: needsUpdate,
         });
