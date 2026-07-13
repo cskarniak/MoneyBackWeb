@@ -32,6 +32,7 @@ import {
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useConfirmBankCsv, useImportProfilesAll, usePreviewBankCsv } from '@/hooks/useImportProfiles';
 import { CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 import { decodeTextFile } from '@/lib/text-file-decoder';
 
 const PANEL_STYLE = {
@@ -365,6 +366,7 @@ export function BankImportWorkspace() {
                 setSelectedAccountId(value);
               }}
               searchable
+              filter={startsWithOptionsFilter}
               nothingFoundMessage="Aucun compte"
             />
 
@@ -390,6 +392,7 @@ export function BankImportWorkspace() {
                 setSelectedProfileId(value);
               }}
               searchable
+              filter={startsWithOptionsFilter}
               nothingFoundMessage="Aucun masque"
             />
 

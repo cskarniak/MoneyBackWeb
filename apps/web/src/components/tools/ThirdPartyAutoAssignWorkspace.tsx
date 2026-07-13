@@ -5,6 +5,7 @@ import { Alert, Box, Button, Center, Checkbox, Group, Loader, Modal, ScrollArea,
 import { IconAlertCircle, IconListDetails, IconPlayerPlay } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useAutoAssignOperationThirdParties } from '@/hooks/useOperationAutoAssign';
 
@@ -118,6 +119,7 @@ export function ThirdPartyAutoAssignWorkspace() {
                 onChange={setAccountId}
                 clearable
                 searchable
+                filter={startsWithOptionsFilter}
               />
               <TextInput
                 label="Date opération du"

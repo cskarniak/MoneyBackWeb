@@ -16,6 +16,7 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 
@@ -286,6 +287,7 @@ export function OperationSplitModal({
                           comboboxProps={{ withinPortal: true, zIndex: 500 }}
                           clearable={editable}
                           searchable={editable}
+                          filter={startsWithOptionsFilter}
                           radius={0}
                           readOnly={!editable}
                           styles={{ input: splitGridInputStyle }}
@@ -300,6 +302,7 @@ export function OperationSplitModal({
                           comboboxProps={{ withinPortal: true, zIndex: 500 }}
                           clearable={editable}
                           searchable={editable}
+                          filter={startsWithOptionsFilter}
                           radius={0}
                           readOnly={!editable}
                           styles={{ input: splitGridInputStyle }}

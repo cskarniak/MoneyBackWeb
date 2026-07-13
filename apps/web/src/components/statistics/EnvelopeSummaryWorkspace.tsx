@@ -7,6 +7,7 @@ import { IconAlertCircle, IconChevronDown, IconChevronRight, IconPlayerPlay } fr
 import { CRUD } from '@/lib/crud-tokens';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useEnvelopeSummary, type EnvelopeSummaryFilters } from '@/hooks/useEnvelopeSummary';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -410,6 +411,7 @@ export function EnvelopeSummaryWorkspace() {
                 onChange={setAccountId}
                 clearable
                 searchable
+                filter={startsWithOptionsFilter}
               />
               <Radio.Group
                 label="Période de calcul"

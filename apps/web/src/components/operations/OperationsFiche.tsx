@@ -1,6 +1,7 @@
 'use client';
 
 import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -115,8 +116,8 @@ function filterShortCodeOptions({
   if (!normalizedSearch) return options;
 
   return options.filter(option =>
-    option.label.toLowerCase().includes(normalizedSearch)
-    || option.fullLabel.toLowerCase().includes(normalizedSearch),
+    option.label.toLowerCase().startsWith(normalizedSearch)
+    || option.fullLabel.toLowerCase().startsWith(normalizedSearch),
   );
 }
 
@@ -514,7 +515,7 @@ export function OperationsFiche({ id }: Props) {
                   <Table.Tbody>
                     <Table.Tr>
                       <Table.Td>
-                        <Select data={accountOptions} value={watch('accountId')} onChange={val => setValue('accountId', val ?? '')} searchable styles={{ input: fieldInputStyle }} />
+                        <Select data={accountOptions} value={watch('accountId')} onChange={val => setValue('accountId', val ?? '')} searchable filter={startsWithOptionsFilter} styles={{ input: fieldInputStyle }} />
                       </Table.Td>
                       <Table.Td>
                         <TextInput {...register('operationDate')} type="date" error={errors.operationDate?.message} styles={{ input: fieldInputStyle }} />
@@ -574,6 +575,7 @@ export function OperationsFiche({ id }: Props) {
                           onChange={handleThirdPartyChange}
                           clearable
                           searchable
+                          filter={startsWithOptionsFilter}
                           styles={{ input: fieldInputStyle }}
                         />
                       </Table.Td>
@@ -585,6 +587,7 @@ export function OperationsFiche({ id }: Props) {
                           placeholder="Catégorie"
                           clearable={!hasSplitRows}
                           searchable={!hasSplitRows}
+                          filter={startsWithOptionsFilter}
                           disabled={hasSplitRows}
                           styles={{ input: fieldInputStyle }}
                         />
@@ -597,6 +600,7 @@ export function OperationsFiche({ id }: Props) {
                           placeholder="Enveloppe"
                           clearable={!hasSplitRows}
                           searchable={!hasSplitRows}
+                          filter={startsWithOptionsFilter}
                           disabled={hasSplitRows}
                           styles={{ input: fieldInputStyle }}
                         />
@@ -685,10 +689,10 @@ export function OperationsFiche({ id }: Props) {
                               <TextInput {...register(`splits.${index}.income`)} inputMode="decimal" styles={{ input: { ...fieldInputStyle, textAlign: 'right' } }} />
                             </Table.Td>
                             <Table.Td>
-                              <Select data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable searchable styles={{ input: fieldInputStyle }} />
+                              <Select data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable searchable filter={startsWithOptionsFilter} styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <Select data={categoryOptions} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable searchable styles={{ input: fieldInputStyle }} />
+                              <Select data={categoryOptions} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable searchable filter={startsWithOptionsFilter} styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
                               <ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>

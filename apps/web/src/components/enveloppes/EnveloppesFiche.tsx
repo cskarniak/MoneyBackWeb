@@ -11,6 +11,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { useCreateEnveloppe, useDeleteEnveloppe, useEnveloppe, useUpdateEnveloppe, type EnveloppePayload } from '@/hooks/useEnveloppes';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -234,6 +235,7 @@ export function EnveloppesFiche({ id }: Props) {
                 clearable
                 placeholder="Aucun"
                 searchable
+                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -255,6 +257,7 @@ export function EnveloppesFiche({ id }: Props) {
                 clearable
                 placeholder="Aucun"
                 searchable
+                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -273,6 +276,7 @@ export function EnveloppesFiche({ id }: Props) {
                 clearable
                 placeholder="Aucun"
                 searchable
+                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>

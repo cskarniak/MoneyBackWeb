@@ -34,6 +34,7 @@ import {
   type SubscriptionPayload,
 } from '@/hooks/useSubscriptions';
 import { OperationSplitModal } from '../operations/OperationSplitModal';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -391,6 +392,7 @@ export function SubscriptionsFiche({ id }: Props) {
                 onChange={value => setValue('accountId', value ?? '')}
                 data={accountOptions}
                 searchable
+                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}
                 error={errors.accountId?.message}
@@ -489,6 +491,7 @@ export function SubscriptionsFiche({ id }: Props) {
                 onChange={value => setValue('thirdPartyId', value)}
                 data={thirdPartyOptions}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}
@@ -504,6 +507,7 @@ export function SubscriptionsFiche({ id }: Props) {
                 onChange={value => setValue('categoryId', value)}
                 data={categoryOptions}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 disabled={loadingCategories || watchedVentilated}
                 placeholder={watchedVentilated ? 'Désactivée pour un abonnement ventilé' : 'Aucune'}
@@ -521,6 +525,7 @@ export function SubscriptionsFiche({ id }: Props) {
                 onChange={value => setValue('budgetId', value)}
                 data={enveloppeOptions}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 disabled={loadingEnveloppes || watchedVentilated}
                 placeholder={watchedVentilated ? 'Désactivée pour un abonnement ventilé' : 'Aucune'}
@@ -538,6 +543,7 @@ export function SubscriptionsFiche({ id }: Props) {
                 onChange={value => setValue('movementTypeId', value)}
                 data={movementTypeOptions}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}

@@ -7,6 +7,7 @@ import { useThirdParty, useThirdPartiesAll, useCreateThirdParty, useUpdateThirdP
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import type { Operation } from '@/hooks/useOperations';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 
 type ConditionDraft = {
   field: string;
@@ -246,6 +247,7 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
               value={thirdPartyId}
               onChange={setThirdPartyId}
               searchable
+              filter={startsWithOptionsFilter}
               required
             />
           ) : (
@@ -263,6 +265,7 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
                 value={newCategoryId}
                 onChange={setNewCategoryId}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
               />
               <Select
@@ -272,6 +275,7 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
                 value={newBudgetId}
                 onChange={setNewBudgetId}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
               />
             </Group>

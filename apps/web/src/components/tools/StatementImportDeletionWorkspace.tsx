@@ -5,6 +5,7 @@ import { Alert, Box, Button, Center, Group, Loader, Select, Stack, Text } from '
 import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteStatementImport, useOperationStatementRefs } from '@/hooks/useOperations';
 
@@ -108,6 +109,7 @@ export function StatementImportDeletionWorkspace() {
                 }}
                 searchable
                 clearable
+                filter={startsWithOptionsFilter}
               />
               <Select
                 style={{ minWidth: 320 }}
@@ -123,6 +125,7 @@ export function StatementImportDeletionWorkspace() {
                 value={statementRef}
                 onChange={setStatementRef}
                 searchable
+                filter={startsWithOptionsFilter}
                 disabled={!accountId}
               />
               <Button

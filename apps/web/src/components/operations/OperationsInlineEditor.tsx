@@ -22,6 +22,7 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconGitBranch, IconMinus, IconPlus } from '@tabler/icons-react';
 import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useCreateOperation, useOperation, useUpdateOperation, type Operation, type OperationPayload } from '@/hooks/useOperations';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
@@ -122,8 +123,8 @@ function filterShortCodeOptions({
   if (!normalizedSearch) return options;
 
   return options.filter(option =>
-    option.label.toLowerCase().includes(normalizedSearch)
-    || option.fullLabel.toLowerCase().includes(normalizedSearch),
+    option.label.toLowerCase().startsWith(normalizedSearch)
+    || option.fullLabel.toLowerCase().startsWith(normalizedSearch),
   );
 }
 
@@ -530,6 +531,7 @@ export function OperationsInlineEditor({
             placeholder="Tiers"
             clearable
             searchable
+            filter={startsWithOptionsFilter}
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
@@ -541,6 +543,7 @@ export function OperationsInlineEditor({
             placeholder="Catégorie"
             clearable={!hasSplitRows}
             searchable={!hasSplitRows}
+            filter={startsWithOptionsFilter}
             disabled={hasSplitRows}
             styles={{ input: inlineCellInputStyle }}
           />
@@ -553,6 +556,7 @@ export function OperationsInlineEditor({
             placeholder="Enveloppe"
             clearable={!hasSplitRows}
             searchable={!hasSplitRows}
+            filter={startsWithOptionsFilter}
             disabled={hasSplitRows}
             styles={{ input: inlineCellInputStyle }}
           />

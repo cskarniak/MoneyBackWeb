@@ -12,6 +12,7 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useGroupingsAll } from '@/hooks/useGroupings';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { useDetailedStatistics, type DetailedStatisticsFilters, type DetailedStatisticsItem } from '@/hooks/useDetailedStatistics';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -863,6 +864,7 @@ export function DetailedStatisticsWorkspace() {
                   value={draftFilters.budgetId}
                   onChange={value => setDraftFilters(current => ({ ...current, budgetId: value }))}
                   searchable
+                  filter={startsWithOptionsFilter}
                   clearable
                   placeholder="Toutes"
                   styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
@@ -886,6 +888,7 @@ export function DetailedStatisticsWorkspace() {
                 value={draftFilters.accountId}
                 onChange={value => setDraftFilters(current => ({ ...current, accountId: value }))}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
@@ -897,6 +900,7 @@ export function DetailedStatisticsWorkspace() {
                 value={draftFilters.categoryId}
                 onChange={value => setDraftFilters(current => ({ ...current, categoryId: value }))}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Toutes"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
@@ -908,6 +912,7 @@ export function DetailedStatisticsWorkspace() {
                 value={draftFilters.thirdPartyId}
                 onChange={value => setDraftFilters(current => ({ ...current, thirdPartyId: value }))}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
@@ -922,6 +927,7 @@ export function DetailedStatisticsWorkspace() {
                 value={draftFilters.categoryGroupingId}
                 onChange={value => setDraftFilters(current => ({ ...current, categoryGroupingId: value }))}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
@@ -933,6 +939,7 @@ export function DetailedStatisticsWorkspace() {
                 value={draftFilters.budgetGroupingId}
                 onChange={value => setDraftFilters(current => ({ ...current, budgetGroupingId: value }))}
                 searchable
+                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}

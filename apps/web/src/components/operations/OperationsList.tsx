@@ -1,6 +1,7 @@
 'use client';
 
 import { CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Fragment, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from '@tanstack/react-table';
@@ -1029,6 +1030,7 @@ export function OperationsList() {
                   onChange={value => pushParams({ statementRef: value, page: '1' })}
                   clearable
                   searchable
+                  filter={startsWithOptionsFilter}
                   disabled={!accountId}
                   radius="md"
                   w={220}

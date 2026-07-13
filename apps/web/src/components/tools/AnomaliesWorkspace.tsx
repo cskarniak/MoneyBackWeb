@@ -6,6 +6,7 @@ import { Anchor, Alert, Box, Button, Center, Group, Loader, Select, Stack, Table
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconBug, IconCheck, IconPlayerPlay } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import {
   useCheckMissingDueDate,
@@ -272,6 +273,7 @@ export function AnomaliesWorkspace() {
                 onChange={setAccountId}
                 clearable
                 searchable
+                filter={startsWithOptionsFilter}
               />
               <TextInput
                 label="Opérations depuis le"

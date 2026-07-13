@@ -30,6 +30,7 @@ import {
   type CategoryPayload,
 } from '@/hooks/useCategories';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
+import { startsWithOptionsFilter } from '@/lib/select-filter';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -237,6 +238,7 @@ export function CategoriesFiche({ id }: Props) {
                 clearable
                 placeholder="Aucun"
                 searchable
+                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
