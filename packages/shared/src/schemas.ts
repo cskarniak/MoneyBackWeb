@@ -35,6 +35,7 @@ export const AccountFiltersSchema = z.object({
     v => (v === 'true' ? true : v === 'false' ? false : undefined),
     z.boolean().optional(),
   ),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['name', 'agency', 'number']).default('name'),
@@ -42,6 +43,12 @@ export const AccountFiltersSchema = z.object({
 });
 
 export type AccountFiltersDto = z.infer<typeof AccountFiltersSchema>;
+
+export const RebuildAccountBalancesSchema = z.object({
+  referenceDate: z.string().datetime().optional(),
+});
+
+export type RebuildAccountBalancesDto = z.infer<typeof RebuildAccountBalancesSchema>;
 
 // ─── Operation ────────────────────────────────────────────────────────────────
 
@@ -242,6 +249,7 @@ export const SubscriptionFiltersSchema = z.object({
     Periodicity.SEMIANNUAL,
     Periodicity.ANNUAL,
   ]).optional(),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['label', 'nextDueDate', 'firstDueDate', 'periodicity']).default('nextDueDate'),
@@ -287,6 +295,7 @@ export const CategoryFiltersSchema = z.object({
     z.boolean().optional(),
   ),
   regroupementId: z.string().uuid().optional(),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['label', 'regroupement']).default('label'),
@@ -312,6 +321,7 @@ export type UpdateGroupingDto = z.infer<typeof UpdateGroupingSchema>;
 
 export const GroupingFiltersSchema = z.object({
   search: z.string().optional(),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['label']).default('label'),
@@ -340,6 +350,7 @@ export const PaymentMethodFiltersSchema = z.object({
     v => (v === 'true' ? true : v === 'false' ? false : undefined),
     z.boolean().optional(),
   ),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['label', 'code']).default('label'),
@@ -368,6 +379,7 @@ export const MovementTypeFiltersSchema = z.object({
     v => (v === 'true' ? true : v === 'false' ? false : undefined),
     z.boolean().optional(),
   ),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['label', 'code']).default('label'),
@@ -402,6 +414,7 @@ export const BudgetFiltersSchema = z.object({
     z.boolean().optional(),
   ),
   regroupementId: z.string().uuid().optional(),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['label', 'regroupement']).default('label'),
@@ -409,6 +422,12 @@ export const BudgetFiltersSchema = z.object({
 });
 
 export type BudgetFiltersDto = z.infer<typeof BudgetFiltersSchema>;
+
+export const RebuildBudgetBalancesSchema = z.object({
+  referenceDate: z.string().datetime().optional(),
+});
+
+export type RebuildBudgetBalancesDto = z.infer<typeof RebuildBudgetBalancesSchema>;
 
 // ─── Third Party / Tiers ─────────────────────────────────────────────────────
 
@@ -500,6 +519,7 @@ export const ThirdPartyFiltersSchema = z.object({
     v => (v === 'true' ? true : v === 'false' ? false : undefined),
     z.boolean().optional(),
   ),
+  highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
   sortBy: z.enum(['name', 'comment', 'ventilated']).default('name'),

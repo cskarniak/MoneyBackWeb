@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AccountFiltersSchema } from '@moneyback/shared';
+import { AccountFiltersSchema, RebuildAccountBalancesSchema } from '@moneyback/shared';
 import type { CreateAccountDto, UpdateAccountDto } from '@moneyback/shared';
 import { AccountsService } from './accounts.service';
 
@@ -14,6 +14,13 @@ export class AccountsController {
   findAll(@Query() query: Record<string, string>) {
     const filters = AccountFiltersSchema.parse(query);
     return this.service.findAll(filters);
+  }
+
+  @Post('rebuild-balances')
+  @ApiOperation({ summary: 'Recalcule et persiste le solde de tous les comptes' })
+  rebuildBalances(@Body() body: Record<string, unknown>) {
+    const { referenceDate } = RebuildAccountBalancesSchema.parse(body);
+    return this.service.rebuildBalances(referenceDate);
   }
 
   @Get(':id')

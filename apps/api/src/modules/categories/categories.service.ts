@@ -29,7 +29,7 @@ export class CategoriesService {
   }
 
   async findAll(filters: CategoryFiltersDto) {
-    const { search, active, regroupementId, page, limit, sortBy, sortOrder } = filters;
+    const { search, active, regroupementId, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -54,7 +54,14 @@ export class CategoriesService {
       this.prisma.category.count({ where }),
     ]);
 
-    return { items: items.map(item => this.presenter(item)), total, page, limit };
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.category.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(category => category.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
+    return { items: items.map(item => this.presenter(item)), total, page, limit, highlightIndex };
   }
 
   async findOne(id: string) {

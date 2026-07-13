@@ -25,6 +25,7 @@ export type Enveloppe = {
   active: boolean;
   balance: string;
   invoiceBalance: string;
+  balanceReferenceDate: string | null;
   regroupementId: string | null;
   regroupement: Regroupement | null;
   regroupementTableauDeBordId: string | null;
@@ -40,6 +41,7 @@ export type EnveloppesResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type EnveloppeFilters = {
@@ -49,6 +51,7 @@ export type EnveloppeFilters = {
   limit?: number;
   sortBy?: 'label' | 'regroupement';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type EnveloppePayload = {
@@ -152,6 +155,19 @@ export function useDeleteEnveloppe() {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: id => api.delete(`/budgets/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export type RebuildBudgetBalancesResult = {
+  updatedCount: number;
+  referenceDate: string;
+};
+
+export function useRebuildBudgetBalances() {
+  const qc = useQueryClient();
+  return useMutation<RebuildBudgetBalancesResult, Error, { referenceDate?: string } | void>({
+    mutationFn: payload => api.post('/budgets/rebuild-balances', payload ?? {}).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }

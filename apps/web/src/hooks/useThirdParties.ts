@@ -53,6 +53,7 @@ export type ThirdPartiesResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type ThirdPartyFilters = {
@@ -62,6 +63,7 @@ export type ThirdPartyFilters = {
   limit?: number;
   sortBy?: 'name' | 'comment' | 'ventilated';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type ThirdPartyPayload = {

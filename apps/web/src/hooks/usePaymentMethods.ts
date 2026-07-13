@@ -14,6 +14,7 @@ export type PaymentMethodsResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type PaymentMethodFilters = {
@@ -23,6 +24,7 @@ export type PaymentMethodFilters = {
   limit?: number;
   sortBy?: 'label' | 'code';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type PaymentMethodPayload = {

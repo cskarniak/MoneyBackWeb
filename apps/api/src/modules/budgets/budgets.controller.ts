@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { BudgetFiltersSchema } from '@moneyback/shared';
+import { BudgetFiltersSchema, RebuildBudgetBalancesSchema } from '@moneyback/shared';
 import type { CreateBudgetDto, UpdateBudgetDto } from '@moneyback/shared';
 import { BudgetsService } from './budgets.service';
 
@@ -14,6 +14,13 @@ export class BudgetsController {
   findAll(@Query() query: Record<string, string>) {
     const filters = BudgetFiltersSchema.parse(query);
     return this.service.findAll(filters);
+  }
+
+  @Post('rebuild-balances')
+  @ApiOperation({ summary: 'Recalcule et persiste le solde de toutes les enveloppes' })
+  rebuildBalances(@Body() body: Record<string, unknown>) {
+    const { referenceDate } = RebuildBudgetBalancesSchema.parse(body);
+    return this.service.rebuildBalances(referenceDate);
   }
 
   @Get(':id')

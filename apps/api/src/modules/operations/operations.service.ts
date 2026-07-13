@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OperationType } from '@moneyback/shared';
 import type {
@@ -16,6 +16,57 @@ export class OperationsService {
     private prisma: PrismaService,
     private thirdPartyMatchingService: ThirdPartyMatchingService,
   ) {}
+
+  private async assertAccountActive(accountId: string) {
+    const account = await this.prisma.account.findUnique({ where: { id: accountId }, select: { closed: true } });
+    if (!account) throw new NotFoundException(`Compte ${accountId} introuvable`);
+    if (account.closed) {
+      throw new BadRequestException('Ce compte est inactif : il ne peut plus recevoir de nouvelles opérations');
+    }
+  }
+
+  private async assertBudgetActive(budgetId: string) {
+    const budget = await this.prisma.budget.findUnique({ where: { id: budgetId }, select: { active: true } });
+    if (!budget) throw new NotFoundException(`Enveloppe ${budgetId} introuvable`);
+    if (!budget.active) {
+      throw new BadRequestException('Cette enveloppe est inactive : elle ne peut plus être affectée à une opération');
+    }
+  }
+
+  private async assertCategoryActive(categoryId: string) {
+    const category = await this.prisma.category.findUnique({ where: { id: categoryId }, select: { active: true } });
+    if (!category) throw new NotFoundException(`Catégorie ${categoryId} introuvable`);
+    if (!category.active) {
+      throw new BadRequestException('Cette catégorie est inactive : elle ne peut plus être affectée à une opération');
+    }
+  }
+
+  private async assertThirdPartyActive(thirdPartyId: string) {
+    const thirdParty = await this.prisma.thirdParty.findUnique({ where: { id: thirdPartyId }, select: { active: true } });
+    if (!thirdParty) throw new NotFoundException(`Tiers ${thirdPartyId} introuvable`);
+    if (!thirdParty.active) {
+      throw new BadRequestException('Ce tiers est inactif : il ne peut plus être affecté à une opération');
+    }
+  }
+
+  private async assertOperationEntitiesActive(dto: {
+    accountId?: string;
+    budgetId?: string | null;
+    categoryId?: string | null;
+    thirdPartyId?: string | null;
+    splits?: Array<{ categoryId?: string | null; budgetId?: string | null }>;
+  }) {
+    const checks: Promise<void>[] = [];
+    if (dto.accountId) checks.push(this.assertAccountActive(dto.accountId));
+    if (dto.budgetId) checks.push(this.assertBudgetActive(dto.budgetId));
+    if (dto.categoryId) checks.push(this.assertCategoryActive(dto.categoryId));
+    if (dto.thirdPartyId) checks.push(this.assertThirdPartyActive(dto.thirdPartyId));
+    for (const split of dto.splits ?? []) {
+      if (split.budgetId) checks.push(this.assertBudgetActive(split.budgetId));
+      if (split.categoryId) checks.push(this.assertCategoryActive(split.categoryId));
+    }
+    await Promise.all(checks);
+  }
 
   async findUsedStatementRefs(accountId?: string) {
     const rows = await this.prisma.operation.findMany({
@@ -452,6 +503,13 @@ export class OperationsService {
 
   async create(dto: CreateOperationDto) {
     const splits = (dto.splits ?? []).filter(split => split.label || split.categoryId || split.budgetId || split.expense > 0 || split.income > 0);
+    await this.assertOperationEntitiesActive({
+      accountId: dto.accountId,
+      budgetId: dto.budgetId,
+      categoryId: dto.categoryId,
+      thirdPartyId: dto.thirdPartyId,
+      splits,
+    });
     const operation = await this.prisma.operation.create({
       data: {
         accountId: dto.accountId,
@@ -506,7 +564,15 @@ export class OperationsService {
   async update(id: string, dto: UpdateOperationDto) {
     const existingOperation = await this.prisma.operation.findUnique({
       where: { id },
-      select: { expense: true, income: true },
+      select: {
+        expense: true,
+        income: true,
+        accountId: true,
+        budgetId: true,
+        categoryId: true,
+        thirdPartyId: true,
+        splits: { select: { categoryId: true, budgetId: true } },
+      },
     });
     if (!existingOperation) {
       throw new NotFoundException(`Opération ${id} introuvable`);
@@ -516,6 +582,27 @@ export class OperationsService {
       split =>
         split.label || split.categoryId || split.budgetId || (split.expense ?? 0) > 0 || (split.income ?? 0) > 0,
     );
+
+    const existingBudgetIds = new Set(existingOperation.splits.map(split => split.budgetId).filter(Boolean));
+    const existingCategoryIds = new Set(existingOperation.splits.map(split => split.categoryId).filter(Boolean));
+
+    await this.assertOperationEntitiesActive({
+      accountId: dto.accountId !== undefined && dto.accountId !== existingOperation.accountId ? dto.accountId : undefined,
+      budgetId: dto.budgetId !== undefined && dto.budgetId !== existingOperation.budgetId ? dto.budgetId : undefined,
+      categoryId:
+        dto.categoryId !== undefined && dto.categoryId !== existingOperation.categoryId ? dto.categoryId : undefined,
+      thirdPartyId:
+        dto.thirdPartyId !== undefined && dto.thirdPartyId !== existingOperation.thirdPartyId
+          ? dto.thirdPartyId
+          : undefined,
+      splits: (splits ?? [])
+        .filter(
+          split =>
+            (split.budgetId && !existingBudgetIds.has(split.budgetId))
+            || (split.categoryId && !existingCategoryIds.has(split.categoryId)),
+        )
+        .map(split => ({ budgetId: split.budgetId, categoryId: split.categoryId })),
+    });
 
     const operation = await this.prisma.operation.update({
       where: { id },

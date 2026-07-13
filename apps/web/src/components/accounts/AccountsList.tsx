@@ -2,7 +2,7 @@
 
 import { CRUD } from '@/lib/crud-tokens';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from '@tanstack/react-table';
 import {
   Box,
@@ -43,26 +43,49 @@ export function AccountsList() {
   const sortBy = (searchParams.get('sortBy') as 'name' | 'agency' | 'number') ?? 'name';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
 
-  const highlight = searchParams.get('highlight');
+  const [recentId] = useState(() => searchParams.get('highlight'));
   const [searchInput, setSearchInput] = useState(search);
-  const [recentId, setRecentId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  const { data, isLoading, error } = useAccounts({
+    page,
+    limit,
+    search,
+    sortBy,
+    sortOrder,
+    highlightId: recentId ?? undefined,
+  });
+  const deleteMutation = useDeleteAccount();
+
+  const hasRepositionedRef = useRef(false);
+
   useEffect(() => {
-    if (highlight) {
-      setRecentId(highlight);
-      const params = new URLSearchParams(searchParams.toString());
+    if (!recentId || !data || hasRepositionedRef.current) return;
+    hasRepositionedRef.current = true;
+
+    const params = new URLSearchParams(searchParams.toString());
+    let changed = false;
+
+    if (params.has('highlight')) {
       params.delete('highlight');
-      const qs = params.toString();
-      router.replace(`${pathname}${qs ? '?' + qs : ''}`);
+      changed = true;
+    }
+
+    if (data.highlightIndex != null) {
+      const targetPage = Math.floor(data.highlightIndex / limit) + 1;
+      if (targetPage !== page) {
+        params.set('page', String(targetPage));
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      router.replace(`${pathname}?${params.toString()}`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlight]);
-
-  const { data, isLoading, error } = useAccounts({ page, limit, search, sortBy, sortOrder });
-  const deleteMutation = useDeleteAccount();
+  }, [recentId, data]);
 
   const pushParams = useCallback(
     (updates: Record<string, string | null>) => {

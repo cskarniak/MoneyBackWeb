@@ -17,6 +17,19 @@ const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
+const TEXT_MUTED = '#667085';
+
+function formatAmount(value: string) {
+  return Number(value || 0).toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatDate(value: string | null) {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString('fr-FR');
+}
 
 const schema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
@@ -221,6 +234,20 @@ export function EnveloppesFiche({ id }: Props) {
               />
             </Group>
 
+            {!isNew && (
+              <Group gap={0} align="center">
+                <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                  Solde
+                </Text>
+                <Text fz="var(--crud-font-size)" c={TEXT_MUTED} style={{ flex: 1 }}>
+                  {enveloppe ? `${formatAmount(enveloppe.balance)} €` : '—'}
+                  {enveloppe && formatDate(enveloppe.balanceReferenceDate)
+                    ? ` (au ${formatDate(enveloppe.balanceReferenceDate)})`
+                    : ' (jamais recalculé)'}
+                </Text>
+              </Group>
+            )}
+
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Regroupement
@@ -307,24 +334,34 @@ export function EnveloppesFiche({ id }: Props) {
               background: FIELD_BG,
             }}
           >
-            <Box>
+            <Group gap="xs">
               {!isNew && (
-                <Button
-                  size="xs"
-                  radius="md"
-                  variant="outline"
-                  color="red"
-                  loading={deleteMutation.isPending}
-                  onClick={async () => {
-                    if (!window.confirm(`Supprimer l'enveloppe "${enveloppe?.label}" ?`)) return;
-                    await deleteMutation.mutateAsync(id!);
-                    router.push('/referentiels/enveloppes');
-                  }}
-                >
-                  Supprimer
-                </Button>
+                <>
+                  <Button
+                    size="xs"
+                    radius="md"
+                    variant="outline"
+                    color="red"
+                    loading={deleteMutation.isPending}
+                    onClick={async () => {
+                      if (!window.confirm(`Supprimer l'enveloppe "${enveloppe?.label}" ?`)) return;
+                      await deleteMutation.mutateAsync(id!);
+                      router.push('/referentiels/enveloppes');
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                  <Button
+                    size="xs"
+                    radius="md"
+                    variant="outline"
+                    onClick={() => router.push(`/statistiques?budgetId=${id}&autoRun=true`)}
+                  >
+                    Voir les statistiques
+                  </Button>
+                </>
               )}
-            </Box>
+            </Group>
             <Group gap="var(--crud-form-footer-gap)">
               <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
                 Annuler

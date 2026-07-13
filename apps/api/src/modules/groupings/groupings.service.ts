@@ -7,7 +7,7 @@ export class GroupingsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(filters: GroupingFiltersDto) {
-    const { search, page, limit, sortBy, sortOrder } = filters;
+    const { search, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
     const where = search ? { label: { contains: search, mode: 'insensitive' as const } } : {};
     const orderBy = { [sortBy]: sortOrder };
@@ -17,7 +17,14 @@ export class GroupingsService {
       this.prisma.grouping.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.grouping.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(grouping => grouping.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
+    return { items, total, page, limit, highlightIndex };
   }
 
   async findOne(id: string) {

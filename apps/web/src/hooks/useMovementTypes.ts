@@ -14,6 +14,7 @@ export type MovementTypesResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type MovementTypeFilters = {
@@ -23,6 +24,7 @@ export type MovementTypeFilters = {
   limit?: number;
   sortBy?: 'label' | 'code';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type MovementTypePayload = {

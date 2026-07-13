@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AccountFiltersDto, CreateAccountDto, UpdateAccountDto } from '@moneyback/shared';
+
+function toLocalDateOnly(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 @Injectable()
 export class AccountsService {
@@ -24,6 +31,7 @@ export class AccountsService {
         where: { id: { in: accountIds } },
         select: {
           id: true,
+          closed: true,
           closureBalance: true,
           openingBalance: true,
         },
@@ -50,6 +58,10 @@ export class AccountsService {
 
     return new Map(
       accounts.map(account => {
+        if (account.closed) {
+          return [account.id, 0];
+        }
+
         const baseBalance =
           account.closureBalance !== null && account.closureBalance !== undefined
             ? this.toNumber(account.closureBalance)
@@ -79,7 +91,7 @@ export class AccountsService {
   }
 
   async findAll(filters: AccountFiltersDto) {
-    const { search, closed, page, limit, sortBy, sortOrder } = filters;
+    const { search, closed, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -100,7 +112,14 @@ export class AccountsService {
       this.prisma.account.count({ where }),
     ]);
 
-    return { items: await this.presentAccounts(items), total, page, limit };
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.account.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(account => account.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
+    return { items: await this.presentAccounts(items), total, page, limit, highlightIndex };
   }
 
   async findOne(id: string) {
@@ -132,7 +151,27 @@ export class AccountsService {
   }
 
   async update(id: string, dto: UpdateAccountDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+
+    if (dto.closed === true && !existing.closed) {
+      const todayOnly = toLocalDateOnly(new Date());
+      const referenceDateOnly = existing.balanceReferenceDate
+        ? toLocalDateOnly(new Date(existing.balanceReferenceDate))
+        : null;
+
+      if (referenceDateOnly !== todayOnly) {
+        throw new BadRequestException(
+          "Impossible de fermer ce compte : son solde n'a pas été recalculé à la date du jour. Lancez d'abord l'outil \"Recalcul soldes comptes\".",
+        );
+      }
+
+      if (Math.abs(Number(existing.balance)) >= 0.005) {
+        throw new BadRequestException(
+          `Impossible de fermer ce compte : son solde au ${todayOnly} n'est pas nul (${existing.balance}).`,
+        );
+      }
+    }
+
     const showOnHome = 'showOnHome' in dto ? dto.showOnHome : undefined;
     const account = await this.prisma.account.update({
       where: { id },
@@ -157,5 +196,55 @@ export class AccountsService {
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.account.delete({ where: { id } });
+  }
+
+  /**
+   * CalculateAccountBalanceAtDate, persisté : recalcule et stocke, à la date de référence
+   * fournie (ou à la date du jour par défaut), le solde de chaque compte (solde de clôture
+   * ou d'ouverture + opérations non clôturées jusqu'à cette date). Un compte fermé est
+   * toujours stocké à 0. La date de référence utilisée est persistée (`balanceReferenceDate`).
+   */
+  async rebuildBalances(referenceDate?: string) {
+    const referenceDateOnly = referenceDate ? referenceDate.slice(0, 10) : toLocalDateOnly(new Date());
+    const referenceDateEnd = new Date(`${referenceDateOnly}T23:59:59.999Z`);
+    const balanceReferenceDate = new Date(`${referenceDateOnly}T00:00:00.000Z`);
+
+    const accounts = await this.prisma.account.findMany({
+      select: { id: true, closed: true, closureBalance: true, openingBalance: true },
+    });
+
+    const operationSums = await this.prisma.operation.groupBy({
+      by: ['accountId'],
+      where: {
+        closed: false,
+        operationDate: { lte: referenceDateEnd },
+      },
+      _sum: { income: true, expense: true },
+    });
+
+    const sumsByAccountId = new Map(
+      operationSums.map(sum => [
+        sum.accountId,
+        this.toNumber(sum._sum.income) - this.toNumber(sum._sum.expense),
+      ]),
+    );
+
+    await this.prisma.$transaction(
+      accounts.map(account => {
+        const balance = account.closed
+          ? 0
+          : (account.closureBalance !== null && account.closureBalance !== undefined
+              ? this.toNumber(account.closureBalance)
+              : this.toNumber(account.openingBalance))
+            + (sumsByAccountId.get(account.id) ?? 0);
+
+        return this.prisma.account.update({
+          where: { id: account.id },
+          data: { balance, balanceReferenceDate },
+        });
+      }),
+    );
+
+    return { updatedCount: accounts.length, referenceDate: referenceDateOnly };
   }
 }

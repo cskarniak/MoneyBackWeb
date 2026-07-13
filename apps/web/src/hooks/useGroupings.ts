@@ -15,6 +15,7 @@ export type RegroupementsResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type RegroupementFilters = {
@@ -23,6 +24,7 @@ export type RegroupementFilters = {
   limit?: number;
   sortBy?: 'label';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type RegroupementPayload = {

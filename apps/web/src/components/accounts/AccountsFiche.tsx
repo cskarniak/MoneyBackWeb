@@ -26,6 +26,19 @@ const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const FIELD_BG = '#fbfdff';
 const LABEL_COLOR = '#1f2937';
+const TEXT_MUTED = '#667085';
+
+function formatAmount(value: string) {
+  return Number(value || 0).toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatDate(value: string | null) {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString('fr-FR');
+}
 
 const schema = z.object({
   name: z.string().min(1, 'Le nom est obligatoire'),
@@ -215,6 +228,20 @@ export function AccountsFiche({ id }: Props) {
                 styles={{ input: { ...fieldInputStyle, background: '#f1f3f5', color: '#6b7280', cursor: 'not-allowed' } }}
               />
             </Group>
+
+            {!isNew && (
+              <Group gap={0} align="center">
+                <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                  Solde
+                </Text>
+                <Text fz="var(--crud-font-size)" c={TEXT_MUTED} style={{ flex: 1 }}>
+                  {account ? `${formatAmount(account.balance)} €` : '—'}
+                  {account && formatDate(account.balanceReferenceDate)
+                    ? ` (au ${formatDate(account.balanceReferenceDate)})`
+                    : ' (jamais recalculé)'}
+                </Text>
+              </Group>
+            )}
 
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>

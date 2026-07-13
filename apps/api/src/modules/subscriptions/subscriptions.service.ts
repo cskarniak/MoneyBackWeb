@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OperationType, Periodicity } from '@moneyback/shared';
 import type {
@@ -86,6 +86,57 @@ export class SubscriptionsService {
       take: 24,
     },
   };
+
+  private async assertAccountActive(accountId: string) {
+    const account = await this.prisma.account.findUnique({ where: { id: accountId }, select: { closed: true } });
+    if (!account) throw new NotFoundException(`Compte ${accountId} introuvable`);
+    if (account.closed) {
+      throw new BadRequestException('Ce compte est inactif : il ne peut plus recevoir de nouvel abonnement');
+    }
+  }
+
+  private async assertBudgetActive(budgetId: string) {
+    const budget = await this.prisma.budget.findUnique({ where: { id: budgetId }, select: { active: true } });
+    if (!budget) throw new NotFoundException(`Enveloppe ${budgetId} introuvable`);
+    if (!budget.active) {
+      throw new BadRequestException('Cette enveloppe est inactive : elle ne peut plus être affectée à un abonnement');
+    }
+  }
+
+  private async assertCategoryActive(categoryId: string) {
+    const category = await this.prisma.category.findUnique({ where: { id: categoryId }, select: { active: true } });
+    if (!category) throw new NotFoundException(`Catégorie ${categoryId} introuvable`);
+    if (!category.active) {
+      throw new BadRequestException('Cette catégorie est inactive : elle ne peut plus être affectée à un abonnement');
+    }
+  }
+
+  private async assertThirdPartyActive(thirdPartyId: string) {
+    const thirdParty = await this.prisma.thirdParty.findUnique({ where: { id: thirdPartyId }, select: { active: true } });
+    if (!thirdParty) throw new NotFoundException(`Tiers ${thirdPartyId} introuvable`);
+    if (!thirdParty.active) {
+      throw new BadRequestException('Ce tiers est inactif : il ne peut plus être affecté à un abonnement');
+    }
+  }
+
+  private async assertSubscriptionEntitiesActive(dto: {
+    accountId?: string;
+    budgetId?: string | null;
+    categoryId?: string | null;
+    thirdPartyId?: string | null;
+    splits?: Array<{ categoryId?: string | null; budgetId?: string | null }>;
+  }) {
+    const checks: Promise<void>[] = [];
+    if (dto.accountId) checks.push(this.assertAccountActive(dto.accountId));
+    if (dto.budgetId) checks.push(this.assertBudgetActive(dto.budgetId));
+    if (dto.categoryId) checks.push(this.assertCategoryActive(dto.categoryId));
+    if (dto.thirdPartyId) checks.push(this.assertThirdPartyActive(dto.thirdPartyId));
+    for (const split of dto.splits ?? []) {
+      if (split.budgetId) checks.push(this.assertBudgetActive(split.budgetId));
+      if (split.categoryId) checks.push(this.assertCategoryActive(split.categoryId));
+    }
+    await Promise.all(checks);
+  }
 
   private normalizeSplits(splits: CreateSubscriptionSplitDto[] | undefined) {
     return (splits ?? []).filter(
@@ -201,7 +252,7 @@ export class SubscriptionsService {
   }
 
   async findAll(filters: SubscriptionFiltersDto) {
-    const { search, active, periodicity, page, limit, sortBy, sortOrder } = filters;
+    const { search, active, periodicity, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -217,22 +268,32 @@ export class SubscriptionsService {
       }),
     };
 
+    const orderBy = { [sortBy]: sortOrder };
+
     const [items, total] = await this.prisma.$transaction([
       this.prisma.subscription.findMany({
         where,
         include: this.include,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy,
         skip,
         take: limit,
       }),
       this.prisma.subscription.count({ where }),
     ]);
 
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.subscription.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(subscription => subscription.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
     return {
       items: items.map(item => this.presenter(item as SubscriptionWithRelations)),
       total,
       page,
       limit,
+      highlightIndex,
     };
   }
 
@@ -251,6 +312,13 @@ export class SubscriptionsService {
 
   async create(dto: CreateSubscriptionDto) {
     const splits = this.normalizeSplits(dto.splits);
+    await this.assertSubscriptionEntitiesActive({
+      accountId: dto.accountId,
+      budgetId: dto.budgetId,
+      categoryId: dto.categoryId,
+      thirdPartyId: dto.thirdPartyId,
+      splits,
+    });
     const firstDueDate = new Date(dto.firstDueDate);
 
     const subscription = await this.prisma.subscription.create({
@@ -290,9 +358,27 @@ export class SubscriptionsService {
   }
 
   async update(id: string, dto: UpdateSubscriptionDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
 
     const splits = dto.splits !== undefined ? this.normalizeSplits(dto.splits) : undefined;
+
+    const existingBudgetIds = new Set(existing.splits.map(split => split.budgetId).filter(Boolean));
+    const existingCategoryIds = new Set(existing.splits.map(split => split.categoryId).filter(Boolean));
+
+    await this.assertSubscriptionEntitiesActive({
+      accountId: dto.accountId !== undefined && dto.accountId !== existing.accountId ? dto.accountId : undefined,
+      budgetId: dto.budgetId !== undefined && dto.budgetId !== existing.budgetId ? dto.budgetId : undefined,
+      categoryId: dto.categoryId !== undefined && dto.categoryId !== existing.categoryId ? dto.categoryId : undefined,
+      thirdPartyId:
+        dto.thirdPartyId !== undefined && dto.thirdPartyId !== existing.thirdPartyId ? dto.thirdPartyId : undefined,
+      splits: (splits ?? [])
+        .filter(
+          split =>
+            (split.budgetId && !existingBudgetIds.has(split.budgetId))
+            || (split.categoryId && !existingCategoryIds.has(split.categoryId)),
+        )
+        .map(split => ({ budgetId: split.budgetId, categoryId: split.categoryId })),
+    });
 
     const subscription = await this.prisma.subscription.update({
       where: { id },

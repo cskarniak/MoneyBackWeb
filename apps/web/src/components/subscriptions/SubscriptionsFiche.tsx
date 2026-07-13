@@ -26,6 +26,7 @@ import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
+import { filterActiveOptions } from '@/lib/activeOptions';
 import {
   useCreateSubscription,
   useDeleteSubscription,
@@ -302,10 +303,26 @@ export function SubscriptionsFiche({ id }: Props) {
     paddingTop: 6,
   } as const;
 
-  const accountOptions = accounts.map(account => ({ value: account.id, label: account.name }));
-  const categoryOptions = categories.map(category => ({ value: category.id, label: category.label }));
-  const enveloppeOptions = enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label }));
-  const thirdPartyOptions = thirdParties.map(thirdParty => ({ value: thirdParty.id, label: thirdParty.name }));
+  const accountOptions = filterActiveOptions(
+    accounts.map(account => ({ value: account.id, label: account.name })),
+    value => !accounts.find(account => account.id === value)?.closed,
+    [subscription?.accountId],
+  );
+  const categoryOptions = filterActiveOptions(
+    categories.map(category => ({ value: category.id, label: category.label })),
+    value => !!categories.find(category => category.id === value)?.active,
+    [subscription?.categoryId, ...watchedSplits.map(split => split.categoryId)],
+  );
+  const enveloppeOptions = filterActiveOptions(
+    enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label })),
+    value => !!enveloppes.find(enveloppe => enveloppe.id === value)?.active,
+    [subscription?.budgetId, ...watchedSplits.map(split => split.budgetId)],
+  );
+  const thirdPartyOptions = filterActiveOptions(
+    thirdParties.map(thirdParty => ({ value: thirdParty.id, label: thirdParty.name })),
+    value => !!thirdParties.find(thirdParty => thirdParty.id === value)?.active,
+    [subscription?.thirdPartyId],
+  );
   const movementTypeOptions = movementTypes.map(movementType => ({
     value: movementType.id,
     label: movementType.code?.trim()

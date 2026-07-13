@@ -13,6 +13,8 @@ export type Account = {
   comment: string | null;
   openingBalance: string | null;
   currentBalance: string;
+  balance: string;
+  balanceReferenceDate: string | null;
   managedForOther: boolean;
   showOnHome: boolean;
   closed: boolean;
@@ -25,6 +27,7 @@ export type AccountsResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type AccountFilters = {
@@ -34,6 +37,7 @@ export type AccountFilters = {
   limit?: number;
   sortBy?: 'name' | 'agency' | 'number';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type AccountPayload = {
@@ -113,6 +117,19 @@ export function useDeleteAccount() {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
     mutationFn: id => api.delete(`/accounts/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export type RebuildAccountBalancesResult = {
+  updatedCount: number;
+  referenceDate: string;
+};
+
+export function useRebuildAccountBalances() {
+  const qc = useQueryClient();
+  return useMutation<RebuildAccountBalancesResult, Error, { referenceDate?: string } | void>({
+    mutationFn: payload => api.post('/accounts/rebuild-balances', payload ?? {}).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }

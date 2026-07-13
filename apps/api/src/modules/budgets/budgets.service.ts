@@ -1,6 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { BudgetFiltersDto, CreateBudgetDto, UpdateBudgetDto } from '@moneyback/shared';
+
+type BudgetBalanceRow = {
+  budgetId: string;
+  balance: Prisma.Decimal | null;
+  invoiceBalance: Prisma.Decimal | null;
+};
+
+function toLocalDateOnly(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 @Injectable()
 export class BudgetsService {
@@ -16,6 +30,7 @@ export class BudgetsService {
     active: boolean;
     balance: unknown;
     invoiceBalance: unknown;
+    balanceReferenceDate: Date | null;
     createdAt: Date;
     updatedAt: Date;
     groupingId: string | null;
@@ -45,7 +60,7 @@ export class BudgetsService {
   }
 
   async findAll(filters: BudgetFiltersDto) {
-    const { search, active, regroupementId, page, limit, sortBy, sortOrder } = filters;
+    const { search, active, regroupementId, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -74,7 +89,14 @@ export class BudgetsService {
       this.prisma.budget.count({ where }),
     ]);
 
-    return { items: items.map(item => this.presenter(item)), total, page, limit };
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.budget.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(budget => budget.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
+    return { items: items.map(item => this.presenter(item)), total, page, limit, highlightIndex };
   }
 
   async findOne(id: string) {
@@ -114,7 +136,27 @@ export class BudgetsService {
   }
 
   async update(id: string, dto: UpdateBudgetDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+
+    if (dto.active === false && existing.active) {
+      const todayOnly = toLocalDateOnly(new Date());
+      const referenceDateOnly = existing.balanceReferenceDate
+        ? toLocalDateOnly(new Date(existing.balanceReferenceDate))
+        : null;
+
+      if (referenceDateOnly !== todayOnly) {
+        throw new BadRequestException(
+          "Impossible de désactiver cette enveloppe : son solde n'a pas été recalculé à la date du jour. Lancez d'abord l'outil \"Recalcul soldes enveloppes\".",
+        );
+      }
+
+      if (Math.abs(Number(existing.balance)) >= 0.005) {
+        throw new BadRequestException(
+          `Impossible de désactiver cette enveloppe : son solde au ${todayOnly} n'est pas nul (${existing.balance}).`,
+        );
+      }
+    }
+
     const budget = await this.prisma.budget.update({
       where: { id },
       data: {
@@ -143,5 +185,72 @@ export class BudgetsService {
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.budget.delete({ where: { id } });
+  }
+
+  /**
+   * RebuildBudgetBalances : recalcule et persiste le solde de chaque enveloppe
+   * (`balance` sur la date d'opération, `invoiceBalance` sur la date d'échéance)
+   * à partir des opérations et ventilations existantes, à la date de référence fournie
+   * (ou à la date du jour par défaut). La date de référence utilisée est elle-même
+   * persistée sur l'enveloppe (`balanceReferenceDate`).
+   */
+  async rebuildBalances(referenceDate?: string) {
+    const referenceDateOnly = referenceDate ? referenceDate.slice(0, 10) : toLocalDateOnly(new Date());
+
+    const rows = await this.prisma.$queryRaw<BudgetBalanceRow[]>(Prisma.sql`
+      WITH entry AS (
+        SELECT
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.budget_id
+            ELSE o.budget_id
+          END AS budget_id,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN (s.recette - s.depense)
+            ELSE (o.recette - o.depense)
+          END AS balance,
+          o.date_operation AS operation_date,
+          COALESCE(s.date_periode, o.date_echeance, o.date_operation) AS due_effective_date
+        FROM operations o
+        LEFT JOIN operations_ventilees s ON s.operation_id = o.id
+        WHERE o.date_suppression IS NULL
+          AND (
+            o.type_operation IS NULL
+            OR o.type_operation NOT IN ('V', 'P')
+            OR s.id IS NOT NULL
+          )
+      )
+      SELECT
+        budget_id AS "budgetId",
+        SUM(CASE WHEN operation_date::date <= ${referenceDateOnly}::date THEN balance ELSE 0 END) AS "balance",
+        SUM(CASE WHEN due_effective_date::date <= ${referenceDateOnly}::date THEN balance ELSE 0 END) AS "invoiceBalance"
+      FROM entry
+      WHERE budget_id IS NOT NULL
+      GROUP BY budget_id
+    `);
+
+    const balancesByBudgetId = new Map(
+      rows.map(row => [
+        row.budgetId,
+        {
+          balance: Number(row.balance ?? 0),
+          invoiceBalance: Number(row.invoiceBalance ?? 0),
+        },
+      ]),
+    );
+
+    const budgets = await this.prisma.budget.findMany({ select: { id: true } });
+    const balanceReferenceDate = new Date(`${referenceDateOnly}T00:00:00.000Z`);
+
+    await this.prisma.$transaction(
+      budgets.map(budget => {
+        const values = balancesByBudgetId.get(budget.id) ?? { balance: 0, invoiceBalance: 0 };
+        return this.prisma.budget.update({
+          where: { id: budget.id },
+          data: { ...values, balanceReferenceDate },
+        });
+      }),
+    );
+
+    return { updatedCount: budgets.length, referenceDate: referenceDateOnly };
   }
 }

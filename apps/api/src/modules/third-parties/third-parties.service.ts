@@ -68,7 +68,7 @@ export class ThirdPartiesService {
   }
 
   async findAll(filters: ThirdPartyFiltersDto) {
-    const { search, active, page, limit, sortBy, sortOrder } = filters;
+    const { search, active, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -112,7 +112,14 @@ export class ThirdPartiesService {
       this.prisma.thirdParty.count({ where }),
     ]);
 
-    return { items: items.map(item => this.presenter(item)), total, page, limit };
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.thirdParty.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(thirdParty => thirdParty.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
+    return { items: items.map(item => this.presenter(item)), total, page, limit, highlightIndex };
   }
 
   async findOne(id: string) {

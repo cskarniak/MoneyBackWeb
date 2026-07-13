@@ -8,6 +8,7 @@ import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import type { Operation } from '@/hooks/useOperations';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { filterActiveOptions } from '@/lib/activeOptions';
 
 type ConditionDraft = {
   field: string;
@@ -111,9 +112,21 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
     setError(null);
   }, [opened, operation]);
 
-  const thirdPartyOptions = thirdParties.map(tp => ({ value: tp.id, label: tp.name }));
-  const categoryOptions = categories.map(category => ({ value: category.id, label: category.label }));
-  const budgetOptions = enveloppes.map(budget => ({ value: budget.id, label: budget.label }));
+  const thirdPartyOptions = filterActiveOptions(
+    thirdParties.map(tp => ({ value: tp.id, label: tp.name })),
+    value => !!thirdParties.find(tp => tp.id === value)?.active,
+    [operation?.thirdPartyId],
+  );
+  const categoryOptions = filterActiveOptions(
+    categories.map(category => ({ value: category.id, label: category.label })),
+    value => !!categories.find(category => category.id === value)?.active,
+    [],
+  );
+  const budgetOptions = filterActiveOptions(
+    enveloppes.map(budget => ({ value: budget.id, label: budget.label })),
+    value => !!enveloppes.find(budget => budget.id === value)?.active,
+    [],
+  );
 
   const updateCondition = (index: number, patch: Partial<ConditionDraft>) => {
     setConditions(current => current.map((condition, i) => (i === index ? { ...condition, ...patch } : condition)));

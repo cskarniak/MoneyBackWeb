@@ -27,6 +27,7 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
+import { filterActiveOptions } from '@/lib/activeOptions';
 import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
@@ -268,9 +269,24 @@ export function OperationsInlineEditor({
     }
   }, [isNew, reset, resolvedOperation, selectedAccountId]);
 
-  const categoryOptions = categories.map(category => ({ value: category.id, label: category.label }));
-  const enveloppeOptions = enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label }));
-  const thirdPartyOptions = thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name }));
+  const watchSplits = watch('splits');
+  const selectedThirdPartyId = watch('thirdPartyId');
+
+  const categoryOptions = filterActiveOptions(
+    categories.map(category => ({ value: category.id, label: category.label })),
+    value => !!categories.find(category => category.id === value)?.active,
+    [resolvedOperation?.categoryId, ...watchSplits.map(split => split.categoryId)],
+  );
+  const enveloppeOptions = filterActiveOptions(
+    enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label })),
+    value => !!enveloppes.find(enveloppe => enveloppe.id === value)?.active,
+    [resolvedOperation?.budgetId, ...watchSplits.map(split => split.budgetId)],
+  );
+  const thirdPartyOptions = filterActiveOptions(
+    thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name })),
+    value => !!thirdParties.find(tiers => tiers.id === value)?.active,
+    [resolvedOperation?.thirdPartyId],
+  );
   const paymentMethodOptions = paymentMethods.map(paymentMethod =>
     buildShortCodeOption(paymentMethod.id, paymentMethod.code, paymentMethod.label));
   const movementTypeOptions = movementTypes.map(movementType =>
@@ -294,8 +310,6 @@ export function OperationsInlineEditor({
   const displayedPaymentMethodOptions = [...currentPaymentMethodOption, ...paymentMethodOptions];
   const displayedMovementTypeOptions = [...currentMovementTypeOption, ...movementTypeOptions];
 
-  const watchSplits = watch('splits');
-  const selectedThirdPartyId = watch('thirdPartyId');
   const hasSplitRows = watchSplits.length > 0;
   const accountValue = watch('accountId');
   const dueDateValue = watch('dueDate');

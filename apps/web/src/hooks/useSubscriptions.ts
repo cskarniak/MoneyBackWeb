@@ -68,6 +68,7 @@ export type SubscriptionFilters = {
   limit?: number;
   sortBy?: 'label' | 'nextDueDate' | 'firstDueDate' | 'periodicity';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type SubscriptionsResponse = {
@@ -75,6 +76,7 @@ export type SubscriptionsResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type SubscriptionSplitPayload = {

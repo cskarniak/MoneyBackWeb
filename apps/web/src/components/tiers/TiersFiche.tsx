@@ -23,6 +23,7 @@ import {
 import { IconAlertCircle, IconGitBranch } from '@tabler/icons-react';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
+import { filterActiveOptions } from '@/lib/activeOptions';
 import {
   useCreateThirdParty,
   useDeleteThirdParty,
@@ -410,12 +411,22 @@ export function TiersFiche({ id }: Props) {
   const watchedBudgetId = watch('budgetId');
 
   const categoryOptions = useMemo(
-    () => categories.map(category => ({ value: category.id, label: category.label })),
-    [categories],
+    () =>
+      filterActiveOptions(
+        categories.map(category => ({ value: category.id, label: category.label })),
+        value => !!categories.find(category => category.id === value)?.active,
+        [tiers?.categoryId, watchedCategoryId, ...(watchedSplits ?? []).map(split => split.categoryId)],
+      ),
+    [categories, tiers, watchedCategoryId, watchedSplits],
   );
   const enveloppeOptions = useMemo(
-    () => enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label })),
-    [enveloppes],
+    () =>
+      filterActiveOptions(
+        enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label })),
+        value => !!enveloppes.find(enveloppe => enveloppe.id === value)?.active,
+        [tiers?.budgetId, watchedBudgetId, ...(watchedSplits ?? []).map(split => split.budgetId)],
+      ),
+    [enveloppes, tiers, watchedBudgetId, watchedSplits],
   );
 
   const splitExpense = (watchedSplits ?? []).reduce((sum, split) => sum + asNumber(split.expense), 0);

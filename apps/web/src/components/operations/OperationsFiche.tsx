@@ -30,6 +30,7 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
+import { filterActiveOptions } from '@/lib/activeOptions';
 import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
@@ -221,10 +222,29 @@ export function OperationsFiche({ id }: Props) {
     }
   }, [operation, reset]);
 
-  const accountOptions = accounts.map(account => ({ value: account.id, label: account.name }));
-  const categoryOptions = categories.map(category => ({ value: category.id, label: category.label }));
-  const enveloppeOptions = enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label }));
-  const thirdPartyOptions = thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name }));
+  const watchSplits = watch('splits');
+  const selectedThirdPartyId = watch('thirdPartyId');
+
+  const accountOptions = filterActiveOptions(
+    accounts.map(account => ({ value: account.id, label: account.name })),
+    value => !accounts.find(account => account.id === value)?.closed,
+    [operation?.accountId],
+  );
+  const categoryOptions = filterActiveOptions(
+    categories.map(category => ({ value: category.id, label: category.label })),
+    value => !!categories.find(category => category.id === value)?.active,
+    [operation?.categoryId, ...watchSplits.map(split => split.categoryId)],
+  );
+  const enveloppeOptions = filterActiveOptions(
+    enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label })),
+    value => !!enveloppes.find(enveloppe => enveloppe.id === value)?.active,
+    [operation?.budgetId, ...watchSplits.map(split => split.budgetId)],
+  );
+  const thirdPartyOptions = filterActiveOptions(
+    thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name })),
+    value => !!thirdParties.find(tiers => tiers.id === value)?.active,
+    [operation?.thirdPartyId],
+  );
   const paymentMethodOptions = paymentMethods.map(paymentMethod =>
     buildShortCodeOption(paymentMethod.id, paymentMethod.code, paymentMethod.label));
   const movementTypeOptions = movementTypes.map(movementType =>
@@ -248,8 +268,6 @@ export function OperationsFiche({ id }: Props) {
   const displayedPaymentMethodOptions = [...currentPaymentMethodOption, ...paymentMethodOptions];
   const displayedMovementTypeOptions = [...currentMovementTypeOption, ...movementTypeOptions];
 
-  const watchSplits = watch('splits');
-  const selectedThirdPartyId = watch('thirdPartyId');
   const currentLabel = watch('label');
   const hasSplitRows = watchSplits.length > 0;
   const expense = asNumber(watch('expense'));

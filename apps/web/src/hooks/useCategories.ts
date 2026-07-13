@@ -22,6 +22,7 @@ export type CategoriesResponse = {
   total: number;
   page: number;
   limit: number;
+  highlightIndex: number | null;
 };
 
 export type CategoryFilters = {
@@ -31,6 +32,7 @@ export type CategoryFilters = {
   limit?: number;
   sortBy?: 'label' | 'regroupement';
   sortOrder?: 'asc' | 'desc';
+  highlightId?: string;
 };
 
 export type CategoryPayload = {

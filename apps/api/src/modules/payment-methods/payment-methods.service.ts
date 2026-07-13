@@ -11,7 +11,7 @@ export class PaymentMethodsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(filters: PaymentMethodFiltersDto) {
-    const { search, active, page, limit, sortBy, sortOrder } = filters;
+    const { search, active, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -31,7 +31,14 @@ export class PaymentMethodsService {
       this.prisma.paymentMethod.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.paymentMethod.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(paymentMethod => paymentMethod.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
+    return { items, total, page, limit, highlightIndex };
   }
 
   async findOne(id: string) {

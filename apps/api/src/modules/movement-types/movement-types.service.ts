@@ -11,7 +11,7 @@ export class MovementTypesService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(filters: MovementTypeFiltersDto) {
-    const { search, active, page, limit, sortBy, sortOrder } = filters;
+    const { search, active, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -31,7 +31,14 @@ export class MovementTypesService {
       this.prisma.movementType.count({ where }),
     ]);
 
-    return { items, total, page, limit };
+    let highlightIndex: number | null = null;
+    if (highlightId) {
+      const orderedIds = await this.prisma.movementType.findMany({ where, orderBy, select: { id: true } });
+      const index = orderedIds.findIndex(movementType => movementType.id === highlightId);
+      highlightIndex = index >= 0 ? index : null;
+    }
+
+    return { items, total, page, limit, highlightIndex };
   }
 
   async findOne(id: string) {

@@ -5,4 +5,15 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+api.interceptors.response.use(
+  response => response,
+  error => {
+    const message = error?.response?.data?.message;
+    if (message) {
+      error.message = Array.isArray(message) ? message.join(', ') : message;
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default api;

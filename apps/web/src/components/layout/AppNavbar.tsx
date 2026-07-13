@@ -22,6 +22,7 @@ import {
   IconReceiptOff,
   IconChartBar,
   IconBug,
+  IconCalculator,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
@@ -43,6 +44,8 @@ const OUTILS_ITEMS = [
   { label: 'Environnement actif', href: '/outils/environnement', icon: IconSettings },
   { label: 'Affectation tiers', href: '/outils/affectation-tiers', icon: IconUserCheck },
   { label: 'Génération abonnements', href: '/outils/generation-abonnements', icon: IconCalendarRepeat },
+  { label: 'Recalcul soldes enveloppes', href: '/outils/recalcul-soldes-enveloppes', icon: IconCalculator },
+  { label: 'Recalcul soldes comptes', href: '/outils/recalcul-soldes-comptes', icon: IconCalculator },
   { label: "Suppression relevé", href: '/outils/suppression-releve', icon: IconReceiptOff },
   { label: 'Sauvegarde base', href: '/outils/sauvegarde-base', icon: IconDatabaseExport },
   { label: 'Anomalies', href: '/outils/anomalies', icon: IconBug },
@@ -285,7 +288,11 @@ export function AppNavbar() {
                 return (
                   <Menu.Item
                     key={item.href}
-                    leftSection={<item.icon size={14} />}
+                    leftSection={
+                      <Box style={{ width: 14, display: 'flex', justifyContent: 'center' }}>
+                        <item.icon size={14} />
+                      </Box>
+                    }
                     onClick={() => router.push(item.href)}
                     style={{ color: active ? ACTIVE_COLOR : '#c1c2c5', fontWeight: active ? 600 : 400 }}
                   >
