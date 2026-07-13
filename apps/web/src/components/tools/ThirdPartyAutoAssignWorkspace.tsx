@@ -22,9 +22,9 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString('fr-FR');
 }
 
-function formatRate(count: number, total: number) {
-  if (total === 0) return '0 %';
-  return `${((count / total) * 100).toFixed(1).replace('.', ',')} %`;
+function formatAssignmentRate(rate: number | null) {
+  if (rate === null) return 'n/a (aucune opération sans enveloppe)';
+  return `${rate.toFixed(1).replace('.', ',')} %`;
 }
 
 export function ThirdPartyAutoAssignWorkspace() {
@@ -60,8 +60,8 @@ export function ThirdPartyAutoAssignWorkspace() {
       notifications.show({
         color: applyChanges && response.updatedCount > 0 ? 'green' : 'blue',
         message: applyChanges
-          ? `Traitement appliqué : ${response.updatedCount} opération(s) mise(s) à jour sur ${response.scannedCount} analysée(s) (taux d’affectation : ${formatRate(response.assignedBudgetCount, response.scannedCount)}).`
-          : `Analyse terminée : ${response.matchedCount} correspondance(s) trouvée(s) sur ${response.scannedCount} opération(s) analysée(s) (taux d’affectation : ${formatRate(response.assignedBudgetCount, response.scannedCount)}).`,
+          ? `Traitement appliqué : ${response.updatedCount} opération(s) mise(s) à jour sur ${response.scannedCount} analysée(s) (taux d’affectation : ${formatAssignmentRate(response.assignmentRate)}).`
+          : `Analyse terminée : ${response.matchedCount} correspondance(s) trouvée(s) sur ${response.scannedCount} opération(s) analysée(s) (taux d’affectation : ${formatAssignmentRate(response.assignmentRate)}).`,
       });
     } catch (error) {
       void error;
@@ -196,7 +196,10 @@ export function ThirdPartyAutoAssignWorkspace() {
                     {result.matchedCount} match(s) sur {result.scannedCount} opération(s) analysée(s)
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
-                    Taux d’affectation ({result.onlyWithoutBudget ? 'opérations sans enveloppe' : 'opérations analysées'} ayant reçu une enveloppe) : {formatRate(result.assignedBudgetCount, result.scannedCount)}
+                    Opérations sans enveloppe : {result.beforeWithoutBudgetCount} avant traitement, {result.afterWithoutBudgetCount} après
+                  </Text>
+                  <Text c={TEXT_MUTED} fz={13}>
+                    Taux d’affectation ((avant − après) / avant × 100) : {formatAssignmentRate(result.assignmentRate)}
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
                     Mode : {result.applyChanges ? 'application réelle' : 'analyse seule'}

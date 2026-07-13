@@ -297,19 +297,28 @@ export class OperationsService {
 
   async autoAssignThirdParties(dto: AutoAssignOperationThirdPartiesDto) {
     const rules = await this.thirdPartyMatchingService.loadActiveRules();
+
+    const scopeWhere = {
+      deletedAt: null,
+      ...(dto.accountId ? { accountId: dto.accountId } : {}),
+      ...((dto.operationDateFrom || dto.operationDateTo)
+        ? {
+            operationDate: {
+              ...(dto.operationDateFrom ? { gte: new Date(dto.operationDateFrom) } : {}),
+              ...(dto.operationDateTo ? { lte: new Date(dto.operationDateTo) } : {}),
+            },
+          }
+        : {}),
+    };
+
+    const beforeWithoutBudgetCount = await this.prisma.operation.count({
+      where: { ...scopeWhere, budgetId: null },
+    });
+
     const operations = await this.prisma.operation.findMany({
       where: {
-        deletedAt: null,
-        ...(dto.accountId ? { accountId: dto.accountId } : {}),
+        ...scopeWhere,
         ...(dto.onlyWithoutBudget ? { budgetId: null } : {}),
-        ...((dto.operationDateFrom || dto.operationDateTo)
-          ? {
-              operationDate: {
-                ...(dto.operationDateFrom ? { gte: new Date(dto.operationDateFrom) } : {}),
-                ...(dto.operationDateTo ? { lte: new Date(dto.operationDateTo) } : {}),
-              },
-            }
-          : {}),
       },
       select: {
         id: true,
@@ -468,6 +477,15 @@ export class OperationsService {
       }
     }
 
+    const afterWithoutBudgetCount = await this.prisma.operation.count({
+      where: { ...scopeWhere, budgetId: null },
+    });
+
+    const assignmentRate =
+      beforeWithoutBudgetCount > 0
+        ? ((beforeWithoutBudgetCount - afterWithoutBudgetCount) / beforeWithoutBudgetCount) * 100
+        : null;
+
     return {
       onlyWithoutBudget: dto.onlyWithoutBudget,
       applyChanges: dto.applyChanges,
@@ -475,6 +493,9 @@ export class OperationsService {
       matchedCount,
       updatedCount,
       assignedBudgetCount,
+      beforeWithoutBudgetCount,
+      afterWithoutBudgetCount,
+      assignmentRate,
       details: details.slice(0, 100),
     };
   }
