@@ -38,17 +38,26 @@ import {
 import { CRUD } from '@/lib/crud-tokens';
 import { decodeTextFile } from '@/lib/text-file-decoder';
 
-const formSchema = z.object({
-  profileName: z.string().min(1, 'Le nom du masque est obligatoire'),
-  delimiter: z.string().min(1).max(1),
-  encoding: z.string().min(1),
-  hasHeader: z.boolean(),
-  startLine: z.coerce.number().int().min(1),
-  dateFormat: z.enum(['dd/MM/yyyy', 'yyyy-MM-dd']),
-  decimalSeparator: z.string().min(1).max(1),
-  thousandsSeparator: z.string().max(1).optional().or(z.literal('')),
-  csvContent: z.string().min(1, 'Le contenu CSV est obligatoire'),
-});
+function buildFormSchema(isNew: boolean) {
+  return z.object({
+    profileName: z.string().min(1, 'Le nom du masque est obligatoire'),
+    delimiter: z.string().min(1).max(1),
+    encoding: z.string().min(1),
+    hasHeader: z.boolean(),
+    startLine: z.coerce.number().int().min(1),
+    dateFormat: z.enum(['dd/MM/yyyy', 'yyyy-MM-dd']),
+    decimalSeparator: z.string().min(1).max(1),
+    thousandsSeparator: z.string().max(1).optional().or(z.literal('')),
+    // Un fichier CSV n'est requis que pour créer un masque (il sert à déduire les colonnes) :
+    // en édition, les colonnes déjà apprises suffisent, pas besoin de reposer le fichier
+    // juste pour modifier un réglage comme le format de date.
+    csvContent: isNew
+      ? z.string().min(1, 'Le contenu CSV est obligatoire')
+      : z.string().optional(),
+  });
+}
+
+const formSchema = buildFormSchema(false);
 
 type FormValues = z.infer<typeof formSchema>;
 type ColumnField = 'ignore' | 'operationDate' | 'label' | 'comment' | 'pieceNumber' | 'amount' | 'expense' | 'income' | 'statementRef';
@@ -530,11 +539,11 @@ export function ImportsFiche({ id }: Props) {
     reset,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(buildFormSchema(isNew)),
     defaultValues,
   });
 
-  const csvContent = watch('csvContent');
+  const csvContent = watch('csvContent') ?? '';
   const delimiter = watch('delimiter');
   const hasHeader = watch('hasHeader');
   const encoding = watch('encoding');
@@ -735,7 +744,7 @@ export function ImportsFiche({ id }: Props) {
     await previewMutation.mutateAsync({
       profileId: id,
       mapping: buildMapping(values, learnedColumns),
-      csvContent: values.csvContent,
+      csvContent: values.csvContent ?? '',
     });
   };
 
@@ -890,6 +899,7 @@ export function ImportsFiche({ id }: Props) {
                   value={null}
                   onChange={handleFileSelected}
                   leftSection={<IconFileImport size={15} />}
+                  error={errors.csvContent?.message}
                 />
 
                 {selectedFileName ? (
