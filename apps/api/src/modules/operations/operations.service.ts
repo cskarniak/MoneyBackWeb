@@ -311,14 +311,19 @@ export class OperationsService {
         : {}),
     };
 
+    const withoutBudgetWhere = {
+      budgetId: null,
+      splits: { none: { budgetId: { not: null } } },
+    };
+
     const beforeWithoutBudgetCount = await this.prisma.operation.count({
-      where: { ...scopeWhere, budgetId: null },
+      where: { ...scopeWhere, ...withoutBudgetWhere },
     });
 
     const operations = await this.prisma.operation.findMany({
       where: {
         ...scopeWhere,
-        ...(dto.onlyWithoutBudget ? { budgetId: null } : {}),
+        ...(dto.onlyWithoutBudget ? withoutBudgetWhere : {}),
       },
       select: {
         id: true,
@@ -478,7 +483,7 @@ export class OperationsService {
     }
 
     const afterWithoutBudgetCount = await this.prisma.operation.count({
-      where: { ...scopeWhere, budgetId: null },
+      where: { ...scopeWhere, ...withoutBudgetWhere },
     });
 
     const assignmentRate =
