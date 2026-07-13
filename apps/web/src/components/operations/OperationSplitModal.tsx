@@ -8,7 +8,6 @@ import {
   Button,
   Group,
   Portal,
-  Select,
   Stack,
   Table,
   Text,
@@ -16,7 +15,7 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 
@@ -159,7 +158,7 @@ export function OperationSplitModal({
           position: 'fixed',
           top: position.y,
           left: position.x,
-          width: 'min(760px, calc(100vw - 24px))',
+          width: `min(${CRUD.miseEnPage.largeurMaxListe}px, calc(100vw - 24px))`,
           maxHeight: 'calc(100vh - 24px)',
           background: '#ffffff',
           border: `1px solid ${GRAY_BORDER}`,
@@ -229,11 +228,11 @@ export function OperationSplitModal({
               <Table withTableBorder={false} withColumnBorders={false} style={{ tableLayout: 'fixed' }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
-                    <Table.Th style={{ padding: '4px 6px', fontSize: 11 }}>Libellé</Table.Th>
+                    <Table.Th style={{ padding: '4px 6px', fontSize: 11, width: '34%' }}>Libellé</Table.Th>
                     <Table.Th style={{ padding: '4px 6px', fontSize: 11, textAlign: 'right', width: 100 }}>Dépense</Table.Th>
                     <Table.Th style={{ padding: '4px 6px', fontSize: 11, textAlign: 'right', width: 100 }}>Recette</Table.Th>
-                    <Table.Th style={{ padding: '4px 6px', fontSize: 11, width: 180 }}>Enveloppe</Table.Th>
-                    <Table.Th style={{ padding: '4px 6px', fontSize: 11, width: 180 }}>Catégorie</Table.Th>
+                    <Table.Th style={{ padding: '4px 6px', fontSize: 11, width: '24%' }}>Enveloppe</Table.Th>
+                    <Table.Th style={{ padding: '4px 6px', fontSize: 11, width: '24%' }}>Catégorie</Table.Th>
                     {editable && <Table.Th style={{ padding: '4px 6px', fontSize: 11, width: 40 }} />}
                   </Table.Tr>
                 </Table.Thead>
@@ -279,30 +278,26 @@ export function OperationSplitModal({
                         />
                       </Table.Td>
                       <Table.Td style={splitGridCellStyle}>
-                        <Select
+                        <PositioningSelect
                           data={editable ? enveloppeOptions : row.enveloppeLabel ? [{ value: row.budgetId ?? '__value__', label: row.enveloppeLabel }] : []}
                           value={editable ? row.budgetId : (row.enveloppeLabel ? row.budgetId ?? '__value__' : null)}
                           onChange={value => onChangeRow?.(index, 'budgetId', value)}
                           onKeyDown={event => onRowEnter?.(index)(event as React.KeyboardEvent<HTMLInputElement>)}
-                          comboboxProps={{ withinPortal: true, zIndex: 500 }}
+                          dropdownZIndex={500}
                           clearable={editable}
-                          searchable={editable}
-                          filter={startsWithOptionsFilter}
                           radius={0}
                           readOnly={!editable}
                           styles={{ input: splitGridInputStyle }}
                         />
                       </Table.Td>
                       <Table.Td style={{ ...splitGridCellStyle, borderRight: editable ? `1px solid ${CRUD.couleurs.grilleTableau}` : 'none' }}>
-                        <Select
+                        <PositioningSelect
                           data={editable ? categoryOptions : row.categorieLabel ? [{ value: row.categoryId ?? '__value__', label: row.categorieLabel }] : []}
                           value={editable ? row.categoryId : (row.categorieLabel ? row.categoryId ?? '__value__' : null)}
                           onChange={value => onChangeRow?.(index, 'categoryId', value)}
                           onKeyDown={event => onRowEnter?.(index)(event as React.KeyboardEvent<HTMLInputElement>)}
-                          comboboxProps={{ withinPortal: true, zIndex: 500 }}
+                          dropdownZIndex={500}
                           clearable={editable}
-                          searchable={editable}
-                          filter={startsWithOptionsFilter}
                           radius={0}
                           readOnly={!editable}
                           styles={{ input: splitGridInputStyle }}

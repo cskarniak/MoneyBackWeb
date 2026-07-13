@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Anchor, Alert, Box, Button, Center, Group, Loader, Select, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Anchor, Alert, Box, Button, Center, Group, Loader, Stack, Table, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconBug, IconCheck, IconPlayerPlay } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import {
   useCheckMissingDueDate,
@@ -264,7 +264,7 @@ export function AnomaliesWorkspace() {
             ) : null}
 
             <Group align="end" wrap="wrap">
-              <Select
+              <PositioningSelect
                 style={{ minWidth: 320 }}
                 label="Compte"
                 placeholder={loadingAccounts ? 'Chargement des comptes...' : 'Tous les comptes'}
@@ -272,8 +272,6 @@ export function AnomaliesWorkspace() {
                 value={accountId}
                 onChange={setAccountId}
                 clearable
-                searchable
-                filter={startsWithOptionsFilter}
               />
               <TextInput
                 label="Opérations depuis le"

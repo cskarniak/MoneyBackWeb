@@ -1,7 +1,7 @@
 'use client';
 
 import { CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Fragment, useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from '@tanstack/react-table';
@@ -724,7 +724,14 @@ export function OperationsList() {
         ),
         cell: ({ row }) => (
           <Stack gap={4}>
-            <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 600} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
+            <Text
+              fz={OPERATIONS_ROW_FONT_SIZE}
+              fw={cursorTargetId === row.original.id ? 700 : 600}
+              lh={1}
+              truncate
+              title={row.original.label}
+              style={rowTextStyle(row.original, cursorTargetId === row.original.id)}
+            >
               {row.original.label}
             </Text>
             {row.original.simulation ? (
@@ -739,7 +746,14 @@ export function OperationsList() {
         id: 'tiers',
         header: () => <span style={thStyle()}>Tiers</span>,
         cell: ({ row }) => (
-          <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 400} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
+          <Text
+            fz={OPERATIONS_ROW_FONT_SIZE}
+            fw={cursorTargetId === row.original.id ? 700 : 400}
+            lh={1}
+            truncate
+            title={row.original.tiers?.name ?? undefined}
+            style={rowTextStyle(row.original, cursorTargetId === row.original.id)}
+          >
             {row.original.tiers?.name ?? '—'}
           </Text>
         ),
@@ -748,7 +762,14 @@ export function OperationsList() {
         id: 'categorie',
         header: () => <span style={thStyle()}>Catégorie</span>,
         cell: ({ row }) => (
-          <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 400} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
+          <Text
+            fz={OPERATIONS_ROW_FONT_SIZE}
+            fw={cursorTargetId === row.original.id ? 700 : 400}
+            lh={1}
+            truncate
+            title={row.original.splits.length > 0 ? 'Ventilé' : (row.original.categorie?.label ?? undefined)}
+            style={rowTextStyle(row.original, cursorTargetId === row.original.id)}
+          >
             {row.original.splits.length > 0 ? 'Ventilé' : (row.original.categorie?.label ?? '—')}
           </Text>
         ),
@@ -757,7 +778,14 @@ export function OperationsList() {
         id: 'enveloppe',
         header: () => <span style={thStyle()}>Enveloppe</span>,
         cell: ({ row }) => (
-          <Text fz={OPERATIONS_ROW_FONT_SIZE} fw={cursorTargetId === row.original.id ? 700 : 400} lh={1} style={rowTextStyle(row.original, cursorTargetId === row.original.id)}>
+          <Text
+            fz={OPERATIONS_ROW_FONT_SIZE}
+            fw={cursorTargetId === row.original.id ? 700 : 400}
+            lh={1}
+            truncate
+            title={row.original.splits.length > 0 ? 'Ventilé' : (row.original.enveloppe?.label ?? undefined)}
+            style={rowTextStyle(row.original, cursorTargetId === row.original.id)}
+          >
             {row.original.splits.length > 0 ? 'Ventilé' : (row.original.enveloppe?.label ?? '—')}
           </Text>
         ),
@@ -975,7 +1003,7 @@ export function OperationsList() {
                   <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} c={TEXT_MUTED} tt="uppercase">
                     Compte
                   </Text>
-                  <Select
+                  <PositioningSelect
                     placeholder="Sélectionner un compte"
                     data={accountOptions}
                     value={accountId || null}
@@ -1023,14 +1051,12 @@ export function OperationsList() {
                 <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} c={TEXT_MUTED} tt="uppercase">
                   LOT
                 </Text>
-                <Select
+                <PositioningSelect
                   placeholder={accountId ? 'Tous les lots' : 'Choisir un compte'}
                   data={statementRefOptions}
                   value={statementRef || null}
                   onChange={value => pushParams({ statementRef: value, page: '1' })}
                   clearable
-                  searchable
-                  filter={startsWithOptionsFilter}
                   disabled={!accountId}
                   radius="md"
                   w={220}

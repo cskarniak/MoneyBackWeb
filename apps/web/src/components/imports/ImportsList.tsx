@@ -204,7 +204,7 @@ export function ImportsList() {
           </span>
         ),
         cell: ({ row, getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600}>
+          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
             {getValue() as string}
           </Text>
         ),
@@ -212,7 +212,7 @@ export function ImportsList() {
       {
         id: 'bankLabel',
         header: () => <span style={thStyle()}>Banque</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte}>{row.original.bankLabel}</Text>,
+        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} truncate title={row.original.bankLabel}>{row.original.bankLabel}</Text>,
       },
       {
         id: 'delimiter',

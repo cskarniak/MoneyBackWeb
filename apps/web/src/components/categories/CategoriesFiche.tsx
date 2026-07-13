@@ -11,7 +11,6 @@ import {
   Button,
   Checkbox,
   Group,
-  Select,
   Stack,
   Text,
   Textarea,
@@ -30,7 +29,7 @@ import {
   type CategoryPayload,
 } from '@/hooks/useCategories';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -228,7 +227,7 @@ export function CategoriesFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Regroupement
               </Text>
-              <Select
+              <PositioningSelect
                 size="sm"
                 radius="md"
                 style={{ flex: 1 }}
@@ -237,8 +236,6 @@ export function CategoriesFiche({ id }: Props) {
                 onChange={val => setValue('regroupementId', val)}
                 clearable
                 placeholder="Aucun"
-                searchable
-                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>

@@ -34,7 +34,7 @@ import {
   type SubscriptionPayload,
 } from '@/hooks/useSubscriptions';
 import { OperationSplitModal } from '../operations/OperationSplitModal';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -387,12 +387,10 @@ export function SubscriptionsFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Compte *
               </Text>
-              <Select
+              <PositioningSelect
                 value={watch('accountId')}
                 onChange={value => setValue('accountId', value ?? '')}
                 data={accountOptions}
-                searchable
-                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}
                 error={errors.accountId?.message}
@@ -486,12 +484,10 @@ export function SubscriptionsFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Tiers
               </Text>
-              <Select
+              <PositioningSelect
                 value={watch('thirdPartyId') ?? null}
                 onChange={value => setValue('thirdPartyId', value)}
                 data={thirdPartyOptions}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}
@@ -502,12 +498,10 @@ export function SubscriptionsFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Categorie
               </Text>
-              <Select
+              <PositioningSelect
                 value={watch('categoryId') ?? null}
                 onChange={value => setValue('categoryId', value)}
                 data={categoryOptions}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 disabled={loadingCategories || watchedVentilated}
                 placeholder={watchedVentilated ? 'Désactivée pour un abonnement ventilé' : 'Aucune'}
@@ -520,12 +514,10 @@ export function SubscriptionsFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Enveloppe
               </Text>
-              <Select
+              <PositioningSelect
                 value={watch('budgetId') ?? null}
                 onChange={value => setValue('budgetId', value)}
                 data={enveloppeOptions}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 disabled={loadingEnveloppes || watchedVentilated}
                 placeholder={watchedVentilated ? 'Désactivée pour un abonnement ventilé' : 'Aucune'}
@@ -538,12 +530,10 @@ export function SubscriptionsFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Type mouvement
               </Text>
-              <Select
+              <PositioningSelect
                 value={watch('movementTypeId') ?? null}
                 onChange={value => setValue('movementTypeId', value)}
                 data={movementTypeOptions}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}

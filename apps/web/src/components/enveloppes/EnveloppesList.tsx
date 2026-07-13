@@ -210,7 +210,7 @@ export function EnveloppesList() {
             Libellé{sortIcon('label')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         id: 'regroupement',
@@ -220,7 +220,7 @@ export function EnveloppesList() {
           </span>
         ),
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'}>
+          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'} truncate title={row.original.regroupement?.label}>
             {row.original.regroupement?.label ?? '—'}
           </Text>
         ),
@@ -234,7 +234,7 @@ export function EnveloppesList() {
         id: 'regroupementTableauDeBord',
         header: () => <span style={thStyle()}>Regroupement TB</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} c={row.original.regroupementTableauDeBord ? undefined : 'dimmed'}>
+          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} c={row.original.regroupementTableauDeBord ? undefined : 'dimmed'} truncate title={row.original.regroupementTableauDeBord?.label}>
             {row.original.regroupementTableauDeBord?.label ?? '—'}
           </Text>
         ),

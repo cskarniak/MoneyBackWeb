@@ -1,7 +1,7 @@
 'use client';
 
 import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -16,7 +16,6 @@ import {
   Checkbox,
   Group,
   Loader,
-  Select,
   Stack,
   Table,
   Text,
@@ -103,22 +102,6 @@ function buildShortCodeOption(id: string, code: string | null | undefined, label
     label: trimmedCode || label,
     fullLabel: label,
   };
-}
-
-function filterShortCodeOptions({
-  options,
-  search,
-}: {
-  options: ShortCodeOption[];
-  search: string;
-}) {
-  const normalizedSearch = search.trim().toLowerCase();
-  if (!normalizedSearch) return options;
-
-  return options.filter(option =>
-    option.label.toLowerCase().startsWith(normalizedSearch)
-    || option.fullLabel.toLowerCase().startsWith(normalizedSearch),
-  );
 }
 
 function buildPayload(values: FormValues): OperationPayload {
@@ -515,7 +498,7 @@ export function OperationsFiche({ id }: Props) {
                   <Table.Tbody>
                     <Table.Tr>
                       <Table.Td>
-                        <Select data={accountOptions} value={watch('accountId')} onChange={val => setValue('accountId', val ?? '')} searchable filter={startsWithOptionsFilter} styles={{ input: fieldInputStyle }} />
+                        <PositioningSelect data={accountOptions} value={watch('accountId')} onChange={val => setValue('accountId', val ?? '')} styles={{ input: fieldInputStyle }} />
                       </Table.Td>
                       <Table.Td>
                         <TextInput {...register('operationDate')} type="date" error={errors.operationDate?.message} styles={{ input: fieldInputStyle }} />
@@ -524,36 +507,34 @@ export function OperationsFiche({ id }: Props) {
                         <TextInput {...register('dueDate')} type="date" styles={{ input: fieldInputStyle }} />
                       </Table.Td>
                       <Table.Td style={{ width: SHORT_SELECT_WIDTH }}>
-                        <Select
+                        <PositioningSelect<ShortCodeOption>
                           data={displayedMovementTypeOptions}
                           value={watch('movementTypeId') ?? null}
                           onChange={val => setValue('movementTypeId', val)}
                           clearable
-                          searchable
-                          comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
-                          filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
-                          renderOption={({ option }) => (
+                          dropdownWidth={SHORT_SELECT_DROPDOWN_WIDTH}
+                          getSearchText={option => [option.label, option.fullLabel]}
+                          renderOption={option => (
                             <Group justify="space-between" gap={8} wrap="nowrap">
                               <Text size="sm" fw={600}>{option.label}</Text>
-                              <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                              <Text size="xs" c="dimmed" truncate>{option.fullLabel}</Text>
                             </Group>
                           )}
                           styles={{ input: fieldInputStyle }}
                         />
                       </Table.Td>
                       <Table.Td style={{ width: SHORT_SELECT_WIDTH }}>
-                        <Select
+                        <PositioningSelect<ShortCodeOption>
                           data={displayedPaymentMethodOptions}
                           value={watch('paymentMethodId') ?? null}
                           onChange={val => setValue('paymentMethodId', val)}
                           clearable
-                          searchable
-                          comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
-                          filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
-                          renderOption={({ option }) => (
+                          dropdownWidth={SHORT_SELECT_DROPDOWN_WIDTH}
+                          getSearchText={option => [option.label, option.fullLabel]}
+                          renderOption={option => (
                             <Group justify="space-between" gap={8} wrap="nowrap">
                               <Text size="sm" fw={600}>{option.label}</Text>
-                              <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                              <Text size="xs" c="dimmed" truncate>{option.fullLabel}</Text>
                             </Group>
                           )}
                           styles={{ input: fieldInputStyle }}
@@ -569,38 +550,32 @@ export function OperationsFiche({ id }: Props) {
                         <TextInput {...register('income')} inputMode="decimal" styles={{ input: { ...fieldInputStyle, textAlign: 'right' } }} />
                       </Table.Td>
                       <Table.Td>
-                        <Select
+                        <PositioningSelect
                           data={thirdPartyOptions}
                           value={selectedThirdPartyId ?? null}
                           onChange={handleThirdPartyChange}
                           clearable
-                          searchable
-                          filter={startsWithOptionsFilter}
                           styles={{ input: fieldInputStyle }}
                         />
                       </Table.Td>
                       <Table.Td>
-                        <Select
+                        <PositioningSelect
                           data={displayedCategoryOptions}
                           value={hasSplitRows ? '__split__' : (watch('categoryId') ?? null)}
                           onChange={val => setValue('categoryId', val)}
                           placeholder="Catégorie"
                           clearable={!hasSplitRows}
-                          searchable={!hasSplitRows}
-                          filter={startsWithOptionsFilter}
                           disabled={hasSplitRows}
                           styles={{ input: fieldInputStyle }}
                         />
                       </Table.Td>
                       <Table.Td>
-                        <Select
+                        <PositioningSelect
                           data={displayedEnveloppeOptions}
                           value={hasSplitRows ? '__split__' : (watch('budgetId') ?? null)}
                           onChange={val => setValue('budgetId', val)}
                           placeholder="Enveloppe"
                           clearable={!hasSplitRows}
-                          searchable={!hasSplitRows}
-                          filter={startsWithOptionsFilter}
                           disabled={hasSplitRows}
                           styles={{ input: fieldInputStyle }}
                         />
@@ -689,10 +664,10 @@ export function OperationsFiche({ id }: Props) {
                               <TextInput {...register(`splits.${index}.income`)} inputMode="decimal" styles={{ input: { ...fieldInputStyle, textAlign: 'right' } }} />
                             </Table.Td>
                             <Table.Td>
-                              <Select data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable searchable filter={startsWithOptionsFilter} styles={{ input: fieldInputStyle }} />
+                              <PositioningSelect data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <Select data={categoryOptions} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable searchable filter={startsWithOptionsFilter} styles={{ input: fieldInputStyle }} />
+                              <PositioningSelect data={categoryOptions} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
                               <ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>

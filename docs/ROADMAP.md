@@ -94,6 +94,8 @@ Objectif : couvrir le cœur de valeur métier et remplacer l'usage quotidien de 
 | ST2 | Synthèse par compte | ⬜ |
 | ST3 | Synthèse par période | ⬜ |
 | ST4 | Synthèse par poste/regroupement | ⬜ |
+| ST5 | Filtres statistiques enregistrés (sauvegarder une combinaison de filtres sous un nom, la retrouver ensuite) | ⬜ |
+| ST6 | Raccourcis de plage de dates sur les filtres (ex. M = mois en cours, S = semaine en cours, A = année en cours) remplissant automatiquement bornes inf/sup | ⬜ |
 
 ### Rapprochement bancaire
 

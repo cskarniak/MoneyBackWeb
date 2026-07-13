@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Alert, Box, Button, Center, Checkbox, Group, Loader, Modal, ScrollArea, Select, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Alert, Box, Button, Center, Checkbox, Group, Loader, Modal, ScrollArea, Stack, Table, Text, TextInput } from '@mantine/core';
 import { IconAlertCircle, IconListDetails, IconPlayerPlay } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useAutoAssignOperationThirdParties } from '@/hooks/useOperationAutoAssign';
 
@@ -110,7 +110,7 @@ export function ThirdPartyAutoAssignWorkspace() {
             ) : null}
 
             <Group align="end" wrap="wrap">
-              <Select
+              <PositioningSelect
                 style={{ minWidth: 320 }}
                 label="Compte"
                 placeholder={loadingAccounts ? 'Chargement des comptes...' : 'Tous les comptes'}
@@ -118,8 +118,6 @@ export function ThirdPartyAutoAssignWorkspace() {
                 value={accountId}
                 onChange={setAccountId}
                 clearable
-                searchable
-                filter={startsWithOptionsFilter}
               />
               <TextInput
                 label="Date opération du"

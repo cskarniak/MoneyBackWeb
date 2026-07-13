@@ -14,7 +14,6 @@ import {
   Paper,
   Progress,
   ScrollArea,
-  Select,
   Stack,
   Table,
   Text,
@@ -32,7 +31,7 @@ import {
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useConfirmBankCsv, useImportProfilesAll, usePreviewBankCsv } from '@/hooks/useImportProfiles';
 import { CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { decodeTextFile } from '@/lib/text-file-decoder';
 
 const PANEL_STYLE = {
@@ -354,7 +353,7 @@ export function BankImportWorkspace() {
 
         <Stack gap="md" p="lg">
           <Group align="flex-end" wrap="wrap">
-            <Select
+            <PositioningSelect
               style={{ flex: '1 1 320px' }}
               label="Compte"
               placeholder={loadingAccounts ? 'Chargement des comptes...' : 'Choisir un compte'}
@@ -365,9 +364,6 @@ export function BankImportWorkspace() {
                 setSelectedLineNums([]);
                 setSelectedAccountId(value);
               }}
-              searchable
-              filter={startsWithOptionsFilter}
-              nothingFoundMessage="Aucun compte"
             />
 
             <FileInput
@@ -380,7 +376,7 @@ export function BankImportWorkspace() {
               leftSection={<IconFileImport size={15} />}
             />
 
-            <Select
+            <PositioningSelect
               style={{ flex: '1 1 320px' }}
               label="Masque d'import"
               placeholder={loadingProfiles ? 'Chargement des masques...' : 'Choisir un masque'}
@@ -391,9 +387,6 @@ export function BankImportWorkspace() {
                 setSelectedLineNums([]);
                 setSelectedProfileId(value);
               }}
-              searchable
-              filter={startsWithOptionsFilter}
-              nothingFoundMessage="Aucun masque"
             />
 
             <Button

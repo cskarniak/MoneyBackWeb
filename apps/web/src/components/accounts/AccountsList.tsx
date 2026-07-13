@@ -198,7 +198,7 @@ export function AccountsList() {
             Nom{sortIcon('name')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         accessorKey: 'agency',
@@ -207,7 +207,7 @@ export function AccountsList() {
             Agence{sortIcon('agency')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} truncate title={(getValue() as string | null) ?? undefined}>{(getValue() as string | null) ?? '—'}</Text>,
       },
       {
         accessorKey: 'number',

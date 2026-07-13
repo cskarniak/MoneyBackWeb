@@ -6,12 +6,12 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Box, Button, Checkbox, Group, Select, Stack, Text, Textarea, TextInput, Alert, Loader, Center } from '@mantine/core';
+import { Box, Button, Checkbox, Group, Stack, Text, Textarea, TextInput, Alert, Loader, Center } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { useCreateEnveloppe, useDeleteEnveloppe, useEnveloppe, useUpdateEnveloppe, type EnveloppePayload } from '@/hooks/useEnveloppes';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -225,7 +225,7 @@ export function EnveloppesFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Regroupement
               </Text>
-              <Select
+              <PositioningSelect
                 size="sm"
                 radius="md"
                 style={{ flex: 1 }}
@@ -234,8 +234,6 @@ export function EnveloppesFiche({ id }: Props) {
                 onChange={val => setValue('regroupementId', val)}
                 clearable
                 placeholder="Aucun"
-                searchable
-                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -244,7 +242,7 @@ export function EnveloppesFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Regroupement TB
               </Text>
-              <Select
+              <PositioningSelect
                 size="sm"
                 radius="md"
                 style={{ flex: 1 }}
@@ -256,8 +254,6 @@ export function EnveloppesFiche({ id }: Props) {
                 }}
                 clearable
                 placeholder="Aucun"
-                searchable
-                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -266,7 +262,7 @@ export function EnveloppesFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Type de mouvement
               </Text>
-              <Select
+              <PositioningSelect
                 size="sm"
                 radius="md"
                 style={{ flex: 1 }}
@@ -275,8 +271,6 @@ export function EnveloppesFiche({ id }: Props) {
                 onChange={val => setValue('movementTypeId', val)}
                 clearable
                 placeholder="Aucun"
-                searchable
-                filter={startsWithOptionsFilter}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>

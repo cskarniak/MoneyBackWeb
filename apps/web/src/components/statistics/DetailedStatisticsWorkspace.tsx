@@ -12,7 +12,7 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useGroupingsAll } from '@/hooks/useGroupings';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { useDetailedStatistics, type DetailedStatisticsFilters, type DetailedStatisticsItem } from '@/hooks/useDetailedStatistics';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -857,14 +857,12 @@ export function DetailedStatisticsWorkspace() {
                 >
                   <IconChevronLeft size={16} />
                 </Button>
-                <Select
+                <PositioningSelect
                   size={FILTER_INPUT_SIZE}
                   label="Enveloppe"
                   data={enveloppeOptions}
                   value={draftFilters.budgetId}
                   onChange={value => setDraftFilters(current => ({ ...current, budgetId: value }))}
-                  searchable
-                  filter={startsWithOptionsFilter}
                   clearable
                   placeholder="Toutes"
                   styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
@@ -881,38 +879,32 @@ export function DetailedStatisticsWorkspace() {
                   <IconChevronRight size={16} />
                 </Button>
               </Group>
-              <Select
+              <PositioningSelect
                 size={FILTER_INPUT_SIZE}
                 label="Compte"
                 data={accountOptions}
                 value={draftFilters.accountId}
                 onChange={value => setDraftFilters(current => ({ ...current, accountId: value }))}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
               />
-              <Select
+              <PositioningSelect
                 size={FILTER_INPUT_SIZE}
                 label="Catégorie"
                 data={categoryOptions}
                 value={draftFilters.categoryId}
                 onChange={value => setDraftFilters(current => ({ ...current, categoryId: value }))}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Toutes"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
               />
-              <Select
+              <PositioningSelect
                 size={FILTER_INPUT_SIZE}
                 label="Tiers"
                 data={thirdPartyOptions}
                 value={draftFilters.thirdPartyId}
                 onChange={value => setDraftFilters(current => ({ ...current, thirdPartyId: value }))}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
@@ -920,26 +912,22 @@ export function DetailedStatisticsWorkspace() {
             </Group>
 
             <Group grow align="end" gap={8}>
-              <Select
+              <PositioningSelect
                 size={FILTER_INPUT_SIZE}
                 label="Regroupement catégorie"
                 data={groupingOptions}
                 value={draftFilters.categoryGroupingId}
                 onChange={value => setDraftFilters(current => ({ ...current, categoryGroupingId: value }))}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}
               />
-              <Select
+              <PositioningSelect
                 size={FILTER_INPUT_SIZE}
                 label="Regroupement poste"
                 data={groupingOptions}
                 value={draftFilters.budgetGroupingId}
                 onChange={value => setDraftFilters(current => ({ ...current, budgetGroupingId: value }))}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
                 placeholder="Tous"
                 styles={{ input: { fontSize: TABLE_FONT_SIZE } }}

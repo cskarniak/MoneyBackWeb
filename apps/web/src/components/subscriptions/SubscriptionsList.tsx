@@ -255,7 +255,7 @@ export function SubscriptionsList() {
         ),
         cell: ({ row, getValue }) => (
           <Stack gap={2}>
-            <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600}>
+            <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
               {getValue() as string}
             </Text>
           </Stack>
@@ -296,7 +296,7 @@ export function SubscriptionsList() {
         id: 'compte',
         header: () => <span style={thStyle()}>Compte</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte}>{row.original.compte?.name ?? '—'}</Text>
+          <Text fz={CRUD.typographie.tailleTexte} truncate title={row.original.compte?.name}>{row.original.compte?.name ?? '—'}</Text>
         ),
       },
       {

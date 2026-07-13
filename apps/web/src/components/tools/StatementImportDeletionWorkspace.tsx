@@ -1,11 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Alert, Box, Button, Center, Group, Loader, Select, Stack, Text } from '@mantine/core';
+import { Alert, Box, Button, Center, Group, Loader, Stack, Text } from '@mantine/core';
 import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteStatementImport, useOperationStatementRefs } from '@/hooks/useOperations';
 
@@ -97,7 +97,7 @@ export function StatementImportDeletionWorkspace() {
             ) : null}
 
             <Group align="end" wrap="wrap">
-              <Select
+              <PositioningSelect
                 style={{ minWidth: 320 }}
                 label="Compte"
                 placeholder={loadingAccounts ? 'Chargement des comptes...' : 'Choisir un compte'}
@@ -107,11 +107,9 @@ export function StatementImportDeletionWorkspace() {
                   setAccountId(value);
                   setStatementRef(null);
                 }}
-                searchable
                 clearable
-                filter={startsWithOptionsFilter}
               />
-              <Select
+              <PositioningSelect
                 style={{ minWidth: 320 }}
                 label="Référence du relevé"
                 placeholder={
@@ -124,8 +122,6 @@ export function StatementImportDeletionWorkspace() {
                 data={statementRefOptions}
                 value={statementRef}
                 onChange={setStatementRef}
-                searchable
-                filter={startsWithOptionsFilter}
                 disabled={!accountId}
               />
               <Button

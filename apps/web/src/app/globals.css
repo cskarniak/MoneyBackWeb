@@ -1,1 +1,29 @@
 /* Les réglages visuels CRUD sont centralisés dans src/lib/crud-tokens.ts. */
+
+/* Les Select "searchable" affichent un curseur de saisie même au repos,
+   ce qui les fait ressembler à un champ texte libre. Au repos (non focus),
+   on garde un curseur de pointeur comme une vraie liste déroulante ;
+   la saisie/filtrage reste possible une fois le champ ouvert (focus). */
+.mantine-Select-input:not(:focus) {
+  cursor: pointer;
+}
+
+/* Fond de la barre de défilement des listes déroulantes (PositioningSelect). */
+.positioning-select-options {
+  scrollbar-color: #868e96 #d0d5dd;
+  scrollbar-width: auto;
+}
+
+.positioning-select-options::-webkit-scrollbar {
+  width: 10px;
+}
+
+.positioning-select-options::-webkit-scrollbar-track {
+  background: #d0d5dd;
+}
+
+.positioning-select-options::-webkit-scrollbar-thumb {
+  background-color: #868e96;
+  border-radius: 4px;
+  border: 2px solid #d0d5dd;
+}

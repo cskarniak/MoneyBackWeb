@@ -8,11 +8,9 @@ import {
   ActionIcon,
   Alert,
   Box,
-  Button,
   Checkbox,
   Group,
   Loader,
-  Select,
   Stack,
   Table,
   Text,
@@ -20,9 +18,9 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { IconAlertCircle, IconCheck, IconGitBranch, IconMinus, IconPlus } from '@tabler/icons-react';
+import { IconAlertCircle, IconCheck, IconGitBranch, IconMinus, IconPlus, IconX } from '@tabler/icons-react';
 import { buildCrudFormCssVariables, CRUD } from '@/lib/crud-tokens';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useCreateOperation, useOperation, useUpdateOperation, type Operation, type OperationPayload } from '@/hooks/useOperations';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
@@ -33,6 +31,7 @@ import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
 const FIELD_BG = '#fbfdff';
+const ROW_BG = '#dbeafe';
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const INLINE_LABEL_COLOR = '#667085';
 const SHORT_SELECT_WIDTH = 60;
@@ -110,22 +109,6 @@ function buildShortCodeOption(id: string, code: string | null | undefined, label
     label: trimmedCode || label,
     fullLabel: label,
   };
-}
-
-function filterShortCodeOptions({
-  options,
-  search,
-}: {
-  options: ShortCodeOption[];
-  search: string;
-}) {
-  const normalizedSearch = search.trim().toLowerCase();
-  if (!normalizedSearch) return options;
-
-  return options.filter(option =>
-    option.label.toLowerCase().startsWith(normalizedSearch)
-    || option.fullLabel.toLowerCase().startsWith(normalizedSearch),
-  );
 }
 
 function buildPayload(values: FormValues): OperationPayload {
@@ -348,6 +331,7 @@ export function OperationsInlineEditor({
 
   const fieldInputStyle = {
     background: FIELD_BG,
+    color: '#101828',
     height: 'var(--crud-field-height)',
     minHeight: 'var(--crud-field-height)',
     fontSize: 'calc(var(--crud-field-font-size) - 1px)',
@@ -359,16 +343,28 @@ export function OperationsInlineEditor({
 
   const memoInputStyle = {
     background: FIELD_BG,
-    fontSize: 'var(--crud-field-font-size)',
-    paddingTop: 6,
-    paddingBottom: 6,
+    color: '#101828',
+    fontSize: 'calc(var(--crud-field-font-size) - 1px)',
+    paddingTop: 3,
+    paddingBottom: 3,
     paddingLeft: 6,
     paddingRight: 6,
     resize: 'vertical' as const,
-  };
+    // Mantine impose `min-height: var(--input-height)` (36px par défaut) sur
+    // le textarea, même en multiline. On ne peut pas passer `minHeight` en
+    // style (react-textarea-autosize lève une erreur), donc on réduit
+    // directement la variable CSS sous-jacente.
+    '--input-height': 'var(--crud-field-height)',
+  } as React.CSSProperties;
 
   const inlineCellInputStyle = {
     ...fieldInputStyle,
+  } as const;
+
+  const inlineCellDateInputStyle = {
+    ...inlineCellInputStyle,
+    display: 'flex',
+    alignItems: 'center',
   } as const;
 
   const inlineCellTdStyle = {
@@ -376,7 +372,7 @@ export function OperationsInlineEditor({
     borderRight: `1px solid ${CRUD.couleurs.grilleTableau}`,
     borderBottom: 'none',
     verticalAlign: 'middle' as const,
-    background: '#f7fbff',
+    background: ROW_BG,
   };
 
   useEffect(() => {
@@ -390,6 +386,18 @@ export function OperationsInlineEditor({
       setDetailsOpened(true);
     }
   }, [suggestedSplits.length]);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      // Les modales de ventilation gèrent déjà leur propre fermeture par Echap.
+      if (splitModalOpened || splitSuggestionModalOpened) return;
+      onCancel();
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onCancel, splitModalOpened, splitSuggestionModalOpened]);
 
   useEffect(() => {
     onDraftChange?.({
@@ -500,7 +508,7 @@ export function OperationsInlineEditor({
 
   return (
     <>
-      <Table.Tr style={{ ...compactFormVars, background: '#f7fbff', borderBottom: 'none' }}>
+      <Table.Tr style={{ ...compactFormVars, background: ROW_BG, borderBottom: 'none' }}>
         <Table.Td style={{ ...inlineCellTdStyle, width: 22 }}>
           <Text fz={11} fw={700} lh={1} ta="center" c="#4c73f0">
             ▶
@@ -512,7 +520,7 @@ export function OperationsInlineEditor({
             type="date"
             error={errors.operationDate?.message}
             placeholder="Date"
-            styles={{ input: inlineCellInputStyle }}
+            styles={{ input: inlineCellDateInputStyle }}
           />
         </Table.Td>
         <Table.Td style={{ ...inlineCellTdStyle, width: '28%' }}>
@@ -524,39 +532,33 @@ export function OperationsInlineEditor({
           />
         </Table.Td>
         <Table.Td style={inlineCellTdStyle}>
-          <Select
+          <PositioningSelect
             data={thirdPartyOptions}
             value={selectedThirdPartyId ?? null}
             onChange={handleThirdPartyChange}
             placeholder="Tiers"
             clearable
-            searchable
-            filter={startsWithOptionsFilter}
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
         <Table.Td style={inlineCellTdStyle}>
-          <Select
+          <PositioningSelect
             data={displayedCategoryOptions}
             value={hasSplitRows ? '__split__' : (watch('categoryId') ?? null)}
             onChange={val => setValue('categoryId', val, { shouldDirty: true })}
             placeholder="Catégorie"
             clearable={!hasSplitRows}
-            searchable={!hasSplitRows}
-            filter={startsWithOptionsFilter}
             disabled={hasSplitRows}
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
         <Table.Td style={inlineCellTdStyle}>
-          <Select
+          <PositioningSelect
             data={displayedEnveloppeOptions}
             value={hasSplitRows ? '__split__' : (watch('budgetId') ?? null)}
             onChange={val => setValue('budgetId', val, { shouldDirty: true })}
             placeholder="Enveloppe"
             clearable={!hasSplitRows}
-            searchable={!hasSplitRows}
-            filter={startsWithOptionsFilter}
             disabled={hasSplitRows}
             styles={{ input: inlineCellInputStyle }}
           />
@@ -611,15 +613,22 @@ export function OperationsInlineEditor({
             >
               <IconCheck size={14} />
             </ActionIcon>
-            <Button size="sm" radius="md" variant="default" onClick={onCancel}>
-              Fermer
-            </Button>
+            <ActionIcon
+              size="md"
+              radius="md"
+              color="gray"
+              variant="light"
+              onClick={onCancel}
+              title="Fermer sans enregistrer (Échap)"
+            >
+              <IconX size={14} />
+            </ActionIcon>
           </Group>
         </Table.Td>
       </Table.Tr>
 
       {detailsOpened && (
-        <Table.Tr style={{ ...compactFormVars, background: '#f7fbff' }}>
+        <Table.Tr style={{ ...compactFormVars, background: ROW_BG }}>
         <Table.Td style={{ ...inlineCellTdStyle, borderBottom: 'none' }} />
         <Table.Td colSpan={columnsCount - 2} style={{ padding: '0 16px 16px', borderTop: 'none' }}>
           <Stack gap={12}>
@@ -681,7 +690,7 @@ export function OperationsInlineEditor({
                   {...register('dueDate')}
                   type="date"
                   w={DUE_DATE_WIDTH}
-                  styles={{ input: fieldInputStyle }}
+                  styles={{ input: inlineCellDateInputStyle }}
                 />
               </Group>
               <Group gap={6} wrap="nowrap">
@@ -690,19 +699,18 @@ export function OperationsInlineEditor({
                     TM
                   </Text>
                 </Tooltip>
-                <Select
+                <PositioningSelect<ShortCodeOption>
                   data={displayedMovementTypeOptions}
                   value={watch('movementTypeId') ?? null}
                   onChange={val => setValue('movementTypeId', val, { shouldDirty: true })}
                   clearable
-                  searchable
                   w={SHORT_SELECT_WIDTH}
-                  comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
-                  filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
-                  renderOption={({ option }) => (
+                  dropdownWidth={SHORT_SELECT_DROPDOWN_WIDTH}
+                  getSearchText={option => [option.label, option.fullLabel]}
+                  renderOption={option => (
                     <Group justify="space-between" gap={8} wrap="nowrap">
                       <Text size="sm" fw={600}>{option.label}</Text>
-                      <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                      <Text size="xs" c="dimmed" truncate>{option.fullLabel}</Text>
                     </Group>
                   )}
                   styles={{ input: fieldInputStyle }}
@@ -714,19 +722,18 @@ export function OperationsInlineEditor({
                     MP
                   </Text>
                 </Tooltip>
-                <Select
+                <PositioningSelect<ShortCodeOption>
                   data={displayedPaymentMethodOptions}
                   value={watch('paymentMethodId') ?? null}
                   onChange={val => setValue('paymentMethodId', val, { shouldDirty: true })}
                   clearable
-                  searchable
                   w={SHORT_SELECT_WIDTH}
-                  comboboxProps={{ width: SHORT_SELECT_DROPDOWN_WIDTH }}
-                  filter={({ options, search }) => filterShortCodeOptions({ options: options as ShortCodeOption[], search })}
-                  renderOption={({ option }) => (
+                  dropdownWidth={SHORT_SELECT_DROPDOWN_WIDTH}
+                  getSearchText={option => [option.label, option.fullLabel]}
+                  renderOption={option => (
                     <Group justify="space-between" gap={8} wrap="nowrap">
                       <Text size="sm" fw={600}>{option.label}</Text>
-                      <Text size="xs" c="dimmed" truncate>{(option as ShortCodeOption).fullLabel}</Text>
+                      <Text size="xs" c="dimmed" truncate>{option.fullLabel}</Text>
                     </Group>
                   )}
                   styles={{ input: fieldInputStyle }}
@@ -750,7 +757,7 @@ export function OperationsInlineEditor({
                 <Textarea
                   {...register('comment')}
                   autosize
-                  minRows={2}
+                  minRows={1}
                   maxRows={8}
                   style={{ flex: 1, minWidth: 0 }}
                   styles={{ input: memoInputStyle }}

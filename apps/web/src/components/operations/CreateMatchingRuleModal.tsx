@@ -7,7 +7,7 @@ import { useThirdParty, useThirdPartiesAll, useCreateThirdParty, useUpdateThirdP
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import type { Operation } from '@/hooks/useOperations';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 
 type ConditionDraft = {
   field: string;
@@ -240,14 +240,12 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
           />
 
           {mode === 'existing' ? (
-            <Select
+            <PositioningSelect
               label="Tiers cible"
               placeholder="Sélectionner un tiers"
               data={thirdPartyOptions}
               value={thirdPartyId}
               onChange={setThirdPartyId}
-              searchable
-              filter={startsWithOptionsFilter}
               required
             />
           ) : (
@@ -258,24 +256,20 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
                 onChange={event => setNewThirdPartyName(event.currentTarget.value)}
                 required
               />
-              <Select
+              <PositioningSelect
                 label="Catégorie"
                 placeholder="Aucune"
                 data={categoryOptions}
                 value={newCategoryId}
                 onChange={setNewCategoryId}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
               />
-              <Select
+              <PositioningSelect
                 label="Enveloppe"
                 placeholder="Aucune"
                 data={budgetOptions}
                 value={newBudgetId}
                 onChange={setNewBudgetId}
-                searchable
-                filter={startsWithOptionsFilter}
                 clearable
               />
             </Group>

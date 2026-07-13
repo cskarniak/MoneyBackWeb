@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Alert, Box, Button, Center, Checkbox, Group, Loader, Radio, Select, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Alert, Box, Button, Center, Checkbox, Group, Loader, Radio, Stack, Table, Text, TextInput } from '@mantine/core';
 import { IconAlertCircle, IconChevronDown, IconChevronRight, IconPlayerPlay } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useEnvelopeSummary, type EnvelopeSummaryFilters } from '@/hooks/useEnvelopeSummary';
-import { startsWithOptionsFilter } from '@/lib/select-filter';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -402,7 +402,7 @@ export function EnvelopeSummaryWorkspace() {
             ) : null}
 
             <Group align="end" wrap="nowrap">
-              <Select
+              <PositioningSelect
                 style={{ minWidth: 320 }}
                 label="Compte"
                 placeholder="Tous les comptes"
@@ -410,8 +410,6 @@ export function EnvelopeSummaryWorkspace() {
                 value={accountId}
                 onChange={setAccountId}
                 clearable
-                searchable
-                filter={startsWithOptionsFilter}
               />
               <Radio.Group
                 label="Période de calcul"

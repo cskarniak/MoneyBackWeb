@@ -228,7 +228,7 @@ export function MovementTypesList() {
           </span>
         ),
         cell: ({ row, getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600}>
+          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
             {getValue() as string}
           </Text>
         ),
