@@ -754,46 +754,48 @@ export class ImportProfilesService {
         income,
       };
 
-      const baseWhere = {
-        accountId: dto.accountId,
-        operationDate,
-        expense: expense ?? '0',
-        income: income ?? '0',
-      };
-
-      const existingOperations = await this.prisma.operation.findMany({
-        where: baseWhere,
-        select: {
-          id: true,
-          accountId: true,
-          operationDate: true,
-          label: true,
-          expense: true,
-          income: true,
-        },
-      });
-
-      const duplicateKey = this.buildDuplicateKey(duplicateLine);
-      const duplicateBaseKey = this.buildDuplicateBaseKey(duplicateLine);
-      const duplicateOperation = existingOperations.find(operation => {
-        const existingLine = {
-          accountId: operation.accountId,
-          operationDate: operation.operationDate,
-          label: this.normalizeLabel(operation.label),
-          expense: Number(operation.expense) > 0 ? Number(operation.expense).toFixed(2) : null,
-          income: Number(operation.income) > 0 ? Number(operation.income).toFixed(2) : null,
+      if (!line.forceImport) {
+        const baseWhere = {
+          accountId: dto.accountId,
+          operationDate,
+          expense: expense ?? '0',
+          income: income ?? '0',
         };
 
-        return this.buildDuplicateKey(existingLine) === duplicateKey
-          || (
-            this.buildDuplicateBaseKey(existingLine) === duplicateBaseKey
-            && this.labelsMatch(line.label, operation.label)
-          );
-      });
+        const existingOperations = await this.prisma.operation.findMany({
+          where: baseWhere,
+          select: {
+            id: true,
+            accountId: true,
+            operationDate: true,
+            label: true,
+            expense: true,
+            income: true,
+          },
+        });
 
-      if (duplicateOperation) {
-        skippedLineNums.push(line.lineNum);
-        continue;
+        const duplicateKey = this.buildDuplicateKey(duplicateLine);
+        const duplicateBaseKey = this.buildDuplicateBaseKey(duplicateLine);
+        const duplicateOperation = existingOperations.find(operation => {
+          const existingLine = {
+            accountId: operation.accountId,
+            operationDate: operation.operationDate,
+            label: this.normalizeLabel(operation.label),
+            expense: Number(operation.expense) > 0 ? Number(operation.expense).toFixed(2) : null,
+            income: Number(operation.income) > 0 ? Number(operation.income).toFixed(2) : null,
+          };
+
+          return this.buildDuplicateKey(existingLine) === duplicateKey
+            || (
+              this.buildDuplicateBaseKey(existingLine) === duplicateBaseKey
+              && this.labelsMatch(line.label, operation.label)
+            );
+        });
+
+        if (duplicateOperation) {
+          skippedLineNums.push(line.lineNum);
+          continue;
+        }
       }
 
       const created = await this.prisma.operation.create({

@@ -698,6 +698,7 @@ export const BankCsvConfirmLineSchema = z.object({
   expense: z.string().nullable().optional(),
   income: z.string().nullable().optional(),
   statementRef: z.string().nullable().optional(),
+  forceImport: z.boolean().optional().default(false),
 });
 
 export type BankCsvConfirmLineDto = z.infer<typeof BankCsvConfirmLineSchema>;

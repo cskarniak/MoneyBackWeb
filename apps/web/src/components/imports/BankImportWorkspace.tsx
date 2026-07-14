@@ -240,7 +240,7 @@ export function BankImportWorkspace() {
     }
 
     const selectedLines = preview.lines.filter(
-      line => selectedLineNums.includes(String(line.lineNum)) && line.status === 'valid',
+      line => selectedLineNums.includes(String(line.lineNum)) && line.status !== 'error',
     );
 
     if (selectedLines.length === 0) {
@@ -270,6 +270,7 @@ export function BankImportWorkspace() {
             expense: line.expense,
             income: line.income,
             statementRef: line.statementRef,
+            forceImport: line.status === 'duplicate',
           }],
         });
 
