@@ -29,7 +29,7 @@ type Props<T extends PositioningSelectOption> = {
   radius?: MantineSize | number;
   readOnly?: boolean;
   dropdownZIndex?: number;
-  /** Largeur du menu déroulant (par défaut, largeur du champ). Utile quand le champ est étroit (ex: code court) mais que les libellés sont longs. */
+  /** Largeur du menu déroulant. Par défaut `'max-content'` (s'élargit pour que les libellés tiennent sur une ligne, sans déplacer le champ). Passer une valeur fixe (ex: `SHORT_SELECT_DROPDOWN_WIDTH`) pour un champ "code court". */
   dropdownWidth?: number | string;
   /** Appelé après la gestion interne du clavier (ex: navigation vers la ligne suivante sur Entrée dans une grille). */
   onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
@@ -65,7 +65,12 @@ export function PositioningSelect<T extends PositioningSelectOption = Positionin
   radius,
   readOnly,
   dropdownZIndex,
-  dropdownWidth,
+  // Le menu déroulé s'élargit pour que les libellés tiennent sur une seule ligne,
+  // même si le champ fermé reste étroit — le champ lui-même ne bouge pas, seul le
+  // menu s'agrandit (aligné à gauche sur le champ). Passer une valeur explicite
+  // (ex: SHORT_SELECT_DROPDOWN_WIDTH) pour les champs "code court" qui ont besoin
+  // d'une largeur fixe plus grande que leur contenu le plus long.
+  dropdownWidth = 'max-content',
   onKeyDown,
   renderOption,
   getSearchText,
@@ -154,8 +159,9 @@ export function PositioningSelect<T extends PositioningSelectOption = Positionin
         onChange(val === EMPTY_OPTION_VALUE ? null : val);
         combobox.closeDropdown();
       }}
-      styles={{ dropdown: { border: '1px solid #000000', zIndex: dropdownZIndex } }}
+      styles={{ dropdown: { border: '1px solid #000000' } }}
       width={dropdownWidth}
+      zIndex={dropdownZIndex}
     >
       <Combobox.Target>
         <InputBase

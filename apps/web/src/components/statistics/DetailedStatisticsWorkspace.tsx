@@ -13,6 +13,7 @@ import { useGroupingsAll } from '@/hooks/useGroupings';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { useDetailedStatistics, type DetailedStatisticsFilters, type DetailedStatisticsItem } from '@/hooks/useDetailedStatistics';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { isSecondaryTabRequest, openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -202,7 +203,7 @@ function buildSubmittedFilters(filters: DraftFilters): DetailedStatisticsFilters
 export function DetailedStatisticsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isZoomTarget = searchParams.get('returnTo') === 'envelope-summary';
+  const isSecondaryTab = isSecondaryTabRequest(searchParams);
   const [isHydrated, setIsHydrated] = useState(false);
   const [hasAppliedInitialParams, setHasAppliedInitialParams] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -452,7 +453,7 @@ export function DetailedStatisticsWorkspace() {
     params.set('returnSortDirection', sortState.direction);
     params.set('returnAutoRun', submittedFilters !== null ? 'true' : 'false');
     params.set('returnHighlightOperationId', rowId);
-    window.open(`/operations?${params.toString()}`, '_blank', 'noopener,noreferrer');
+    openSecondaryTab(`/operations?${params.toString()}`);
   };
 
   const handleExport = async () => {
@@ -691,6 +692,11 @@ export function DetailedStatisticsWorkspace() {
   };
 
   const handleClose = () => {
+    if (isSecondaryTab) {
+      window.close();
+      return;
+    }
+
     if (searchParams.get('returnTo') === 'envelope-summary') {
       goBackToEnvelopeSummary();
       return;
@@ -750,9 +756,8 @@ export function DetailedStatisticsWorkspace() {
               size="xs"
               color="rgba(255,255,255,0.92)"
               onClick={handleClose}
-              disabled={isZoomTarget}
               style={{ paddingInline: 8 }}
-              title={isZoomTarget ? "Ferme l'onglet ouvert par le zoom pour revenir à l'écran précédent." : undefined}
+              title={isSecondaryTab ? "Ferme cet onglet et revient à l'écran d'origine." : undefined}
             >
               Fermer
             </Button>

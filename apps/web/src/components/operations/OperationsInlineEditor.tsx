@@ -498,6 +498,12 @@ export function OperationsInlineEditor({
     setSplitSuggestionModalOpened(false);
   };
 
+  const handleRowEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    void handleSubmit(onSubmit)();
+  };
+
   const handleSplitRowEnter = (index: number) => (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Enter') return;
     event.preventDefault();
@@ -534,6 +540,7 @@ export function OperationsInlineEditor({
             type="date"
             error={errors.operationDate?.message}
             placeholder="Date"
+            onKeyDown={handleRowEnter}
             styles={{ input: inlineCellDateInputStyle }}
           />
         </Table.Td>
@@ -542,6 +549,7 @@ export function OperationsInlineEditor({
             {...register('label')}
             error={errors.label?.message}
             placeholder="Libellé"
+            onKeyDown={handleRowEnter}
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
@@ -582,6 +590,7 @@ export function OperationsInlineEditor({
             {...register('expense')}
             inputMode="decimal"
             placeholder="0,00"
+            onKeyDown={handleRowEnter}
             styles={{ input: { ...inlineCellInputStyle, textAlign: 'right' } }}
           />
         </Table.Td>
@@ -590,6 +599,7 @@ export function OperationsInlineEditor({
             {...register('income')}
             inputMode="decimal"
             placeholder="0,00"
+            onKeyDown={handleRowEnter}
             styles={{ input: { ...inlineCellInputStyle, textAlign: 'right' } }}
           />
         </Table.Td>
@@ -704,6 +714,7 @@ export function OperationsInlineEditor({
                   {...register('dueDate')}
                   type="date"
                   w={DUE_DATE_WIDTH}
+                  onKeyDown={handleRowEnter}
                   styles={{ input: inlineCellDateInputStyle }}
                 />
               </Group>
@@ -761,6 +772,7 @@ export function OperationsInlineEditor({
                   {...register('lettering')}
                   w={LETTERING_WIDTH}
                   maxLength={4}
+                  onKeyDown={handleRowEnter}
                   styles={{ input: fieldInputStyle }}
                 />
               </Group>
@@ -784,6 +796,7 @@ export function OperationsInlineEditor({
                 <TextInput
                   {...register('pieceNumber')}
                   w={PIECE_NUMBER_WIDTH}
+                  onKeyDown={handleRowEnter}
                   styles={{ input: fieldInputStyle }}
                 />
               </Group>

@@ -78,6 +78,24 @@ Recette (implémentée pour les enveloppes — `budgets.service.ts` / `Enveloppe
    - **Piège à éviter** : si cette correction n'est pas gardée par un flag "une seule fois" (ex. dépendance `[data]` sans garde), elle se redéclenche à **chaque** changement de page — y compris quand l'utilisateur clique sur `Suivant`/`Précédent` — et le renvoie de force sur la page de l'enregistrement mis en évidence, rendant la pagination manuelle inutilisable juste après un retour de fiche.
    - Le surlignage visuel (`recentId === row.original.id` → gras + fond saumon) reste actif indéfiniment tant que le composant liste n'est pas démonté — c'est voulu, seule la correction de page doit être ponctuelle.
 
+## Accès secondaire depuis un écran principal (onglet)
+
+Règle générale, pas seulement pour les CRUD : dès qu'un écran principal (liste, fiche, synthèse) propose un accès vers un écran de consultation annexe qui n'est pas la navigation normale de l'appli (ex. zoom vers les statistiques détaillées d'une enveloppe depuis la synthèse enveloppes, zoom vers les opérations liées depuis les statistiques détaillées, accès aux statistiques d'une enveloppe depuis sa fiche ou depuis la saisie des opérations), cet accès doit s'ouvrir dans un **nouvel onglet du navigateur**, jamais en navigant dans l'onglet courant.
+
+Sur l'écran ouvert ainsi, le bouton **`Fermer`** déjà présent dans le bandeau doit **fermer cet onglet** (pas naviguer en arrière) — c'est la façon de "revenir" à l'écran appelant, qui est resté ouvert et inchangé dans son propre onglet pendant ce temps.
+
+Implémentation centralisée dans `apps/web/src/lib/secondary-tab.ts` :
+
+```ts
+openSecondaryTab(path)              // à l'appel : window.open(path + '&popup=1', '_blank', 'noopener,noreferrer')
+isSecondaryTabRequest(searchParams) // sur l'écran ouvert : searchParams.get('popup') === '1'
+```
+
+- **Au clic sur le lien d'accès secondaire** : appeler `openSecondaryTab('/route?...')` plutôt que `router.push(...)`.
+- **Sur l'écran de destination**, dans le `handleClose` du bouton `Fermer` : si `isSecondaryTabRequest(searchParams)` est vrai, appeler `window.close()` (et `return` immédiatement) avant tout autre cas de fermeture/retour ; sinon garder le comportement de fermeture normal de l'écran (retour à `/` ou à l'écran parent).
+- Ne jamais `disabled` le bouton `Fermer` pour ce cas — il doit toujours pouvoir fermer l'onglet.
+- Cette règle a remplacé un ancien mécanisme (encore présent par endroits sous forme de paramètres `return*` dans `DetailedStatisticsWorkspace.tsx`/`OperationsList.tsx`) qui essayait de reconstruire l'état de l'écran appelant via l'URL puis d'y naviguer en arrière dans le même onglet — plus nécessaire une fois que l'écran appelant reste ouvert dans son propre onglet.
+
 ## Règles de tableau
 
 - Trait horizontal au-dessus de l'en-tête.
@@ -98,6 +116,7 @@ Recette (implémentée pour les enveloppes — `budgets.service.ts` / `Enveloppe
 - Labels à gauche, champs à droite.
 - Champs à hauteur compacte et espacement vertical régulier.
 - Les champs booléens sont rendus avec `<Checkbox>` — pas de `<Switch>` avec labels.
+- Les listes déroulantes à filtrage local (choix d'une entité parmi des options déjà chargées) utilisent `PositioningSelect` (voir CLAUDE.md pour le détail du comportement clavier). Son menu déroulant s'élargit par défaut (`dropdownWidth='max-content'`) pour que le libellé le plus long tienne sur une seule ligne, sans jamais déplacer ni élargir le champ fermé — ne pas repasser `dropdownWidth='target'`/une valeur manuelle sauf pour un champ "code court" qui a besoin d'une largeur de menu fixe.
 - **Boutons d'action en bas de la fiche, séparés en deux groupes :**
   - **Gauche** : `Supprimer` (variante `outline`, couleur rouge) — visible uniquement en mode édition.
   - **Droite** : `Annuler` + `Enregistrer`.
@@ -145,6 +164,7 @@ Avant de livrer le code, vérifie chaque point :
 - [ ] Limite par défaut 10, options 10/25/50/100
 - [ ] Actions `ouvrir` et `supprimer` dans la liste
 - [ ] Formulaire complet dans la fiche
+- [ ] Listes déroulantes en `PositioningSelect`, menu déroulant `max-content` (champ fermé qui ne bouge pas)
 - [ ] Champ booléen avec `<Checkbox>` (pas de `<Switch>`)
 - [ ] Bouton `Supprimer` rouge à gauche (mode édition uniquement) + `Annuler`/`Enregistrer` à droite
 - [ ] Valeurs conservées après erreur de validation

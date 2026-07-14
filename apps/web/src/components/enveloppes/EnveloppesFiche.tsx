@@ -12,6 +12,7 @@ import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { useCreateEnveloppe, useDeleteEnveloppe, useEnveloppe, useUpdateEnveloppe, type EnveloppePayload } from '@/hooks/useEnveloppes';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -355,7 +356,7 @@ export function EnveloppesFiche({ id }: Props) {
                     size="xs"
                     radius="md"
                     variant="outline"
-                    onClick={() => router.push(`/statistiques?budgetId=${id}&autoRun=true`)}
+                    onClick={() => openSecondaryTab(`/statistiques?budgetId=${id}&autoRun=true`)}
                   >
                     Voir les statistiques
                   </Button>

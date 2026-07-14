@@ -8,6 +8,7 @@ import { CRUD } from '@/lib/crud-tokens';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useEnvelopeSummary, type EnvelopeSummaryFilters } from '@/hooks/useEnvelopeSummary';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -334,7 +335,7 @@ export function EnvelopeSummaryWorkspace() {
     params.set('returnSortDirection', sortDirection);
     params.set('returnAutoRun', submittedFilters !== null ? 'true' : 'false');
 
-    window.open(`/statistiques?${params.toString()}`, '_blank', 'noopener,noreferrer');
+    openSecondaryTab(`/statistiques?${params.toString()}`);
   };
 
   const handleSort = (nextKey: SortKey) => {

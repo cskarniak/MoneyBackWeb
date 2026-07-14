@@ -26,6 +26,7 @@ import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { isSecondaryTabRequest, openSecondaryTab } from '@/lib/secondary-tab';
 import { OperationSplitModal } from './OperationSplitModal';
 import { OperationsInlineEditor } from './OperationsInlineEditor';
 import { CreateMatchingRuleModal } from './CreateMatchingRuleModal';
@@ -124,7 +125,7 @@ export function OperationsList() {
 
   const highlight = searchParams.get('highlight');
   const returnTo = searchParams.get('returnTo');
-  const isZoomTarget = returnTo === 'detailed-statistics';
+  const isSecondaryTab = isSecondaryTabRequest(searchParams);
   const editParam = searchParams.get('edit');
   const modeParam = searchParams.get('mode');
   const [searchInput, setSearchInput] = useState(search);
@@ -218,6 +219,11 @@ export function OperationsList() {
   };
 
   const handleClose = () => {
+    if (isSecondaryTab) {
+      window.close();
+      return;
+    }
+
     if (returnTo === 'detailed-statistics') {
       goBackToDetailedStatistics();
       return;
@@ -627,6 +633,12 @@ export function OperationsList() {
     router.push(`/referentiels/enveloppes/${operation.budgetId}`);
   };
 
+  const handleOpenEnvelopeStatistics = (operation: Operation) => {
+    if (!operation.budgetId) return;
+    setContextMenu(null);
+    openSecondaryTab(`/statistiques?budgetId=${operation.budgetId}&autoRun=true`);
+  };
+
   const sortIcon = (col: string) => (sortBy === col ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '');
 
   const thStyle = (col?: 'operationDate' | 'label' | 'expense' | 'income') => ({
@@ -941,9 +953,8 @@ export function OperationsList() {
               size="xs"
               color="rgba(255,255,255,0.92)"
               onClick={handleClose}
-              disabled={isZoomTarget}
               style={{ paddingInline: 8 }}
-              title={isZoomTarget ? "Ferme l'onglet ouvert par le zoom pour revenir à l'écran précédent." : undefined}
+              title={isSecondaryTab ? "Ferme cet onglet et revient à l'écran d'origine." : undefined}
             >
               Fermer
             </Button>
@@ -1281,6 +1292,27 @@ export function OperationsList() {
                 onClick={() => handleOpenEnvelope(contextMenu.operation)}
               >
                 Enveloppe
+              </Button>
+            )}
+            {contextMenu.operation.budgetId && (
+              <Button
+                variant="subtle"
+                fullWidth
+                justify="flex-start"
+                radius={0}
+                styles={{
+                  root: {
+                    height: 40,
+                    color: '#334155',
+                    borderBottom: `1px solid ${GRAY_BORDER}`,
+                  },
+                  inner: {
+                    justifyContent: 'flex-start',
+                  },
+                }}
+                onClick={() => handleOpenEnvelopeStatistics(contextMenu.operation)}
+              >
+                Statistiques de l&apos;enveloppe
               </Button>
             )}
             {isSplitOperation(contextMenu.operation) && (
