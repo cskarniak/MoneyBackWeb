@@ -122,7 +122,6 @@ export function useEnveloppesAll() {
       ),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
-    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 }

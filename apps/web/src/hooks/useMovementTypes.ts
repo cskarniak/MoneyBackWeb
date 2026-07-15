@@ -55,7 +55,6 @@ export function useMovementTypesAll() {
       api.get('/movement-types', { params: { active: true, limit: 200, sortBy: 'label', sortOrder: 'asc' } }).then(r => r.data.items),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
-    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 }
