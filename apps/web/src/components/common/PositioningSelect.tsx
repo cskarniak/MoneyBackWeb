@@ -185,6 +185,13 @@ export function PositioningSelect<T extends PositioningSelectOption = Positionin
             combobox.toggleDropdown();
           }}
           onKeyDown={handleKeyDown}
+          onBlur={() => {
+            // La liste déroulante doit toujours être liée au focus de son champ :
+            // dès que le focus quitte le champ (ex: clic sur un autre champ d'une
+            // ligne différente dans une grille), on referme cette liste pour ne
+            // jamais avoir deux listes ouvertes en même temps sur un même formulaire.
+            combobox.closeDropdown();
+          }}
           rightSection={<Combobox.Chevron />}
           rightSectionPointerEvents="none"
           styles={{
