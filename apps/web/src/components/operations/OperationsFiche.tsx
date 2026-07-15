@@ -322,7 +322,6 @@ export function OperationsFiche({ id }: Props) {
   } as const;
 
   const onSubmit = async (values: FormValues) => {
-    if (splitError) return;
     try {
       const payload = buildPayload(values);
       if (isNew) {
@@ -747,7 +746,7 @@ export function OperationsFiche({ id }: Props) {
               <Button variant="default" radius="md" onClick={() => router.push('/operations')}>
                 Retour
               </Button>
-              <Button type="submit" radius="md" loading={isSubmitting} disabled={!!splitError}>
+              <Button type="submit" radius="md" loading={isSubmitting}>
                 Enregistrer
               </Button>
             </Group>
