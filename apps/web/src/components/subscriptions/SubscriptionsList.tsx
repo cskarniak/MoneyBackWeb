@@ -164,7 +164,7 @@ export function SubscriptionsList() {
       const count = await exportPaginatedListToExcel({
         endpoint: '/subscriptions',
         params: { search, periodicity, sortBy, sortOrder },
-        headers: ['Libellé', 'Ventilation', 'Périodicité', 'Prochaine échéance', 'Compte'],
+        headers: ['Libellé', 'Ventilation', 'Périodicité', 'Prochaine échéance', 'Compte', 'Actif'],
         mapItem: item => [
           item.label,
           (item.hasSplits as boolean | undefined) ? 'Ventilé' : 'Simple',
@@ -173,6 +173,7 @@ export function SubscriptionsList() {
           ((item.compte as { name?: string } | null | undefined)?.name)
             ?? ((item.account as { name?: string } | null | undefined)?.name)
             ?? '',
+          (item.active as boolean | undefined) ? 'Oui' : 'Non',
         ],
         filenameBase: 'abonnements',
       });
@@ -245,6 +246,8 @@ export function SubscriptionsList() {
         return '160px';
       case 'compte':
         return '180px';
+      case 'active':
+        return '70px';
       case 'actions':
         return '144px';
       default:
@@ -314,6 +317,13 @@ export function SubscriptionsList() {
         header: () => <span style={thStyle()}>Compte</span>,
         cell: ({ row }) => (
           <Text fz={CRUD.typographie.tailleTexte} truncate title={row.original.compte?.name}>{row.original.compte?.name ?? '—'}</Text>
+        ),
+      },
+      {
+        id: 'active',
+        header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Actif</span>,
+        cell: ({ row }) => (
+          <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.active ? '✓' : ''}</Text>
         ),
       },
       {
