@@ -3,7 +3,7 @@
 import { CRUD } from '@/lib/crud-tokens';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Fragment, useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Fragment, useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from '@tanstack/react-table';
 import {
   Box,
@@ -22,7 +22,7 @@ import {
   Stack,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload, IconWand } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload, IconWand, IconDotsVertical } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
@@ -134,6 +134,8 @@ export function OperationsList() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [draftOperation, setDraftOperation] = useState<{ id?: string; accountId: string; expense: number; income: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; operation: Operation } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [splitDetailsOperation, setSplitDetailsOperation] = useState<Operation | null>(null);
   const [ruleModalOperation, setRuleModalOperation] = useState<Operation | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -273,6 +275,33 @@ export function OperationsList() {
       window.removeEventListener('scroll', closeMenu, true);
       window.removeEventListener('resize', closeMenu);
     };
+  }, [contextMenu]);
+
+  // Le menu s'ouvre toujours à l'endroit du clic/tap, mais reste entièrement
+  // visible : on le mesure une fois monté et on le recale (jamais vers le bas
+  // ou la droite de l'écran) avant même la peinture, pour éviter tout flash.
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setContextMenuPosition(null);
+      return;
+    }
+
+    const node = contextMenuRef.current;
+    if (!node) return;
+
+    const rect = node.getBoundingClientRect();
+    const margin = 8;
+    let top = contextMenu.y;
+    let left = contextMenu.x;
+
+    if (top + rect.height > window.innerHeight - margin) {
+      top = Math.max(margin, window.innerHeight - rect.height - margin);
+    }
+    if (left + rect.width > window.innerWidth - margin) {
+      left = Math.max(margin, window.innerWidth - rect.width - margin);
+    }
+
+    setContextMenuPosition({ top, left });
   }, [contextMenu]);
 
   const { data, isLoading, error } = useOperations({
@@ -869,6 +898,19 @@ export function OperationsList() {
                 <IconGitBranch size={14} />
               </ActionIcon>
             )}
+            <ActionIcon
+              variant="subtle"
+              size="md"
+              onClick={event => {
+                event.stopPropagation();
+                const rect = event.currentTarget.getBoundingClientRect();
+                setContextMenu({ x: rect.left, y: rect.bottom, operation: row.original });
+              }}
+              title="Plus d'actions"
+              style={actionIconStyle}
+            >
+              <IconDotsVertical size={14} />
+            </ActionIcon>
           </Group>
         ),
       },
@@ -1217,18 +1259,21 @@ export function OperationsList() {
 
         {contextMenu && (
           <Box
+            ref={contextMenuRef}
             onClick={event => event.stopPropagation()}
             style={{
               position: 'fixed',
-              top: contextMenu.y,
-              left: contextMenu.x,
+              top: (contextMenuPosition ?? { top: contextMenu.y, left: contextMenu.x }).top,
+              left: (contextMenuPosition ?? { top: contextMenu.y, left: contextMenu.x }).left,
+              visibility: contextMenuPosition ? 'visible' : 'hidden',
               minWidth: 190,
+              maxHeight: 'calc(100vh - 16px)',
+              overflowY: 'auto',
               background: '#ffffff',
               border: `1px solid ${GRAY_BORDER}`,
               borderRadius: 10,
               boxShadow: '0 16px 40px rgba(15, 23, 42, 0.16)',
               zIndex: 400,
-              overflow: 'hidden',
             }}
           >
             {contextMenu.operation.thirdPartyId && (
