@@ -21,6 +21,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { IconAlertCircle, IconGitBranch } from '@tabler/icons-react';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { filterActiveOptions } from '@/lib/activeOptions';
@@ -567,8 +568,8 @@ export function TiersFiche({ id }: Props) {
             </Group>
 
             <Group gap={0} align="center">
-              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Poste habituel</Text>
-              <Select
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Enveloppe habituelle</Text>
+              <PositioningSelect
                 size="sm"
                 radius="md"
                 style={{ flex: 1 }}
@@ -576,7 +577,7 @@ export function TiersFiche({ id }: Props) {
                 value={watchedBudgetId ?? null}
                 clearable
                 disabled={loadingEnveloppes || watchedVentilated}
-                placeholder={watchedVentilated ? 'Désactivé pour un tiers ventilé' : 'Aucun'}
+                placeholder={watchedVentilated ? 'Désactivée pour un tiers ventilé' : 'Aucune'}
                 onChange={value => setValue('budgetId', value, { shouldDirty: true })}
                 styles={{ input: fieldInputStyle }}
               />
@@ -584,7 +585,7 @@ export function TiersFiche({ id }: Props) {
 
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Catégorie habituelle</Text>
-              <Select
+              <PositioningSelect
                 size="sm"
                 radius="md"
                 style={{ flex: 1 }}
