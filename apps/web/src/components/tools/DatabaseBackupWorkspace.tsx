@@ -243,8 +243,8 @@ export function DatabaseBackupWorkspace() {
           <Text size="sm">
             1. Clique sur <strong>« Créer une sauvegarde datée »</strong> ci-dessous.<br />
             2. Clique sur <strong>« Télécharger »</strong> sur la ligne de cette sauvegarde.<br />
-            3. Une fois arrivé dans le dossier <strong>Téléchargements</strong> de ton Mac, le fichier est
-            déplacé automatiquement vers iCloud — rien d&apos;autre à faire.
+            3. Une fois arrivé dans <strong>~/Downloads</strong> sur ton Mac, le fichier est déplacé
+            automatiquement vers <strong>iCloud Drive/MoneyBackBackups</strong> — rien d&apos;autre à faire.
           </Text>
         </Alert>
 
