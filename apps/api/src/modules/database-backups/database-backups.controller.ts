@@ -6,7 +6,6 @@ import type { Response } from 'express';
 
 type UpdateStorageSettingsBody = {
   backupsDir?: string | null;
-  icloudDir?: string | null;
 };
 
 @ApiTags('database-backups')
@@ -58,11 +57,5 @@ export class DatabaseBackupsController {
   @ApiOperation({ summary: 'Restaure la base PostgreSQL à partir d\'une sauvegarde' })
   restore(@Param('filename') filename: string) {
     return this.service.restoreBackup(filename);
-  }
-
-  @Post(':filename/icloud')
-  @ApiOperation({ summary: 'Copie une sauvegarde vers le dossier iCloud configuré' })
-  sendToICloud(@Param('filename') filename: string) {
-    return this.service.sendToICloud(filename);
   }
 }

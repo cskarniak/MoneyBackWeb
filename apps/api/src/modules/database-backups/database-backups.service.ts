@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, InternalServerErrorException, NotFound
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { copyFile, mkdir, readdir, stat, unlink } from 'node:fs/promises';
+import { mkdir, readdir, stat, unlink } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -10,7 +10,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 const execFileAsync = promisify(execFile);
 
 const BACKUPS_DIR_SETTING_KEY = 'database_backups_dir';
-const ICLOUD_DIR_SETTING_KEY = 'database_backups_icloud_dir';
 
 type BackupItem = {
   filename: string;
@@ -39,38 +38,26 @@ export class DatabaseBackupsService {
   }
 
   async getStorageSettings() {
-    const [backupsDir, icloudDir] = await Promise.all([
-      this.getSetting(BACKUPS_DIR_SETTING_KEY),
-      this.getSetting(ICLOUD_DIR_SETTING_KEY),
-    ]);
+    const backupsDir = await this.getSetting(BACKUPS_DIR_SETTING_KEY);
 
     return {
       backupsDir: backupsDir ?? this.defaultBackupsDir,
       backupsDirIsDefault: !backupsDir,
-      icloudDir,
     };
   }
 
-  async updateStorageSettings(input: { backupsDir?: string | null; icloudDir?: string | null }) {
-    const entries: [string, string | null | undefined][] = [
-      [BACKUPS_DIR_SETTING_KEY, input.backupsDir],
-      [ICLOUD_DIR_SETTING_KEY, input.icloudDir],
-    ];
-
-    for (const [key, value] of entries) {
-      if (value === undefined) continue;
-
-      const trimmed = value?.trim() ?? '';
+  async updateStorageSettings(input: { backupsDir?: string | null }) {
+    if (input.backupsDir !== undefined) {
+      const trimmed = input.backupsDir?.trim() ?? '';
       if (!trimmed) {
-        await this.prisma.setting.deleteMany({ where: { key } });
-        continue;
+        await this.prisma.setting.deleteMany({ where: { key: BACKUPS_DIR_SETTING_KEY } });
+      } else {
+        await this.prisma.setting.upsert({
+          where: { key: BACKUPS_DIR_SETTING_KEY },
+          create: { key: BACKUPS_DIR_SETTING_KEY, value: trimmed },
+          update: { value: trimmed },
+        });
       }
-
-      await this.prisma.setting.upsert({
-        where: { key },
-        create: { key, value: trimmed },
-        update: { value: trimmed },
-      });
     }
 
     return this.getStorageSettings();
@@ -377,47 +364,6 @@ export class DatabaseBackupsService {
     return {
       filename: backup.filename,
       message: 'Base de données restaurée avec succès.',
-    };
-  }
-
-  async sendToICloud(filename: string) {
-    const backup = await this.getBackupFile(filename);
-    const icloudDir = await this.getSetting(ICLOUD_DIR_SETTING_KEY);
-
-    if (!icloudDir) {
-      throw new InternalServerErrorException(
-        "Aucun dossier iCloud configuré. Renseigne-le dans la section « Configuration du stockage ».",
-      );
-    }
-
-    const resolvedIcloudDir = resolve(icloudDir);
-
-    try {
-      await mkdir(resolvedIcloudDir, { recursive: true });
-    } catch (error) {
-      throw new InternalServerErrorException(
-        error instanceof Error
-          ? `Dossier iCloud inaccessible: ${error.message}`
-          : 'Dossier iCloud inaccessible.',
-      );
-    }
-
-    const destinationPath = resolve(resolvedIcloudDir, backup.filename);
-
-    try {
-      await copyFile(backup.path, destinationPath);
-    } catch (error) {
-      throw new InternalServerErrorException(
-        error instanceof Error
-          ? `Copie vers iCloud impossible: ${error.message}`
-          : 'Copie vers iCloud impossible.',
-      );
-    }
-
-    return {
-      filename: backup.filename,
-      path: destinationPath,
-      message: 'Sauvegarde copiée vers iCloud avec succès.',
     };
   }
 

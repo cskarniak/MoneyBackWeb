@@ -7,7 +7,6 @@ import {
   IconDeviceFloppy,
   IconDownload,
   IconDatabaseImport,
-  IconCloudUpload,
   IconFolder,
   IconFolderOpen,
   IconArrowUp,
@@ -19,7 +18,6 @@ import {
   useDatabaseBackups,
   useDatabaseBackupStorageSettings,
   useRestoreDatabaseBackup,
-  useSendDatabaseBackupToICloud,
   useUpdateDatabaseBackupStorageSettings,
 } from '@/hooks/useDatabaseBackups';
 
@@ -151,13 +149,11 @@ function StorageSettingsPanel() {
   const settingsQuery = useDatabaseBackupStorageSettings();
   const updateMutation = useUpdateDatabaseBackupStorageSettings();
   const [backupsDir, setBackupsDir] = useState('');
-  const [icloudDir, setIcloudDir] = useState('');
-  const [browsingField, setBrowsingField] = useState<'backupsDir' | 'icloudDir' | null>(null);
+  const [browsingBackupsDir, setBrowsingBackupsDir] = useState(false);
 
   useEffect(() => {
     if (!settingsQuery.data) return;
     setBackupsDir(settingsQuery.data.backupsDirIsDefault ? '' : settingsQuery.data.backupsDir);
-    setIcloudDir(settingsQuery.data.icloudDir ?? '');
   }, [settingsQuery.data]);
 
   return (
@@ -192,32 +188,16 @@ function StorageSettingsPanel() {
             value={backupsDir}
             onChange={event => setBackupsDir(event.currentTarget.value)}
           />
-          <Button variant="default" leftSection={<IconFolderOpen size={14} />} onClick={() => setBrowsingField('backupsDir')}>
-            Parcourir
-          </Button>
-        </Group>
-        <Group align="flex-end" gap={8} wrap="nowrap">
-          <TextInput
-            style={{ flex: 1 }}
-            label="Dossier iCloud"
-            description="Chemin (local ou monté) vers lequel les sauvegardes sont copiées via « Envoyer vers iCloud »"
-            placeholder="/home/christian/icloud-backups"
-            value={icloudDir}
-            onChange={event => setIcloudDir(event.currentTarget.value)}
-          />
-          <Button variant="default" leftSection={<IconFolderOpen size={14} />} onClick={() => setBrowsingField('icloudDir')}>
+          <Button variant="default" leftSection={<IconFolderOpen size={14} />} onClick={() => setBrowsingBackupsDir(true)}>
             Parcourir
           </Button>
         </Group>
 
         <DirectoryPickerModal
-          opened={browsingField !== null}
-          initialPath={(browsingField === 'backupsDir' ? backupsDir : icloudDir) || settingsQuery.data?.backupsDir || ''}
-          onClose={() => setBrowsingField(null)}
-          onSelect={path => {
-            if (browsingField === 'backupsDir') setBackupsDir(path);
-            if (browsingField === 'icloudDir') setIcloudDir(path);
-          }}
+          opened={browsingBackupsDir}
+          initialPath={backupsDir || settingsQuery.data?.backupsDir || ''}
+          onClose={() => setBrowsingBackupsDir(false)}
+          onSelect={path => setBackupsDir(path)}
         />
 
         {updateMutation.isError ? (
@@ -237,7 +217,6 @@ function StorageSettingsPanel() {
           onClick={() =>
             updateMutation.mutate({
               backupsDir: backupsDir.trim() ? backupsDir.trim() : null,
-              icloudDir: icloudDir.trim() ? icloudDir.trim() : null,
             })
           }
         >
@@ -252,9 +231,7 @@ export function DatabaseBackupWorkspace() {
   const backupsQuery = useDatabaseBackups();
   const createMutation = useCreateDatabaseBackup();
   const restoreMutation = useRestoreDatabaseBackup();
-  const icloudMutation = useSendDatabaseBackupToICloud();
   const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
-  const [icloudTarget, setIcloudTarget] = useState<string | null>(null);
 
   return (
     <Box style={{ padding: '20px 24px' }}>
@@ -392,19 +369,6 @@ export function DatabaseBackupWorkspace() {
                             >
                               Restaurer
                             </Button>
-                            <Button
-                              size="xs"
-                              variant="light"
-                              color="blue"
-                              leftSection={<IconCloudUpload size={14} />}
-                              loading={icloudMutation.isPending && icloudTarget === item.filename}
-                              onClick={() => {
-                                setIcloudTarget(item.filename);
-                                icloudMutation.mutate(item.filename);
-                              }}
-                            >
-                              Envoyer vers iCloud
-                            </Button>
                           </Group>
                         </Table.Td>
                       </Table.Tr>
@@ -425,19 +389,6 @@ export function DatabaseBackupWorkspace() {
         {restoreMutation.isError ? (
           <Alert color="red" icon={<IconAlertCircle size={16} />}>
             <Text size="sm">{restoreMutation.error.message}</Text>
-          </Alert>
-        ) : null}
-
-        {icloudMutation.isSuccess ? (
-          <Alert color="green" icon={<IconCloudUpload size={16} />}>
-            <Text size="sm">{icloudMutation.data.message}</Text>
-            <Text size="sm" c={TEXT_MUTED}>{icloudMutation.data.path}</Text>
-          </Alert>
-        ) : null}
-
-        {icloudMutation.isError ? (
-          <Alert color="red" icon={<IconAlertCircle size={16} />}>
-            <Text size="sm">{icloudMutation.error.message}</Text>
           </Alert>
         ) : null}
       </Stack>
