@@ -1,10 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { Alert, Box, Button, Center, Group, Loader, Modal, Stack, Table, Text } from '@mantine/core';
-import { IconAlertCircle, IconDeviceFloppy, IconDownload, IconDatabaseImport } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { Alert, Box, Button, Center, Group, Loader, Modal, Stack, Table, Text, TextInput } from '@mantine/core';
+import {
+  IconAlertCircle,
+  IconDeviceFloppy,
+  IconDownload,
+  IconDatabaseImport,
+  IconCloudUpload,
+} from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
-import { useCreateDatabaseBackup, useDatabaseBackups, useRestoreDatabaseBackup } from '@/hooks/useDatabaseBackups';
+import {
+  useCreateDatabaseBackup,
+  useDatabaseBackups,
+  useDatabaseBackupStorageSettings,
+  useRestoreDatabaseBackup,
+  useSendDatabaseBackupToICloud,
+  useUpdateDatabaseBackupStorageSettings,
+} from '@/hooks/useDatabaseBackups';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -28,16 +41,98 @@ function getDownloadUrl(filename: string) {
   return `${normalizedBaseUrl}/database-backups/${encodeURIComponent(filename)}/download`;
 }
 
+function StorageSettingsPanel() {
+  const settingsQuery = useDatabaseBackupStorageSettings();
+  const updateMutation = useUpdateDatabaseBackupStorageSettings();
+  const [backupsDir, setBackupsDir] = useState('');
+  const [icloudDir, setIcloudDir] = useState('');
+
+  useEffect(() => {
+    if (!settingsQuery.data) return;
+    setBackupsDir(settingsQuery.data.backupsDirIsDefault ? '' : settingsQuery.data.backupsDir);
+    setIcloudDir(settingsQuery.data.icloudDir ?? '');
+  }, [settingsQuery.data]);
+
+  return (
+    <Box
+      style={{
+        background: PANEL_BG,
+        border: `1px solid ${GRAY_BORDER}`,
+        borderRadius: 10,
+        overflow: 'hidden',
+        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.05)',
+      }}
+    >
+      <Box
+        style={{
+          background: CRUD.couleurs.fondBandeau,
+          color: CRUD.couleurs.texteBandeau,
+          padding: '9px 16px',
+          fontWeight: 700,
+          fontSize: 15,
+        }}
+      >
+        Configuration du stockage
+      </Box>
+
+      <Stack gap={14} style={{ padding: '18px 20px' }}>
+        <TextInput
+          label="Dossier des sauvegardes"
+          description={`Laisser vide pour utiliser le dossier par défaut (${settingsQuery.data?.backupsDirIsDefault ? settingsQuery.data.backupsDir : 'défini par DATABASE_BACKUPS_DIR'})`}
+          placeholder="/chemin/vers/le/dossier/de/sauvegarde"
+          value={backupsDir}
+          onChange={event => setBackupsDir(event.currentTarget.value)}
+        />
+        <TextInput
+          label="Dossier iCloud"
+          description="Chemin (local ou monté) vers lequel les sauvegardes sont copiées via « Envoyer vers iCloud »"
+          placeholder="/home/christian/icloud-backups"
+          value={icloudDir}
+          onChange={event => setIcloudDir(event.currentTarget.value)}
+        />
+
+        {updateMutation.isError ? (
+          <Alert color="red" icon={<IconAlertCircle size={16} />}>
+            <Text size="sm">{updateMutation.error.message}</Text>
+          </Alert>
+        ) : null}
+        {updateMutation.isSuccess ? (
+          <Alert color="green">
+            <Text size="sm">Configuration enregistrée.</Text>
+          </Alert>
+        ) : null}
+
+        <Button
+          style={{ alignSelf: 'flex-start' }}
+          loading={updateMutation.isPending}
+          onClick={() =>
+            updateMutation.mutate({
+              backupsDir: backupsDir.trim() ? backupsDir.trim() : null,
+              icloudDir: icloudDir.trim() ? icloudDir.trim() : null,
+            })
+          }
+        >
+          Enregistrer
+        </Button>
+      </Stack>
+    </Box>
+  );
+}
+
 export function DatabaseBackupWorkspace() {
   const backupsQuery = useDatabaseBackups();
   const createMutation = useCreateDatabaseBackup();
   const restoreMutation = useRestoreDatabaseBackup();
+  const icloudMutation = useSendDatabaseBackupToICloud();
   const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
+  const [icloudTarget, setIcloudTarget] = useState<string | null>(null);
 
   return (
     <Box style={{ padding: '20px 24px' }}>
       <Stack gap={18} style={{ maxWidth: 1180, margin: '0 auto' }}>
         <Text fw={700} fz={22}>Sauvegarde de la base</Text>
+
+        <StorageSettingsPanel />
 
         <Box
           style={{
@@ -168,6 +263,19 @@ export function DatabaseBackupWorkspace() {
                             >
                               Restaurer
                             </Button>
+                            <Button
+                              size="xs"
+                              variant="light"
+                              color="blue"
+                              leftSection={<IconCloudUpload size={14} />}
+                              loading={icloudMutation.isPending && icloudTarget === item.filename}
+                              onClick={() => {
+                                setIcloudTarget(item.filename);
+                                icloudMutation.mutate(item.filename);
+                              }}
+                            >
+                              Envoyer vers iCloud
+                            </Button>
                           </Group>
                         </Table.Td>
                       </Table.Tr>
@@ -188,6 +296,19 @@ export function DatabaseBackupWorkspace() {
         {restoreMutation.isError ? (
           <Alert color="red" icon={<IconAlertCircle size={16} />}>
             <Text size="sm">{restoreMutation.error.message}</Text>
+          </Alert>
+        ) : null}
+
+        {icloudMutation.isSuccess ? (
+          <Alert color="green" icon={<IconCloudUpload size={16} />}>
+            <Text size="sm">{icloudMutation.data.message}</Text>
+            <Text size="sm" c={TEXT_MUTED}>{icloudMutation.data.path}</Text>
+          </Alert>
+        ) : null}
+
+        {icloudMutation.isError ? (
+          <Alert color="red" icon={<IconAlertCircle size={16} />}>
+            <Text size="sm">{icloudMutation.error.message}</Text>
           </Alert>
         ) : null}
       </Stack>

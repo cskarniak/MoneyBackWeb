@@ -2,11 +2,15 @@ import { Injectable, InternalServerErrorException, NotFoundException } from '@ne
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readdir, stat, unlink } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, stat, unlink } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
+import { PrismaService } from '../../prisma/prisma.service';
 
 const execFileAsync = promisify(execFile);
+
+const BACKUPS_DIR_SETTING_KEY = 'database_backups_dir';
+const ICLOUD_DIR_SETTING_KEY = 'database_backups_icloud_dir';
 
 type BackupItem = {
   filename: string;
@@ -17,13 +21,63 @@ type BackupItem = {
 
 @Injectable()
 export class DatabaseBackupsService {
-  private readonly backupsDir = process.env.DATABASE_BACKUPS_DIR
+  constructor(private readonly prisma: PrismaService) {}
+
+  private readonly defaultBackupsDir = process.env.DATABASE_BACKUPS_DIR
     ? resolve(process.env.DATABASE_BACKUPS_DIR)
     : resolve(homedir(), 'Downloads', 'moneyback_backups');
   private readonly postgresContainerName = 'moneyback_postgres';
 
-  private async ensureBackupsDir() {
-    await mkdir(this.backupsDir, { recursive: true });
+  private async getSetting(key: string) {
+    const setting = await this.prisma.setting.findUnique({ where: { key } });
+    return setting?.value?.trim() || null;
+  }
+
+  private async getBackupsDir() {
+    const configured = await this.getSetting(BACKUPS_DIR_SETTING_KEY);
+    return configured ? resolve(configured) : this.defaultBackupsDir;
+  }
+
+  async getStorageSettings() {
+    const [backupsDir, icloudDir] = await Promise.all([
+      this.getSetting(BACKUPS_DIR_SETTING_KEY),
+      this.getSetting(ICLOUD_DIR_SETTING_KEY),
+    ]);
+
+    return {
+      backupsDir: backupsDir ?? this.defaultBackupsDir,
+      backupsDirIsDefault: !backupsDir,
+      icloudDir,
+    };
+  }
+
+  async updateStorageSettings(input: { backupsDir?: string | null; icloudDir?: string | null }) {
+    const entries: [string, string | null | undefined][] = [
+      [BACKUPS_DIR_SETTING_KEY, input.backupsDir],
+      [ICLOUD_DIR_SETTING_KEY, input.icloudDir],
+    ];
+
+    for (const [key, value] of entries) {
+      if (value === undefined) continue;
+
+      const trimmed = value?.trim() ?? '';
+      if (!trimmed) {
+        await this.prisma.setting.deleteMany({ where: { key } });
+        continue;
+      }
+
+      await this.prisma.setting.upsert({
+        where: { key },
+        create: { key, value: trimmed },
+        update: { value: trimmed },
+      });
+    }
+
+    return this.getStorageSettings();
+  }
+
+  private async ensureBackupsDir(dir: string) {
+    await mkdir(dir, { recursive: true });
   }
 
   private buildTimestamp() {
@@ -37,12 +91,12 @@ export class DatabaseBackupsService {
     return `${yyyy}-${mm}-${dd}_${hh}-${mi}-${ss}`;
   }
 
-  private resolveBackupPath(filename: string) {
+  private resolveBackupPath(dir: string, filename: string) {
     if (!/^[A-Za-z0-9._-]+\.sql$/.test(filename)) {
       throw new NotFoundException('Fichier de sauvegarde invalide.');
     }
 
-    return resolve(this.backupsDir, filename);
+    return resolve(dir, filename);
   }
 
   private async runCommandToFile(command: string, args: string[], outputPath: string) {
@@ -119,14 +173,15 @@ export class DatabaseBackupsService {
   }
 
   async listBackups() {
-    await this.ensureBackupsDir();
+    const backupsDir = await this.getBackupsDir();
+    await this.ensureBackupsDir(backupsDir);
 
-    const entries = await readdir(this.backupsDir);
+    const entries = await readdir(backupsDir);
     const items = await Promise.all(
       entries
         .filter(entry => entry.endsWith('.sql'))
         .map(async entry => {
-          const absolutePath = resolve(this.backupsDir, entry);
+          const absolutePath = resolve(backupsDir, entry);
           const metadata = await stat(absolutePath);
           return {
             filename: entry,
@@ -138,13 +193,14 @@ export class DatabaseBackupsService {
     );
 
     return {
-      directory: this.backupsDir,
+      directory: backupsDir,
       items: items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     };
   }
 
   async createBackup() {
-    await this.ensureBackupsDir();
+    const backupsDir = await this.getBackupsDir();
+    await this.ensureBackupsDir(backupsDir);
 
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
@@ -152,7 +208,7 @@ export class DatabaseBackupsService {
     }
 
     const filename = `moneyback_backup_${this.buildTimestamp()}.sql`;
-    const absolutePath = resolve(this.backupsDir, filename);
+    const absolutePath = resolve(backupsDir, filename);
 
     try {
       await this.createBackupWithLocalPgDump(databaseUrl, absolutePath);
@@ -206,9 +262,10 @@ export class DatabaseBackupsService {
   }
 
   async getBackupFile(filename: string) {
-    await this.ensureBackupsDir();
+    const backupsDir = await this.getBackupsDir();
+    await this.ensureBackupsDir(backupsDir);
 
-    const absolutePath = this.resolveBackupPath(filename);
+    const absolutePath = this.resolveBackupPath(backupsDir, filename);
 
     try {
       const metadata = await stat(absolutePath);
@@ -320,6 +377,47 @@ export class DatabaseBackupsService {
     return {
       filename: backup.filename,
       message: 'Base de données restaurée avec succès.',
+    };
+  }
+
+  async sendToICloud(filename: string) {
+    const backup = await this.getBackupFile(filename);
+    const icloudDir = await this.getSetting(ICLOUD_DIR_SETTING_KEY);
+
+    if (!icloudDir) {
+      throw new InternalServerErrorException(
+        "Aucun dossier iCloud configuré. Renseigne-le dans la section « Configuration du stockage ».",
+      );
+    }
+
+    const resolvedIcloudDir = resolve(icloudDir);
+
+    try {
+      await mkdir(resolvedIcloudDir, { recursive: true });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error instanceof Error
+          ? `Dossier iCloud inaccessible: ${error.message}`
+          : 'Dossier iCloud inaccessible.',
+      );
+    }
+
+    const destinationPath = resolve(resolvedIcloudDir, backup.filename);
+
+    try {
+      await copyFile(backup.path, destinationPath);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error instanceof Error
+          ? `Copie vers iCloud impossible: ${error.message}`
+          : 'Copie vers iCloud impossible.',
+      );
+    }
+
+    return {
+      filename: backup.filename,
+      path: destinationPath,
+      message: 'Sauvegarde copiée vers iCloud avec succès.',
     };
   }
 }

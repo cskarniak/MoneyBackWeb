@@ -55,3 +55,46 @@ export function useRestoreDatabaseBackup() {
     },
   });
 }
+
+export type SendDatabaseBackupToICloudResponse = {
+  filename: string;
+  path: string;
+  message: string;
+};
+
+export function useSendDatabaseBackupToICloud() {
+  return useMutation<SendDatabaseBackupToICloudResponse, Error, string>({
+    mutationFn: (filename: string) =>
+      api.post(`/database-backups/${encodeURIComponent(filename)}/icloud`).then(r => r.data),
+  });
+}
+
+export type DatabaseBackupStorageSettings = {
+  backupsDir: string;
+  backupsDirIsDefault: boolean;
+  icloudDir: string | null;
+};
+
+const SETTINGS_KEY = 'database-backups-settings';
+
+export function useDatabaseBackupStorageSettings() {
+  return useQuery<DatabaseBackupStorageSettings>({
+    queryKey: [SETTINGS_KEY],
+    queryFn: () => api.get('/database-backups/settings').then(r => r.data),
+  });
+}
+
+export function useUpdateDatabaseBackupStorageSettings() {
+  const qc = useQueryClient();
+  return useMutation<
+    DatabaseBackupStorageSettings,
+    Error,
+    { backupsDir?: string | null; icloudDir?: string | null }
+  >({
+    mutationFn: input => api.put('/database-backups/settings', input).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [SETTINGS_KEY] });
+      qc.invalidateQueries({ queryKey: [KEY] });
+    },
+  });
+}
