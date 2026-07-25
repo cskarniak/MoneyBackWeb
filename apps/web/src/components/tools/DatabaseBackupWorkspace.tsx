@@ -10,6 +10,7 @@ import {
   IconFolder,
   IconFolderOpen,
   IconArrowUp,
+  IconInfoCircle,
 } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
 import {
@@ -238,6 +239,15 @@ export function DatabaseBackupWorkspace() {
       <Stack gap={18} style={{ maxWidth: 1180, margin: '0 auto' }}>
         <Text fw={700} fz={22}>Sauvegarde de la base</Text>
 
+        <Alert color="blue" icon={<IconInfoCircle size={16} />} title="Pour que la sauvegarde arrive dans iCloud">
+          <Text size="sm">
+            1. Clique sur <strong>« Créer une sauvegarde datée »</strong> ci-dessous.<br />
+            2. Clique sur <strong>« Télécharger »</strong> sur la ligne de cette sauvegarde.<br />
+            3. Une fois arrivé dans le dossier <strong>Téléchargements</strong> de ton Mac, le fichier est
+            déplacé automatiquement vers iCloud — rien d&apos;autre à faire.
+          </Text>
+        </Alert>
+
         <StorageSettingsPanel />
 
         <Box
@@ -285,7 +295,7 @@ export function DatabaseBackupWorkspace() {
             </Button>
 
             <Text fz={13} c={TEXT_MUTED}>
-              La sauvegarde produit un dump PostgreSQL `.sql` dans `Téléchargements/moneyback_backups`.
+              Produit un dump PostgreSQL `.sql` dans le dossier de sauvegarde configuré ci-dessus.
             </Text>
           </Stack>
         </Box>
