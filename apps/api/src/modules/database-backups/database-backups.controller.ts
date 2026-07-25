@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, Res, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DatabaseBackupsService } from './database-backups.service';
 import { createReadStream } from 'node:fs';
@@ -57,5 +57,11 @@ export class DatabaseBackupsController {
   @ApiOperation({ summary: 'Restaure la base PostgreSQL à partir d\'une sauvegarde' })
   restore(@Param('filename') filename: string) {
     return this.service.restoreBackup(filename);
+  }
+
+  @Delete(':filename')
+  @ApiOperation({ summary: 'Supprime une sauvegarde du serveur' })
+  delete(@Param('filename') filename: string) {
+    return this.service.deleteBackup(filename);
   }
 }

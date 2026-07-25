@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Center, Group, Loader, Modal, Stack, Table, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Alert, Box, Button, Center, Group, Loader, Modal, Stack, Table, Text, TextInput, Tooltip } from '@mantine/core';
 import {
   IconAlertCircle,
   IconDeviceFloppy,
@@ -11,6 +11,7 @@ import {
   IconFolderOpen,
   IconArrowUp,
   IconInfoCircle,
+  IconTrash,
 } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
 import {
@@ -18,6 +19,7 @@ import {
   useCreateDatabaseBackup,
   useDatabaseBackups,
   useDatabaseBackupStorageSettings,
+  useDeleteDatabaseBackup,
   useRestoreDatabaseBackup,
   useUpdateDatabaseBackupStorageSettings,
 } from '@/hooks/useDatabaseBackups';
@@ -232,7 +234,9 @@ export function DatabaseBackupWorkspace() {
   const backupsQuery = useDatabaseBackups();
   const createMutation = useCreateDatabaseBackup();
   const restoreMutation = useRestoreDatabaseBackup();
+  const deleteMutation = useDeleteDatabaseBackup();
   const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   return (
     <Box style={{ padding: '20px 24px' }}>
@@ -336,7 +340,12 @@ export function DatabaseBackupWorkspace() {
                 <Text fw={600}>Dossier : {backupsQuery.data?.directory ?? '—'}</Text>
               </Box>
 
-              <Table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+              <Table
+                fz={13}
+                verticalSpacing={4}
+                horizontalSpacing={10}
+                style={{ borderCollapse: 'separate', borderSpacing: 0 }}
+              >
                 <Table.Thead>
                   <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
                     <Table.Th>Fichier</Table.Th>
@@ -361,25 +370,37 @@ export function DatabaseBackupWorkspace() {
                         <Table.Td>{formatDate(item.createdAt)}</Table.Td>
                         <Table.Td>{item.path}</Table.Td>
                         <Table.Td>
-                          <Group gap={6}>
-                            <Button
-                              component="a"
-                              href={getDownloadUrl(item.filename)}
-                              size="xs"
-                              variant="light"
-                              leftSection={<IconDownload size={14} />}
-                            >
-                              Télécharger
-                            </Button>
-                            <Button
-                              size="xs"
-                              variant="light"
-                              color="orange"
-                              leftSection={<IconDatabaseImport size={14} />}
-                              onClick={() => setRestoreTarget(item.filename)}
-                            >
-                              Restaurer
-                            </Button>
+                          <Group gap={4} wrap="nowrap">
+                            <Tooltip label="Télécharger">
+                              <ActionIcon
+                                component="a"
+                                href={getDownloadUrl(item.filename)}
+                                variant="light"
+                                size="sm"
+                              >
+                                <IconDownload size={14} />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="Restaurer">
+                              <ActionIcon
+                                variant="light"
+                                color="orange"
+                                size="sm"
+                                onClick={() => setRestoreTarget(item.filename)}
+                              >
+                                <IconDatabaseImport size={14} />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="Supprimer">
+                              <ActionIcon
+                                variant="light"
+                                color="red"
+                                size="sm"
+                                onClick={() => setDeleteTarget(item.filename)}
+                              >
+                                <IconTrash size={14} />
+                              </ActionIcon>
+                            </Tooltip>
                           </Group>
                         </Table.Td>
                       </Table.Tr>
@@ -400,6 +421,19 @@ export function DatabaseBackupWorkspace() {
         {restoreMutation.isError ? (
           <Alert color="red" icon={<IconAlertCircle size={16} />}>
             <Text size="sm">{restoreMutation.error.message}</Text>
+          </Alert>
+        ) : null}
+
+        {deleteMutation.isSuccess ? (
+          <Alert color="green" icon={<IconTrash size={16} />}>
+            <Text size="sm">{deleteMutation.data.message}</Text>
+            <Text size="sm" c={TEXT_MUTED}>{deleteMutation.data.filename}</Text>
+          </Alert>
+        ) : null}
+
+        {deleteMutation.isError ? (
+          <Alert color="red" icon={<IconAlertCircle size={16} />}>
+            <Text size="sm">{deleteMutation.error.message}</Text>
           </Alert>
         ) : null}
       </Stack>
@@ -432,6 +466,39 @@ export function DatabaseBackupWorkspace() {
               }}
             >
               Restaurer
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Confirmer la suppression"
+        centered
+      >
+        <Stack gap={16}>
+          <Text size="sm">
+            Cette sauvegarde sera <strong>définitivement supprimée</strong> du serveur :
+          </Text>
+          <Text size="sm" fw={600}>{deleteTarget}</Text>
+          <Text size="sm" c="red">Cette opération est irréversible.</Text>
+          <Group justify="flex-end" gap={8}>
+            <Button variant="default" onClick={() => setDeleteTarget(null)}>
+              Annuler
+            </Button>
+            <Button
+              color="red"
+              loading={deleteMutation.isPending}
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteMutation.mutate(deleteTarget, {
+                    onSuccess: () => setDeleteTarget(null),
+                  });
+                }
+              }}
+            >
+              Supprimer
             </Button>
           </Group>
         </Stack>

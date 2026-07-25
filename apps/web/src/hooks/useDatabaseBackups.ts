@@ -56,6 +56,22 @@ export function useRestoreDatabaseBackup() {
   });
 }
 
+export type DeleteDatabaseBackupResponse = {
+  filename: string;
+  message: string;
+};
+
+export function useDeleteDatabaseBackup() {
+  const qc = useQueryClient();
+  return useMutation<DeleteDatabaseBackupResponse, Error, string>({
+    mutationFn: (filename: string) =>
+      api.delete(`/database-backups/${encodeURIComponent(filename)}`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+    },
+  });
+}
+
 export type DatabaseBackupStorageSettings = {
   backupsDir: string;
   backupsDirIsDefault: boolean;

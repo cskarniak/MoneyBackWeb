@@ -367,6 +367,23 @@ export class DatabaseBackupsService {
     };
   }
 
+  async deleteBackup(filename: string) {
+    const backup = await this.getBackupFile(filename);
+
+    try {
+      await unlink(backup.path);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error instanceof Error ? `Suppression impossible: ${error.message}` : 'Suppression impossible.',
+      );
+    }
+
+    return {
+      filename: backup.filename,
+      message: 'Sauvegarde supprimée avec succès.',
+    };
+  }
+
   async browseDirectories(requestedPath?: string) {
     const targetPath = resolve(requestedPath?.trim() || homedir());
 
