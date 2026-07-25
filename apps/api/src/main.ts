@@ -43,9 +43,14 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env['API_PORT'] ?? 3001;
+  const host = process.env['API_HOST'];
   const environmentLabel = process.env['APP_ENV_LABEL'] ?? 'dev';
   const databaseName = getDatabaseName(process.env['DATABASE_URL']);
-  await app.listen(port);
+  if (host) {
+    await app.listen(port, host);
+  } else {
+    await app.listen(port);
+  }
   console.log(`API démarrée sur http://localhost:${port}`);
   console.log(`Swagger disponible sur http://localhost:${port}/api/docs`);
   console.log(`Environnement actif : ${environmentLabel} (base ${databaseName})`);

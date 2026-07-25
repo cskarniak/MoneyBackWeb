@@ -6,7 +6,7 @@ After=network.target moneyback-api.service
 Type=simple
 User=christian
 WorkingDirectory=/home/christian/moneyback/apps/web
-ExecStart=/home/christian/moneyback/apps/web/node_modules/.bin/next start -p 4002
+ExecStart=/home/christian/moneyback/apps/web/node_modules/.bin/next start -H 127.0.0.1 -p 4002
 Restart=on-failure
 RestartSec=3
 
