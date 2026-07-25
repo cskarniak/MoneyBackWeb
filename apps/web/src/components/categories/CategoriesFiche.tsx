@@ -111,7 +111,9 @@ export function CategoriesFiche({ id }: Props) {
   const mutationError =
     (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
 
-  const regroupementOptions = regroupements.map(r => ({ value: r.id, label: r.label }));
+  const regroupementOptions = regroupements
+    .filter(r => r.income)
+    .map(r => ({ value: r.id, label: r.label }));
   const isLoading = (!isNew && loadingCat) || loadingRegroupements;
 
   if (isLoading) {

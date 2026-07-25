@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { DetailedStatisticsFiltersDto, EnvelopeSummaryFiltersDto } from '@moneyback/shared';
+import type {
+  DetailedStatisticsFiltersDto,
+  EnvelopeSummaryFiltersDto,
+  MonthlyCategoryDashboardFiltersDto,
+} from '@moneyback/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type DetailedStatisticsRow = {
@@ -59,6 +63,35 @@ type EnvelopeSummaryRow = {
   operationCount: bigint | number;
   lastEffectiveDate: Date | null;
 };
+
+type MonthlyCategoryDashboardRow = {
+  groupingId: string | null;
+  groupingLabel: string | null;
+  month: Date;
+  totalExpense: Prisma.Decimal | null;
+  totalIncome: Prisma.Decimal | null;
+};
+
+function parseMonth(value: string, fieldName: string) {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) {
+    throw new BadRequestException(`${fieldName} invalide, format attendu AAAA-MM.`);
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) {
+    throw new BadRequestException(`${fieldName} invalide, mois hors limites.`);
+  }
+
+  return { year, month };
+}
+
+function toMonthKey(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
 
 function toLocalDateOnly(value: Date) {
   const year = value.getFullYear();
@@ -413,5 +446,108 @@ export class StatisticsService {
         lettering: row.lettering,
       })),
     };
+  }
+
+  async findMonthlyCategoryDashboard(filters: MonthlyCategoryDashboardFiltersDto) {
+    const from = parseMonth(filters.monthFrom, 'monthFrom');
+    const to = parseMonth(filters.monthTo, 'monthTo');
+
+    const rangeStart = new Date(Date.UTC(from.year, from.month - 1, 1));
+    const rangeEndExclusive = new Date(Date.UTC(to.year, to.month, 1));
+
+    if (rangeStart >= rangeEndExclusive) {
+      throw new BadRequestException('monthFrom doit être antérieur ou égal à monthTo.');
+    }
+
+    const months: string[] = [];
+    for (let cursor = new Date(rangeStart); cursor < rangeEndExclusive; cursor.setUTCMonth(cursor.getUTCMonth() + 1)) {
+      months.push(toMonthKey(cursor));
+    }
+
+    const whereClauses: Prisma.Sql[] = [
+      Prisma.sql`entry.category_id IS NOT NULL`,
+      Prisma.sql`entry.operation_date >= ${rangeStart}`,
+      Prisma.sql`entry.operation_date < ${rangeEndExclusive}`,
+    ];
+
+    if (filters.accountId) {
+      whereClauses.push(Prisma.sql`entry.account_id = ${filters.accountId}`);
+    }
+
+    const whereSql = Prisma.sql`WHERE ${Prisma.join(whereClauses, ' AND ')}`;
+
+    const rows = await this.prisma.$queryRaw<MonthlyCategoryDashboardRow[]>(Prisma.sql`
+      WITH entry AS (
+        SELECT
+          o.compte_id AS account_id,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.categorie_id
+            ELSE o.categorie_id
+          END AS category_id,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.depense
+            ELSE o.depense
+          END AS expense,
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.recette
+            ELSE o.recette
+          END AS income,
+          o.date_operation AS operation_date
+        FROM operations o
+        LEFT JOIN operations_ventilees s ON s.operation_id = o.id
+        WHERE o.date_suppression IS NULL
+          AND (
+            o.type_operation IS NULL
+            OR o.type_operation NOT IN ('V', 'P')
+            OR s.id IS NOT NULL
+          )
+      )
+      SELECT
+        g.id AS "groupingId",
+        g.libelle AS "groupingLabel",
+        date_trunc('month', entry.operation_date)::date AS "month",
+        SUM(entry.expense) AS "totalExpense",
+        SUM(entry.income) AS "totalIncome"
+      FROM entry
+      INNER JOIN categories c ON c.id = entry.category_id
+      LEFT JOIN regroupements g ON g.id = c.regroupement_id
+      ${whereSql}
+      GROUP BY g.id, g.libelle, date_trunc('month', entry.operation_date)
+      ORDER BY g.libelle ASC NULLS LAST, month ASC
+    `);
+
+    const groupsByKey = new Map<
+      string,
+      {
+        groupingId: string | null;
+        groupingLabel: string;
+        monthly: Record<string, { totalExpense: string; totalIncome: string }>;
+      }
+    >();
+
+    for (const row of rows) {
+      const key = row.groupingId ?? '__none__';
+      let group = groupsByKey.get(key);
+      if (!group) {
+        group = {
+          groupingId: row.groupingId,
+          groupingLabel: row.groupingLabel ?? 'Sans regroupement',
+          monthly: Object.fromEntries(months.map(month => [month, { totalExpense: '0', totalIncome: '0' }])),
+        };
+        groupsByKey.set(key, group);
+      }
+
+      const monthKey = toMonthKey(row.month);
+      group.monthly[monthKey] = {
+        totalExpense: (row.totalExpense ?? new Prisma.Decimal(0)).toString(),
+        totalIncome: (row.totalIncome ?? new Prisma.Decimal(0)).toString(),
+      };
+    }
+
+    const items = Array.from(groupsByKey.values()).sort((a, b) =>
+      a.groupingLabel.localeCompare(b.groupingLabel, 'fr', { sensitivity: 'base' }),
+    );
+
+    return { months, items };
   }
 }

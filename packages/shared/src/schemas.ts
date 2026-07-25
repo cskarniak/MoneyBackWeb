@@ -186,6 +186,14 @@ export const EnvelopeSummaryFiltersSchema = z.object({
 
 export type EnvelopeSummaryFiltersDto = z.infer<typeof EnvelopeSummaryFiltersSchema>;
 
+export const MonthlyCategoryDashboardFiltersSchema = z.object({
+  accountId: z.string().uuid().optional(),
+  monthFrom: z.string().regex(/^\d{4}-\d{2}$/, 'Format attendu : AAAA-MM'),
+  monthTo: z.string().regex(/^\d{4}-\d{2}$/, 'Format attendu : AAAA-MM'),
+});
+
+export type MonthlyCategoryDashboardFiltersDto = z.infer<typeof MonthlyCategoryDashboardFiltersSchema>;
+
 // ─── Subscription ─────────────────────────────────────────────────────────────
 
 export const CreateSubscriptionSplitSchema = z.object({

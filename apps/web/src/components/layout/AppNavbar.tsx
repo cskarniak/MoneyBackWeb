@@ -23,6 +23,7 @@ import {
   IconChartBar,
   IconBug,
   IconCalculator,
+  IconLayoutDashboard,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
@@ -33,6 +34,7 @@ const FLAT_LINKS = [
 const STATISTICS_ITEMS = [
   { label: 'Statistiques détaillées', href: '/statistiques', icon: IconChartBar },
   { label: 'Synthèse par enveloppe', href: '/statistiques/synthese-enveloppes', icon: IconBriefcase },
+  { label: 'Tableau de bord mensuel', href: '/statistiques/tableau-de-bord-categories', icon: IconLayoutDashboard },
 ];
 
 const IMPORT_ITEMS = [

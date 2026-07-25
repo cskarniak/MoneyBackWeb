@@ -1,6 +1,10 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { DetailedStatisticsFiltersSchema, EnvelopeSummaryFiltersSchema } from '@moneyback/shared';
+import {
+  DetailedStatisticsFiltersSchema,
+  EnvelopeSummaryFiltersSchema,
+  MonthlyCategoryDashboardFiltersSchema,
+} from '@moneyback/shared';
 import { StatisticsService } from './statistics.service';
 
 @ApiTags('statistics')
@@ -20,5 +24,12 @@ export class StatisticsController {
   findEnvelopeSummary(@Query() query: Record<string, string>) {
     const filters = EnvelopeSummaryFiltersSchema.parse(query);
     return this.service.findEnvelopeSummary(filters);
+  }
+
+  @Get('monthly-category-dashboard')
+  @ApiOperation({ summary: 'Tableau de bord mensuel des montants par regroupement de catégories' })
+  findMonthlyCategoryDashboard(@Query() query: Record<string, string>) {
+    const filters = MonthlyCategoryDashboardFiltersSchema.parse(query);
+    return this.service.findMonthlyCategoryDashboard(filters);
   }
 }
