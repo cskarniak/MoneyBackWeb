@@ -84,6 +84,21 @@ export function useDatabaseBackupStorageSettings() {
   });
 }
 
+export type BrowseDirectoriesResponse = {
+  path: string;
+  parentPath: string | null;
+  directories: { name: string; path: string }[];
+};
+
+export function useBrowseDirectories(path: string | undefined, enabled: boolean) {
+  return useQuery<BrowseDirectoriesResponse>({
+    queryKey: ['database-backups-browse', path ?? ''],
+    queryFn: () =>
+      api.get('/database-backups/browse', { params: path ? { path } : {} }).then(r => r.data),
+    enabled,
+  });
+}
+
 export function useUpdateDatabaseBackupStorageSettings() {
   const qc = useQueryClient();
   return useMutation<

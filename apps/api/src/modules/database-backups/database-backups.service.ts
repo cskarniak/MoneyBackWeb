@@ -1,9 +1,9 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { copyFile, mkdir, readdir, stat, unlink } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -418,6 +418,42 @@ export class DatabaseBackupsService {
       filename: backup.filename,
       path: destinationPath,
       message: 'Sauvegarde copiée vers iCloud avec succès.',
+    };
+  }
+
+  async browseDirectories(requestedPath?: string) {
+    const targetPath = resolve(requestedPath?.trim() || homedir());
+
+    let entries;
+    try {
+      entries = await readdir(targetPath, { withFileTypes: true });
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') {
+        throw new NotFoundException('Dossier introuvable.');
+      }
+      if (code === 'EACCES') {
+        throw new BadRequestException('Accès refusé à ce dossier.');
+      }
+      if (code === 'ENOTDIR') {
+        throw new BadRequestException("Ce chemin n'est pas un dossier.");
+      }
+      throw new InternalServerErrorException(
+        error instanceof Error ? `Lecture du dossier impossible: ${error.message}` : 'Lecture du dossier impossible.',
+      );
+    }
+
+    const directories = entries
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map(entry => ({ name: entry.name, path: resolve(targetPath, entry.name) }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+    const parentPath = dirname(targetPath);
+
+    return {
+      path: targetPath,
+      parentPath: parentPath === targetPath ? null : parentPath,
+      directories,
     };
   }
 }

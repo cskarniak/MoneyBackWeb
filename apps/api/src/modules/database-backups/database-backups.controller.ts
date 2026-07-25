@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Res, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DatabaseBackupsService } from './database-backups.service';
 import { createReadStream } from 'node:fs';
@@ -30,6 +30,12 @@ export class DatabaseBackupsController {
   @ApiOperation({ summary: 'Met à jour la configuration des dossiers de sauvegarde' })
   updateSettings(@Body() body: UpdateStorageSettingsBody) {
     return this.service.updateStorageSettings(body);
+  }
+
+  @Get('browse')
+  @ApiOperation({ summary: 'Liste les sous-dossiers d\'un chemin, pour le sélecteur de dossier' })
+  browse(@Query('path') path?: string) {
+    return this.service.browseDirectories(path);
   }
 
   @Post()

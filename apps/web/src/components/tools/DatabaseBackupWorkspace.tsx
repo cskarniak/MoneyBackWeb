@@ -8,9 +8,13 @@ import {
   IconDownload,
   IconDatabaseImport,
   IconCloudUpload,
+  IconFolder,
+  IconFolderOpen,
+  IconArrowUp,
 } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
 import {
+  useBrowseDirectories,
   useCreateDatabaseBackup,
   useDatabaseBackups,
   useDatabaseBackupStorageSettings,
@@ -41,11 +45,114 @@ function getDownloadUrl(filename: string) {
   return `${normalizedBaseUrl}/database-backups/${encodeURIComponent(filename)}/download`;
 }
 
+function DirectoryPickerModal({
+  opened,
+  initialPath,
+  onClose,
+  onSelect,
+}: {
+  opened: boolean;
+  initialPath: string;
+  onClose: () => void;
+  onSelect: (path: string) => void;
+}) {
+  const [currentPath, setCurrentPath] = useState(initialPath);
+
+  useEffect(() => {
+    if (opened) setCurrentPath(initialPath);
+  }, [opened, initialPath]);
+
+  const browseQuery = useBrowseDirectories(currentPath || undefined, opened);
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Choisir un dossier" centered size="lg">
+      <Stack gap={12}>
+        {browseQuery.isError ? (
+          <Alert color="red" icon={<IconAlertCircle size={16} />}>
+            <Text size="sm">{browseQuery.error.message}</Text>
+          </Alert>
+        ) : null}
+
+        <Text fz={13} fw={600} c={TEXT_MUTED} style={{ wordBreak: 'break-all' }}>
+          {browseQuery.data?.path ?? currentPath}
+        </Text>
+
+        <Box
+          style={{
+            border: `1px solid ${GRAY_BORDER}`,
+            borderRadius: 8,
+            maxHeight: 320,
+            overflowY: 'auto',
+          }}
+        >
+          {browseQuery.isLoading ? (
+            <Center style={{ minHeight: 120 }}>
+              <Loader size="sm" />
+            </Center>
+          ) : (
+            <Stack gap={0}>
+              {browseQuery.data?.parentPath ? (
+                <Group
+                  gap={8}
+                  wrap="nowrap"
+                  style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${GRAY_BORDER}` }}
+                  onClick={() => setCurrentPath(browseQuery.data!.parentPath!)}
+                >
+                  <IconArrowUp size={16} />
+                  <Text fz={13}>Dossier parent</Text>
+                </Group>
+              ) : null}
+
+              {browseQuery.data?.directories.length === 0 ? (
+                <Text fz={13} c={TEXT_MUTED} style={{ padding: '12px' }}>
+                  Aucun sous-dossier.
+                </Text>
+              ) : (
+                browseQuery.data?.directories.map(dir => (
+                  <Group
+                    key={dir.path}
+                    gap={8}
+                    wrap="nowrap"
+                    style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${GRAY_BORDER}` }}
+                    onClick={() => setCurrentPath(dir.path)}
+                  >
+                    <IconFolder size={16} />
+                    <Text fz={13} truncate>{dir.name}</Text>
+                  </Group>
+                ))
+              )}
+            </Stack>
+          )}
+        </Box>
+
+        <Group justify="flex-end" gap={8}>
+          <Button variant="default" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button
+            leftSection={<IconFolderOpen size={14} />}
+            disabled={!browseQuery.data?.path}
+            onClick={() => {
+              if (browseQuery.data?.path) {
+                onSelect(browseQuery.data.path);
+                onClose();
+              }
+            }}
+          >
+            Choisir ce dossier
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
 function StorageSettingsPanel() {
   const settingsQuery = useDatabaseBackupStorageSettings();
   const updateMutation = useUpdateDatabaseBackupStorageSettings();
   const [backupsDir, setBackupsDir] = useState('');
   const [icloudDir, setIcloudDir] = useState('');
+  const [browsingField, setBrowsingField] = useState<'backupsDir' | 'icloudDir' | null>(null);
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -76,19 +183,41 @@ function StorageSettingsPanel() {
       </Box>
 
       <Stack gap={14} style={{ padding: '18px 20px' }}>
-        <TextInput
-          label="Dossier des sauvegardes"
-          description={`Laisser vide pour utiliser le dossier par défaut (${settingsQuery.data?.backupsDirIsDefault ? settingsQuery.data.backupsDir : 'défini par DATABASE_BACKUPS_DIR'})`}
-          placeholder="/chemin/vers/le/dossier/de/sauvegarde"
-          value={backupsDir}
-          onChange={event => setBackupsDir(event.currentTarget.value)}
-        />
-        <TextInput
-          label="Dossier iCloud"
-          description="Chemin (local ou monté) vers lequel les sauvegardes sont copiées via « Envoyer vers iCloud »"
-          placeholder="/home/christian/icloud-backups"
-          value={icloudDir}
-          onChange={event => setIcloudDir(event.currentTarget.value)}
+        <Group align="flex-end" gap={8} wrap="nowrap">
+          <TextInput
+            style={{ flex: 1 }}
+            label="Dossier des sauvegardes"
+            description={`Laisser vide pour utiliser le dossier par défaut (${settingsQuery.data?.backupsDirIsDefault ? settingsQuery.data.backupsDir : 'défini par DATABASE_BACKUPS_DIR'})`}
+            placeholder="/chemin/vers/le/dossier/de/sauvegarde"
+            value={backupsDir}
+            onChange={event => setBackupsDir(event.currentTarget.value)}
+          />
+          <Button variant="default" leftSection={<IconFolderOpen size={14} />} onClick={() => setBrowsingField('backupsDir')}>
+            Parcourir
+          </Button>
+        </Group>
+        <Group align="flex-end" gap={8} wrap="nowrap">
+          <TextInput
+            style={{ flex: 1 }}
+            label="Dossier iCloud"
+            description="Chemin (local ou monté) vers lequel les sauvegardes sont copiées via « Envoyer vers iCloud »"
+            placeholder="/home/christian/icloud-backups"
+            value={icloudDir}
+            onChange={event => setIcloudDir(event.currentTarget.value)}
+          />
+          <Button variant="default" leftSection={<IconFolderOpen size={14} />} onClick={() => setBrowsingField('icloudDir')}>
+            Parcourir
+          </Button>
+        </Group>
+
+        <DirectoryPickerModal
+          opened={browsingField !== null}
+          initialPath={(browsingField === 'backupsDir' ? backupsDir : icloudDir) || settingsQuery.data?.backupsDir || ''}
+          onClose={() => setBrowsingField(null)}
+          onSelect={path => {
+            if (browsingField === 'backupsDir') setBackupsDir(path);
+            if (browsingField === 'icloudDir') setIcloudDir(path);
+          }}
         />
 
         {updateMutation.isError ? (
