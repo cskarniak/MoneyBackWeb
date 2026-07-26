@@ -1,7 +1,7 @@
 'use client';
 
 import { CRUD } from '@/lib/crud-tokens';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,12 +56,21 @@ type Props = { id?: string };
 
 export function GroupingsFiche({ id }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isNew = !id;
 
   const { data: regroupement, isLoading } = useRegroupement(id ?? '');
   const createMutation = useCreateRegroupement();
   const updateMutation = useUpdateRegroupement();
   const deleteMutation = useDeleteRegroupement();
+
+  const buildListUrl = (highlightId?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('highlight');
+    if (highlightId) params.set('highlight', highlightId);
+    const qs = params.toString();
+    return `/referentiels/regroupements${qs ? `?${qs}` : ''}`;
+  };
 
   const {
     register,
@@ -92,10 +101,10 @@ export function GroupingsFiche({ id }: Props) {
       const payload = toPayload(values);
       if (isNew) {
         const created = await createMutation.mutateAsync(payload);
-        router.push(`/referentiels/regroupements?highlight=${created.id}`);
+        router.push(buildListUrl(created.id));
       } else {
         await updateMutation.mutateAsync({ id: id!, ...payload });
-        router.push(`/referentiels/regroupements?highlight=${id}`);
+        router.push(buildListUrl(id));
       }
     } catch (err: unknown) {
       void err;
@@ -153,7 +162,7 @@ export function GroupingsFiche({ id }: Props) {
         >
           <Group justify="space-between" align="center" wrap="nowrap">
             <Text inherit fw={700}>Fiche regroupement</Text>
-            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/referentiels/regroupements')}>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push(buildListUrl())}>
               Fermer
             </Button>
           </Group>
@@ -267,7 +276,7 @@ export function GroupingsFiche({ id }: Props) {
                     if (!window.confirm(`Supprimer le regroupement "${regroupement?.label}" ?`)) return;
                     try {
                       await deleteMutation.mutateAsync(id!);
-                      router.push('/referentiels/regroupements');
+                      router.push(buildListUrl());
                     } catch {
                       // erreur affichée via mutationError
                     }

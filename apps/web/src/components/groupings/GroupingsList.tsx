@@ -266,7 +266,7 @@ export function GroupingsList() {
             <ActionIcon
               variant="subtle"
               size="md"
-              onClick={() => router.push(`/referentiels/regroupements/${row.original.id}`)}
+              onClick={() => router.push(`/referentiels/regroupements/${row.original.id}?${searchParams.toString()}`)}
               title="Modifier"
               style={actionIconStyle}
             >
@@ -350,7 +350,7 @@ export function GroupingsList() {
                 size="sm"
                 radius="md"
                 leftSection={<IconPlus size={13} />}
-                onClick={() => router.push('/referentiels/regroupements/new')}
+                onClick={() => router.push(`/referentiels/regroupements/new?${searchParams.toString()}`)}
                 style={primaryButtonStyle}
               >
                 Nouveau
