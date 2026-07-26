@@ -258,6 +258,7 @@ export function DetailedStatisticsWorkspace() {
 
     const budgetId = searchParams.get('budgetId');
     const accountId = searchParams.get('accountId');
+    const categoryGroupingId = searchParams.get('categoryGroupingId');
     const operationDateFrom = searchParams.get('operationDateFrom') ?? '';
     const operationDateTo = searchParams.get('operationDateTo') ?? '';
     const dueDateFrom = searchParams.get('dueDateFrom') ?? '';
@@ -273,6 +274,7 @@ export function DetailedStatisticsWorkspace() {
     if (
       !budgetId
       && !accountId
+      && !categoryGroupingId
       && !operationDateFrom
       && !operationDateTo
       && !dueDateFrom
@@ -293,7 +295,7 @@ export function DetailedStatisticsWorkspace() {
       budgetId,
       categoryId: null,
       thirdPartyId: null,
-      categoryGroupingId: null,
+      categoryGroupingId,
       budgetGroupingId: null,
       search: '',
       pieceNumber: '',

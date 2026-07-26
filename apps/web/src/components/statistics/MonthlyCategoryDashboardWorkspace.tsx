@@ -11,6 +11,7 @@ import {
   type MonthlyCategoryDashboardFilters,
 } from '@/hooks/useMonthlyCategoryDashboard';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -33,6 +34,14 @@ function formatMonthLabel(monthKey: string) {
 
 function toMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function toMonthDateBounds(monthKey: string) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const firstDay = `${monthKey}-01`;
+  const lastDayDate = new Date(year, month, 0).getDate();
+  const lastDay = `${monthKey}-${String(lastDayDate).padStart(2, '0')}`;
+  return { firstDay, lastDay };
 }
 
 function getDefaultRange(): [Date, Date] {
@@ -85,6 +94,22 @@ export function MonthlyCategoryDashboardWorkspace() {
       monthFrom: toMonthKey(monthFrom),
       monthTo: toMonthKey(monthTo),
     });
+  };
+
+  const openDrillDown = (groupingId: string | null, month: string) => {
+    if (!groupingId) return;
+
+    const { firstDay, lastDay } = toMonthDateBounds(month);
+    const params = new URLSearchParams();
+    params.set('categoryGroupingId', groupingId);
+    params.set('operationDateFrom', firstDay);
+    params.set('operationDateTo', lastDay);
+    params.set('autoRun', 'true');
+    if (submittedFilters?.accountId) {
+      params.set('accountId', submittedFilters.accountId);
+    }
+
+    openSecondaryTab(`/statistiques?${params.toString()}`);
   };
 
   const months = dashboardQuery.data?.months ?? [];
@@ -160,7 +185,8 @@ export function MonthlyCategoryDashboardWorkspace() {
 
             <Text fz={13} c={TEXT_MUTED}>
               Somme des opérations (et lignes de ventilation) rattachées à une catégorie, regroupées par code
-              regroupement de catégorie, mois par mois.
+              regroupement de catégorie, mois par mois. Clique sur un montant pour voir le détail des opérations
+              qui le composent.
             </Text>
           </Stack>
         </Box>
@@ -248,14 +274,27 @@ export function MonthlyCategoryDashboardWorkspace() {
                         </Table.Td>
                         {months.flatMap(month => {
                           const amount = item.monthly[month] ?? { totalExpense: '0', totalIncome: '0' };
+                          const clickable = item.groupingId !== null;
+                          const cellStyle = {
+                            background: rowBackground,
+                            cursor: clickable ? 'pointer' : undefined,
+                            textDecoration: clickable ? 'underline' : undefined,
+                          } as const;
                           return [
                             <Table.Td
                               key={`${month}-expense`}
-                              style={{ background: rowBackground, color: Number(amount.totalExpense) !== 0 ? NEGATIVE_AMOUNT : undefined }}
+                              style={{ ...cellStyle, color: Number(amount.totalExpense) !== 0 ? NEGATIVE_AMOUNT : undefined }}
+                              onClick={() => openDrillDown(item.groupingId, month)}
+                              title={clickable ? 'Voir le détail des opérations' : undefined}
                             >
                               {formatAmount(amount.totalExpense)}
                             </Table.Td>,
-                            <Table.Td key={`${month}-income`} style={{ background: rowBackground }}>
+                            <Table.Td
+                              key={`${month}-income`}
+                              style={cellStyle}
+                              onClick={() => openDrillDown(item.groupingId, month)}
+                              title={clickable ? 'Voir le détail des opérations' : undefined}
+                            >
                               {formatAmount(amount.totalIncome)}
                             </Table.Td>,
                           ];
