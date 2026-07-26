@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { BudgetFiltersSchema, RebuildBudgetBalancesSchema } from '@moneyback/shared';
+import { BudgetFiltersSchema, MigrateEntitySchema, RebuildBudgetBalancesSchema } from '@moneyback/shared';
 import type { CreateBudgetDto, UpdateBudgetDto } from '@moneyback/shared';
 import { BudgetsService } from './budgets.service';
 
@@ -41,5 +41,12 @@ export class BudgetsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.service.remove(id);
+  }
+
+  @Post(':id/migrate')
+  @ApiOperation({ summary: 'Migre toutes les références de cette enveloppe vers une autre' })
+  migrate(@Param('id') id: string, @Body() body: unknown) {
+    const { targetId } = MigrateEntitySchema.parse(body);
+    return this.service.migrate(id, targetId);
   }
 }

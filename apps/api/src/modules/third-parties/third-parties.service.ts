@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CreateThirdPartyDto,
@@ -6,6 +6,27 @@ import type {
   ThirdPartyMatchingRuleDto,
   UpdateThirdPartyDto,
 } from '@moneyback/shared';
+
+const THIRD_PARTY_INCLUDE = {
+  category: { select: { id: true, label: true } },
+  budget: { select: { id: true, label: true } },
+  migratedTo: { select: { id: true, name: true } },
+  matchingRules: {
+    include: {
+      conditions: {
+        orderBy: { position: 'asc' as const },
+      },
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
+  splits: {
+    include: {
+      category: { select: { id: true, label: true } },
+      budget: { select: { id: true, label: true } },
+    },
+    orderBy: { createdAt: 'asc' as const },
+  },
+};
 
 @Injectable()
 export class ThirdPartiesService {
@@ -23,6 +44,10 @@ export class ThirdPartiesService {
     budgetId: string | null;
     category: { id: string; label: string } | null;
     budget: { id: string; label: string } | null;
+    migratedToId: string | null;
+    migratedTo: { id: string; name: string } | null;
+    migrationReport: string | null;
+    migratedAt: Date | null;
     matchingRules: Array<{
       id: string;
       label: string;
@@ -89,25 +114,7 @@ export class ThirdPartiesService {
         orderBy,
         skip,
         take: limit,
-        include: {
-          category: { select: { id: true, label: true } },
-          budget: { select: { id: true, label: true } },
-          matchingRules: {
-            include: {
-              conditions: {
-                orderBy: { position: 'asc' },
-              },
-            },
-            orderBy: { createdAt: 'asc' },
-          },
-          splits: {
-            include: {
-              category: { select: { id: true, label: true } },
-              budget: { select: { id: true, label: true } },
-            },
-            orderBy: { createdAt: 'asc' },
-          },
-        },
+        include: THIRD_PARTY_INCLUDE,
       }),
       this.prisma.thirdParty.count({ where }),
     ]);
@@ -125,25 +132,7 @@ export class ThirdPartiesService {
   async findOne(id: string) {
     const thirdParty = await this.prisma.thirdParty.findUnique({
       where: { id },
-      include: {
-        category: { select: { id: true, label: true } },
-        budget: { select: { id: true, label: true } },
-        matchingRules: {
-          include: {
-            conditions: {
-              orderBy: { position: 'asc' },
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-        splits: {
-          include: {
-            category: { select: { id: true, label: true } },
-            budget: { select: { id: true, label: true } },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
+      include: THIRD_PARTY_INCLUDE,
     });
     if (!thirdParty) throw new NotFoundException(`Tiers ${id} introuvable`);
     return this.presenter(thirdParty);
@@ -178,25 +167,7 @@ export class ThirdPartiesService {
           })),
         } : undefined,
       },
-      include: {
-        category: { select: { id: true, label: true } },
-        budget: { select: { id: true, label: true } },
-        matchingRules: {
-          include: {
-            conditions: {
-              orderBy: { position: 'asc' },
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-        splits: {
-          include: {
-            category: { select: { id: true, label: true } },
-            budget: { select: { id: true, label: true } },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
+      include: THIRD_PARTY_INCLUDE,
     });
 
     return this.presenter(thirdParty);
@@ -241,25 +212,7 @@ export class ThirdPartiesService {
           },
         }),
       },
-      include: {
-        category: { select: { id: true, label: true } },
-        budget: { select: { id: true, label: true } },
-        matchingRules: {
-          include: {
-            conditions: {
-              orderBy: { position: 'asc' },
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-        splits: {
-          include: {
-            category: { select: { id: true, label: true } },
-            budget: { select: { id: true, label: true } },
-          },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
+      include: THIRD_PARTY_INCLUDE,
     });
 
     return this.presenter(thirdParty);
@@ -268,18 +221,75 @@ export class ThirdPartiesService {
   async remove(id: string) {
     const thirdParty = await this.findOne(id);
 
-    const [operationsCount, subscriptionsCount] = await this.prisma.$transaction([
+    const [operationsCount, subscriptionsCount, migratedFromCount] = await this.prisma.$transaction([
       this.prisma.operation.count({ where: { thirdPartyId: id, deletedAt: null } }),
       this.prisma.subscription.count({ where: { thirdPartyId: id } }),
+      this.prisma.thirdParty.count({ where: { migratedToId: id } }),
     ]);
 
-    if (operationsCount > 0 || subscriptionsCount > 0) {
+    if (operationsCount > 0 || subscriptionsCount > 0 || migratedFromCount > 0) {
       await this.prisma.thirdParty.update({ where: { id }, data: { active: false } });
       return { status: 'deactivated' as const, item: await this.findOne(id) };
     }
 
     await this.prisma.thirdParty.delete({ where: { id } });
     return { status: 'deleted' as const, item: thirdParty };
+  }
+
+  async migrate(id: string, targetId: string) {
+    if (id === targetId) {
+      throw new BadRequestException('Impossible de migrer un tiers vers lui-même.');
+    }
+
+    const source = await this.findOne(id);
+    const target = await this.findOne(targetId);
+
+    if (source.migratedToId) {
+      throw new BadRequestException(`Ce tiers a déjà été migré vers "${source.migratedTo?.name ?? ''}".`);
+    }
+
+    if (target.migratedToId) {
+      throw new BadRequestException(
+        `Le tiers cible a lui-même été migré vers "${target.migratedTo?.name ?? ''}". Choisissez un tiers actif.`,
+      );
+    }
+
+    const [operationsCount, subscriptionsCount] = await this.prisma.$transaction([
+      this.prisma.operation.updateMany({ where: { thirdPartyId: id }, data: { thirdPartyId: targetId } }),
+      this.prisma.subscription.updateMany({ where: { thirdPartyId: id }, data: { thirdPartyId: targetId } }),
+    ]);
+
+    const total = operationsCount.count + subscriptionsCount.count;
+
+    const now = new Date();
+    const report = [
+      `Migration effectuée le ${now.toLocaleString('fr-FR')}`,
+      `Tiers "${source.name}" migré vers "${target.name}"`,
+      '',
+      `Opérations mises à jour : ${operationsCount.count}`,
+      `Abonnements mis à jour : ${subscriptionsCount.count}`,
+      '',
+      `Total : ${total} référence(s) mise(s) à jour.`,
+      '',
+      "Remarque : les règles d'affectation automatique et le profil de ventilation de ce tiers ne sont pas transférés automatiquement — vérifiez-les sur le tiers cible si besoin.",
+    ].join('\n');
+
+    const updatedSource = await this.prisma.thirdParty.update({
+      where: { id },
+      data: {
+        active: false,
+        migratedToId: targetId,
+        migrationReport: report,
+        migratedAt: now,
+      },
+      include: THIRD_PARTY_INCLUDE,
+    });
+
+    return {
+      report,
+      source: this.presenter(updatedSource),
+      target: this.presenter(await this.prisma.thirdParty.findUniqueOrThrow({ where: { id: targetId }, include: THIRD_PARTY_INCLUDE })),
+    };
   }
 
   private buildMatchingRulesCreate(rules: ThirdPartyMatchingRuleDto[]) {

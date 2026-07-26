@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ThirdPartyFiltersSchema } from '@moneyback/shared';
+import { MigrateEntitySchema, ThirdPartyFiltersSchema } from '@moneyback/shared';
 import type { CreateThirdPartyDto, UpdateThirdPartyDto } from '@moneyback/shared';
 import { ThirdPartiesService } from './third-parties.service';
 
@@ -34,5 +34,12 @@ export class ThirdPartiesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.service.remove(id);
+  }
+
+  @Post(':id/migrate')
+  @ApiOperation({ summary: 'Migre toutes les références de ce tiers vers un autre' })
+  migrate(@Param('id') id: string, @Body() body: unknown) {
+    const { targetId } = MigrateEntitySchema.parse(body);
+    return this.service.migrate(id, targetId);
   }
 }

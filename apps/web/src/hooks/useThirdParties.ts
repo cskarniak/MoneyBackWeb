@@ -13,6 +13,10 @@ export type ThirdParty = {
   categorie: { id: string; label: string } | null;
   enveloppe: { id: string; label: string } | null;
   active: boolean;
+  migratedToId: string | null;
+  migratedTo: { id: string; name: string } | null;
+  migrationReport: string | null;
+  migratedAt: string | null;
   matchingRules: ThirdPartyMatchingRule[];
   splits: ThirdPartySplit[];
 };
@@ -196,4 +200,27 @@ export function useDeleteThirdParty() {
     mutationFn: id => api.delete(`/third-parties/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
+}
+
+export type MigrateThirdPartyResult = {
+  report: string;
+  source: ThirdParty;
+  target: ThirdParty;
+};
+
+export function useMigrateThirdParty() {
+  const qc = useQueryClient();
+  return useMutation<MigrateThirdPartyResult, Error, { id: string; targetId: string }>({
+    mutationFn: ({ id, targetId }) =>
+      api.post(`/third-parties/${id}/migrate`, { targetId }).then(r => normalizeMigrateThirdPartyResult(r.data)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+function normalizeMigrateThirdPartyResult(data: Record<string, unknown>): MigrateThirdPartyResult {
+  return {
+    report: String(data.report ?? ''),
+    source: normalizeThirdParty(data.source as Record<string, unknown>),
+    target: normalizeThirdParty(data.target as Record<string, unknown>),
+  };
 }

@@ -22,14 +22,17 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import {
+  useCategoriesAll,
   useCategory,
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
+  useMigrateCategory,
   type CategoryPayload,
 } from '@/hooks/useCategories';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -65,9 +68,11 @@ export function CategoriesFiche({ id }: Props) {
 
   const { data: category, isLoading: loadingCat } = useCategory(id ?? '');
   const { data: regroupements = [], isLoading: loadingRegroupements } = useRegroupementsAll();
+  const { data: allCategories = [] } = useCategoriesAll();
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
+  const migrateMutation = useMigrateCategory();
 
   const {
     register,
@@ -116,6 +121,10 @@ export function CategoriesFiche({ id }: Props) {
   const regroupementOptions = regroupements
     .filter(r => r.income)
     .map(r => ({ value: r.id, label: r.label }));
+  const migrationTargetOptions = allCategories
+    .filter(c => c.id !== id && !c.migratedToId)
+    .map(c => ({ value: c.id, label: c.label }));
+  const isMigrated = !!category?.migratedToId;
   const isLoading = (!isNew && loadingCat) || loadingRegroupements;
 
   if (isLoading) {
@@ -186,6 +195,16 @@ export function CategoriesFiche({ id }: Props) {
                 'var(--crud-form-body-padding-top) var(--crud-form-body-padding-x) var(--crud-form-body-padding-bottom)',
             }}
           >
+            {category?.migratedToId ? (
+              <MigrationReportBanner
+                entityLabel="Catégorie"
+                migratedToLabel={category.migratedTo?.label ?? ''}
+                migratedAt={category.migratedAt}
+                report={category.migrationReport ?? ''}
+                targetHref={`/referentiels/categories/${category.migratedToId}`}
+              />
+            ) : null}
+
             {mutationError && (
               <Alert
                 color="red"
@@ -208,6 +227,7 @@ export function CategoriesFiche({ id }: Props) {
                 style={{ flex: 1 }}
                 error={errors.label?.message}
                 autoFocus
+                disabled={isMigrated}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -240,6 +260,7 @@ export function CategoriesFiche({ id }: Props) {
                 onChange={val => setValue('regroupementId', val)}
                 clearable
                 placeholder="Aucun"
+                disabled={isMigrated}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -254,9 +275,9 @@ export function CategoriesFiche({ id }: Props) {
                 onChange={val => setValue('sens', val as FormValues['sens'])}
               >
                 <Stack gap={8}>
-                  <Radio value="expense" label="Dépense" size="sm" />
-                  <Radio value="income" label="Recette" size="sm" />
-                  <Radio value="none" label="Non défini" size="sm" />
+                  <Radio value="expense" label="Dépense" size="sm" disabled={isMigrated} />
+                  <Radio value="income" label="Recette" size="sm" disabled={isMigrated} />
+                  <Radio value="none" label="Non défini" size="sm" disabled={isMigrated} />
                 </Stack>
               </Radio.Group>
             </Group>
@@ -273,6 +294,7 @@ export function CategoriesFiche({ id }: Props) {
                 style={{ flex: 1 }}
                 rows={4}
                 placeholder="Notes..."
+                disabled={isMigrated}
                 styles={{ input: { background: FIELD_BG, fontSize: 'var(--crud-field-font-size)' } }}
               />
             </Group>
@@ -286,6 +308,7 @@ export function CategoriesFiche({ id }: Props) {
                 size="md"
                 checked={watch('active')}
                 onChange={e => setValue('active', e.currentTarget.checked)}
+                disabled={isMigrated}
               />
             </Group>
           </Stack>
@@ -300,28 +323,37 @@ export function CategoriesFiche({ id }: Props) {
               background: FIELD_BG,
             }}
           >
-            <Box>
-              {!isNew && (
-                <Button
-                  size="xs"
-                  radius="md"
-                  variant="outline"
-                  color="red"
-                  loading={deleteMutation.isPending}
-                  onClick={async () => {
-                    if (!window.confirm(`Supprimer la catégorie "${category?.label}" ?`)) return;
-                    try {
-                      await deleteMutation.mutateAsync(id!);
-                      router.push('/referentiels/categories');
-                    } catch {
-                      // erreur affichée via mutationError
-                    }
-                  }}
-                >
-                  Supprimer
-                </Button>
+            <Group gap={8}>
+              {!isNew && !category?.migratedToId && (
+                <>
+                  <Button
+                    size="xs"
+                    radius="md"
+                    variant="outline"
+                    color="red"
+                    loading={deleteMutation.isPending}
+                    onClick={async () => {
+                      if (!window.confirm(`Supprimer la catégorie "${category?.label}" ?`)) return;
+                      try {
+                        await deleteMutation.mutateAsync(id!);
+                        router.push('/referentiels/categories');
+                      } catch {
+                        // erreur affichée via mutationError
+                      }
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                  <MigrateActionButton
+                    entityLabel="catégorie"
+                    currentId={id!}
+                    currentLabel={category?.label ?? ''}
+                    options={migrationTargetOptions}
+                    onMigrate={targetId => migrateMutation.mutateAsync({ id: id!, targetId })}
+                  />
+                </>
               )}
-            </Box>
+            </Group>
             <Group gap="var(--crud-form-footer-gap)">
               <Button
                 size="sm"
@@ -329,16 +361,18 @@ export function CategoriesFiche({ id }: Props) {
                 variant="default"
                 onClick={() => router.back()}
               >
-                Annuler
+                {isMigrated ? 'Fermer' : 'Annuler'}
               </Button>
-              <Button
-                size="sm"
-                radius="md"
-                type="submit"
-                loading={isSubmitting}
-              >
-                Enregistrer
-              </Button>
+              {!isMigrated && (
+                <Button
+                  size="sm"
+                  radius="md"
+                  type="submit"
+                  loading={isSubmitting}
+                >
+                  Enregistrer
+                </Button>
+              )}
             </Group>
           </Group>
         </form>

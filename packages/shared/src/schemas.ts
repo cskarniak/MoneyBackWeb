@@ -312,6 +312,12 @@ export const CategoryFiltersSchema = z.object({
 
 export type CategoryFiltersDto = z.infer<typeof CategoryFiltersSchema>;
 
+export const MigrateEntitySchema = z.object({
+  targetId: z.string().uuid(),
+});
+
+export type MigrateEntityDto = z.infer<typeof MigrateEntitySchema>;
+
 // ─── Grouping ─────────────────────────────────────────────────────────────────
 
 export const CreateGroupingSchema = z.object({

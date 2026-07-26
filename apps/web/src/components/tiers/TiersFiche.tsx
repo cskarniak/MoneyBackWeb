@@ -28,11 +28,14 @@ import { filterActiveOptions } from '@/lib/activeOptions';
 import {
   useCreateThirdParty,
   useDeleteThirdParty,
+  useMigrateThirdParty,
   useThirdParty,
+  useThirdPartiesAll,
   useUpdateThirdParty,
   type ThirdPartyPayload,
 } from '@/hooks/useThirdParties';
 import { OperationSplitModal } from '../operations/OperationSplitModal';
+import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -329,9 +332,11 @@ export function TiersFiche({ id }: Props) {
   const { data: tiers, isLoading } = useThirdParty(id ?? '');
   const { data: categories = [], isLoading: loadingCategories } = useCategoriesAll();
   const { data: enveloppes = [], isLoading: loadingEnveloppes } = useEnveloppesAll();
+  const { data: allThirdParties = [] } = useThirdPartiesAll();
   const createMutation = useCreateThirdParty();
   const updateMutation = useUpdateThirdParty();
   const deleteMutation = useDeleteThirdParty();
+  const migrateMutation = useMigrateThirdParty();
 
   const {
     control,
@@ -429,6 +434,11 @@ export function TiersFiche({ id }: Props) {
       ),
     [enveloppes, tiers, watchedBudgetId, watchedSplits],
   );
+
+  const migrationTargetOptions = allThirdParties
+    .filter(t => t.id !== id && !t.migratedToId)
+    .map(t => ({ value: t.id, label: t.name }));
+  const isMigrated = !!tiers?.migratedToId;
 
   const splitExpense = (watchedSplits ?? []).reduce((sum, split) => sum + asNumber(split.expense), 0);
   const splitIncome = (watchedSplits ?? []).reduce((sum, split) => sum + asNumber(split.income), 0);
@@ -545,6 +555,16 @@ export function TiersFiche({ id }: Props) {
                 'var(--crud-form-body-padding-top) var(--crud-form-body-padding-x) var(--crud-form-body-padding-bottom)',
             }}
           >
+            {tiers?.migratedToId ? (
+              <MigrationReportBanner
+                entityLabel="Tiers"
+                migratedToLabel={tiers.migratedTo?.name ?? ''}
+                migratedAt={tiers.migratedAt}
+                report={tiers.migrationReport ?? ''}
+                targetHref={`/referentiels/tiers/${tiers.migratedToId}`}
+              />
+            ) : null}
+
             {(mutationError || localError) && (
               <Alert color="red" icon={<IconAlertCircle size={16} />} style={{ background: '#fff5f5', border: '1px solid #ffc9c9' }}>
                 <Text size="sm">{mutationError ?? localError}</Text>
@@ -555,7 +575,7 @@ export function TiersFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Nom <span style={{ color: 'red' }}>*</span>
               </Text>
-              <TextInput {...register('name')} size="sm" radius="md" style={{ flex: 1 }} error={errors.name?.message} autoFocus styles={{ input: fieldInputStyle }} />
+              <TextInput {...register('name')} size="sm" radius="md" style={{ flex: 1 }} error={errors.name?.message} autoFocus disabled={isMigrated} styles={{ input: fieldInputStyle }} />
             </Group>
 
             <Group gap={0} align="center">
@@ -579,7 +599,7 @@ export function TiersFiche({ id }: Props) {
                 data={enveloppeOptions}
                 value={watchedBudgetId ?? null}
                 clearable
-                disabled={loadingEnveloppes || watchedVentilated}
+                disabled={loadingEnveloppes || watchedVentilated || isMigrated}
                 placeholder={watchedVentilated ? 'Désactivée pour un tiers ventilé' : 'Aucune'}
                 onChange={value => setValue('budgetId', value, { shouldDirty: true })}
                 styles={{ input: fieldInputStyle }}
@@ -595,7 +615,7 @@ export function TiersFiche({ id }: Props) {
                 data={categoryOptions}
                 value={watchedCategoryId ?? null}
                 clearable
-                disabled={loadingCategories || watchedVentilated}
+                disabled={loadingCategories || watchedVentilated || isMigrated}
                 placeholder={watchedVentilated ? 'Désactivée pour un tiers ventilé' : 'Aucune'}
                 onChange={value => setValue('categoryId', value, { shouldDirty: true })}
                 styles={{ input: fieldInputStyle }}
@@ -608,6 +628,7 @@ export function TiersFiche({ id }: Props) {
                 size="md"
                 checked={watch('budgetBearer')}
                 onChange={event => setValue('budgetBearer', event.currentTarget.checked, { shouldDirty: true })}
+                disabled={isMigrated}
               />
             </Group>
 
@@ -624,6 +645,7 @@ export function TiersFiche({ id }: Props) {
                     setValue('categoryId', null, { shouldDirty: true });
                   }
                 }}
+                disabled={isMigrated}
               />
             </Group>
 
@@ -635,7 +657,7 @@ export function TiersFiche({ id }: Props) {
                   variant="default"
                   radius="md"
                   leftSection={<IconGitBranch size={14} />}
-                  disabled={!watchedVentilated}
+                  disabled={!watchedVentilated || isMigrated}
                   onClick={() => setVentilationOpened(true)}
                 >
                   Éditer la ventilation
@@ -657,6 +679,7 @@ export function TiersFiche({ id }: Props) {
                 style={{ flex: 1 }}
                 rows={5}
                 placeholder="Notes et commentaires..."
+                disabled={isMigrated}
                 styles={{ input: { background: FIELD_BG, fontSize: 'var(--crud-field-font-size)' } }}
               />
             </Group>
@@ -673,6 +696,7 @@ export function TiersFiche({ id }: Props) {
                       type="button"
                       variant="light"
                       size="xs"
+                      disabled={isMigrated}
                       onClick={() => {
                         appendMatchingRule({
                           label: '',
@@ -754,7 +778,7 @@ export function TiersFiche({ id }: Props) {
 
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Actif</Text>
-              <Checkbox size="md" checked={watch('active')} onChange={event => setValue('active', event.currentTarget.checked, { shouldDirty: true })} />
+              <Checkbox size="md" checked={watch('active')} onChange={event => setValue('active', event.currentTarget.checked, { shouldDirty: true })} disabled={isMigrated} />
             </Group>
           </Stack>
 
@@ -766,37 +790,48 @@ export function TiersFiche({ id }: Props) {
               background: FIELD_BG,
             }}
           >
-            <Box>
-              {!isNew && (
-                <Button
-                  type="button"
-                  size="xs"
-                  radius="md"
-                  color="red"
-                  variant="light"
-                  loading={deleteMutation.isPending}
-                  onClick={async () => {
-                    if (!window.confirm(`Supprimer le tiers "${tiers?.name}" ?`)) return;
-                    try {
-                      await deleteMutation.mutateAsync(id!);
-                      router.push('/referentiels/tiers');
-                    } catch {
-                      void 0;
-                    }
-                  }}
-                >
-                  Supprimer
-                </Button>
+            <Group gap={8}>
+              {!isNew && !tiers?.migratedToId && (
+                <>
+                  <Button
+                    type="button"
+                    size="xs"
+                    radius="md"
+                    color="red"
+                    variant="light"
+                    loading={deleteMutation.isPending}
+                    onClick={async () => {
+                      if (!window.confirm(`Supprimer le tiers "${tiers?.name}" ?`)) return;
+                      try {
+                        await deleteMutation.mutateAsync(id!);
+                        router.push('/referentiels/tiers');
+                      } catch {
+                        void 0;
+                      }
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                  <MigrateActionButton
+                    entityLabel="tiers"
+                    currentId={id!}
+                    currentLabel={tiers?.name ?? ''}
+                    options={migrationTargetOptions}
+                    onMigrate={targetId => migrateMutation.mutateAsync({ id: id!, targetId })}
+                  />
+                </>
               )}
-            </Box>
+            </Group>
 
             <Group gap="var(--crud-form-footer-gap)">
               <Button type="button" variant="default" radius="md" onClick={() => router.push('/referentiels/tiers')}>
-                Retour
+                {isMigrated ? 'Fermer' : 'Retour'}
               </Button>
-              <Button type="submit" radius="md" loading={isSubmitting}>
-                Enregistrer
-              </Button>
+              {!isMigrated && (
+                <Button type="submit" radius="md" loading={isSubmitting}>
+                  Enregistrer
+                </Button>
+              )}
             </Group>
           </Group>
         </form>

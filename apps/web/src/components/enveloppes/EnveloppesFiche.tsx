@@ -10,9 +10,18 @@ import { Box, Button, Checkbox, Group, Stack, Text, Textarea, TextInput, Alert, 
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
-import { useCreateEnveloppe, useDeleteEnveloppe, useEnveloppe, useUpdateEnveloppe, type EnveloppePayload } from '@/hooks/useEnveloppes';
+import {
+  useCreateEnveloppe,
+  useDeleteEnveloppe,
+  useEnveloppe,
+  useEnveloppesAll,
+  useMigrateEnveloppe,
+  useUpdateEnveloppe,
+  type EnveloppePayload,
+} from '@/hooks/useEnveloppes';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { openSecondaryTab } from '@/lib/secondary-tab';
+import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -67,9 +76,11 @@ export function EnveloppesFiche({ id }: Props) {
   const { data: enveloppe, isLoading: loadingEnveloppe } = useEnveloppe(id ?? '');
   const { data: regroupements = [], isLoading: loadingRegroupements } = useRegroupementsAll();
   const { data: movementTypes = [], isLoading: loadingMovementTypes } = useMovementTypesAll();
+  const { data: allEnveloppes = [] } = useEnveloppesAll();
   const createMutation = useCreateEnveloppe();
   const updateMutation = useUpdateEnveloppe();
   const deleteMutation = useDeleteEnveloppe();
+  const migrateMutation = useMigrateEnveloppe();
 
   const {
     register,
@@ -136,6 +147,10 @@ export function EnveloppesFiche({ id }: Props) {
     value: movementType.id,
     label: movementType.code?.trim() ? `${movementType.code} - ${movementType.label}` : movementType.label,
   }));
+  const migrationTargetOptions = allEnveloppes
+    .filter(e => e.id !== id && !e.migratedToId)
+    .map(e => ({ value: e.id, label: e.label }));
+  const isMigrated = !!enveloppe?.migratedToId;
   const isLoading = (!isNew && loadingEnveloppe) || loadingRegroupements || loadingMovementTypes;
 
   if (isLoading) {
@@ -203,6 +218,16 @@ export function EnveloppesFiche({ id }: Props) {
                 'var(--crud-form-body-padding-top) var(--crud-form-body-padding-x) var(--crud-form-body-padding-bottom)',
             }}
           >
+            {enveloppe?.migratedToId ? (
+              <MigrationReportBanner
+                entityLabel="Enveloppe"
+                migratedToLabel={enveloppe.migratedTo?.label ?? ''}
+                migratedAt={enveloppe.migratedAt}
+                report={enveloppe.migrationReport ?? ''}
+                targetHref={`/referentiels/enveloppes/${enveloppe.migratedToId}`}
+              />
+            ) : null}
+
             {mutationError && (
               <Alert color="red" icon={<IconAlertCircle size={16} />} style={{ background: '#fff5f5', border: '1px solid #ffc9c9' }}>
                 <Text size="sm">{mutationError}</Text>
@@ -220,6 +245,7 @@ export function EnveloppesFiche({ id }: Props) {
                 style={{ flex: 1 }}
                 error={errors.label?.message}
                 autoFocus
+                disabled={isMigrated}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -265,6 +291,7 @@ export function EnveloppesFiche({ id }: Props) {
                 onChange={val => setValue('regroupementId', val)}
                 clearable
                 placeholder="Aucun"
+                disabled={isMigrated}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -285,6 +312,7 @@ export function EnveloppesFiche({ id }: Props) {
                 }}
                 clearable
                 placeholder="Aucun"
+                disabled={isMigrated}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -302,6 +330,7 @@ export function EnveloppesFiche({ id }: Props) {
                 onChange={val => setValue('movementTypeId', val)}
                 clearable
                 placeholder="Aucun"
+                disabled={isMigrated}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>
@@ -317,6 +346,7 @@ export function EnveloppesFiche({ id }: Props) {
                 style={{ flex: 1 }}
                 rows={4}
                 placeholder="Notes..."
+                disabled={isMigrated}
                 styles={{ input: { background: FIELD_BG, fontSize: 'var(--crud-field-font-size)' } }}
               />
             </Group>
@@ -325,7 +355,12 @@ export function EnveloppesFiche({ id }: Props) {
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
                 Actif
               </Text>
-              <Checkbox size="md" checked={watch('active')} onChange={e => setValue('active', e.currentTarget.checked)} />
+              <Checkbox
+                size="md"
+                checked={watch('active')}
+                onChange={e => setValue('active', e.currentTarget.checked)}
+                disabled={isMigrated}
+              />
             </Group>
           </Stack>
 
@@ -345,38 +380,51 @@ export function EnveloppesFiche({ id }: Props) {
                     size="xs"
                     radius="md"
                     variant="outline"
-                    color="red"
-                    loading={deleteMutation.isPending}
-                    onClick={async () => {
-                      if (!window.confirm(`Supprimer l'enveloppe "${enveloppe?.label}" ?`)) return;
-                      try {
-                        await deleteMutation.mutateAsync(id!);
-                        router.push('/referentiels/enveloppes');
-                      } catch {
-                        // erreur affichée via mutationError
-                      }
-                    }}
-                  >
-                    Supprimer
-                  </Button>
-                  <Button
-                    size="xs"
-                    radius="md"
-                    variant="outline"
                     onClick={() => openSecondaryTab(`/statistiques?budgetId=${id}&autoRun=true`)}
                   >
                     Voir les statistiques
                   </Button>
+                  {!enveloppe?.migratedToId && (
+                    <>
+                      <Button
+                        size="xs"
+                        radius="md"
+                        variant="outline"
+                        color="red"
+                        loading={deleteMutation.isPending}
+                        onClick={async () => {
+                          if (!window.confirm(`Supprimer l'enveloppe "${enveloppe?.label}" ?`)) return;
+                          try {
+                            await deleteMutation.mutateAsync(id!);
+                            router.push('/referentiels/enveloppes');
+                          } catch {
+                            // erreur affichée via mutationError
+                          }
+                        }}
+                      >
+                        Supprimer
+                      </Button>
+                      <MigrateActionButton
+                        entityLabel="enveloppe"
+                        currentId={id!}
+                        currentLabel={enveloppe?.label ?? ''}
+                        options={migrationTargetOptions}
+                        onMigrate={targetId => migrateMutation.mutateAsync({ id: id!, targetId })}
+                      />
+                    </>
+                  )}
                 </>
               )}
             </Group>
             <Group gap="var(--crud-form-footer-gap)">
               <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
-                Annuler
+                {isMigrated ? 'Fermer' : 'Annuler'}
               </Button>
-              <Button size="sm" radius="md" type="submit" loading={isSubmitting}>
-                Enregistrer
-              </Button>
+              {!isMigrated && (
+                <Button size="sm" radius="md" type="submit" loading={isSubmitting}>
+                  Enregistrer
+                </Button>
+              )}
             </Group>
           </Group>
         </form>

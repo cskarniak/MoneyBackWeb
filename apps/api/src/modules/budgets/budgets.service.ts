@@ -16,6 +16,13 @@ function toLocalDateOnly(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
+const BUDGET_INCLUDE = {
+  grouping: { select: { id: true, label: true } },
+  dashboardGrouping: { select: { id: true, label: true } },
+  movementType: { select: { id: true, label: true, code: true } },
+  migratedTo: { select: { id: true, label: true } },
+} as const;
+
 @Injectable()
 export class BudgetsService {
   constructor(private prisma: PrismaService) {}
@@ -39,6 +46,10 @@ export class BudgetsService {
     dashboardGrouping: { id: string; label: string } | null;
     movementTypeId: string | null;
     movementType: { id: string; label: string; code: string | null } | null;
+    migratedToId: string | null;
+    migratedTo: { id: string; label: string } | null;
+    migrationReport: string | null;
+    migratedAt: Date | null;
   }) {
     const {
       grouping,
@@ -77,11 +88,7 @@ export class BudgetsService {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.budget.findMany({
         where,
-        include: {
-          grouping: { select: { id: true, label: true } },
-          dashboardGrouping: { select: { id: true, label: true } },
-          movementType: { select: { id: true, label: true, code: true } },
-        },
+        include: BUDGET_INCLUDE,
         orderBy,
         skip,
         take: limit,
@@ -102,11 +109,7 @@ export class BudgetsService {
   async findOne(id: string) {
     const budget = await this.prisma.budget.findUnique({
       where: { id },
-      include: {
-        grouping: { select: { id: true, label: true } },
-        dashboardGrouping: { select: { id: true, label: true } },
-        movementType: { select: { id: true, label: true, code: true } },
-      },
+      include: BUDGET_INCLUDE,
     });
     if (!budget) throw new NotFoundException(`Budget ${id} introuvable`);
     return this.presenter(budget);
@@ -125,11 +128,7 @@ export class BudgetsService {
         ...(dto.regroupementTableauDeBordId && { dashboardGroupingId: dto.regroupementTableauDeBordId }),
         ...(dto.movementTypeId && { movementTypeId: dto.movementTypeId }),
       },
-      include: {
-        grouping: { select: { id: true, label: true } },
-        dashboardGrouping: { select: { id: true, label: true } },
-        movementType: { select: { id: true, label: true, code: true } },
-      },
+      include: BUDGET_INCLUDE,
     });
 
     return this.presenter(budget);
@@ -172,11 +171,7 @@ export class BudgetsService {
         ...(dto.regroupementTableauDeBordId !== undefined && { dashboardGroupingId: dto.regroupementTableauDeBordId }),
         ...(dto.movementTypeId !== undefined && { movementTypeId: dto.movementTypeId ?? null }),
       },
-      include: {
-        grouping: { select: { id: true, label: true } },
-        dashboardGrouping: { select: { id: true, label: true } },
-        movementType: { select: { id: true, label: true, code: true } },
-      },
+      include: BUDGET_INCLUDE,
     });
 
     return this.presenter(budget);
@@ -185,7 +180,7 @@ export class BudgetsService {
   async remove(id: string) {
     const budget = await this.findOne(id);
 
-    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount] =
+    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount, migratedFromCount] =
       await this.prisma.$transaction([
         this.prisma.operation.count({ where: { budgetId: id, deletedAt: null } }),
         this.prisma.operationSplit.count({ where: { budgetId: id } }),
@@ -193,6 +188,7 @@ export class BudgetsService {
         this.prisma.subscriptionSplit.count({ where: { budgetId: id } }),
         this.prisma.thirdParty.count({ where: { budgetId: id } }),
         this.prisma.thirdPartySplit.count({ where: { budgetId: id } }),
+        this.prisma.budget.count({ where: { migratedToId: id } }),
       ]);
 
     const inUse =
@@ -201,7 +197,8 @@ export class BudgetsService {
       || subscriptionsCount > 0
       || subscriptionSplitsCount > 0
       || thirdPartiesCount > 0
-      || thirdPartySplitsCount > 0;
+      || thirdPartySplitsCount > 0
+      || migratedFromCount > 0;
 
     if (inUse) {
       const inactiveBudget = await this.update(id, { active: false });
@@ -210,6 +207,77 @@ export class BudgetsService {
 
     await this.prisma.budget.delete({ where: { id } });
     return { status: 'deleted' as const, item: budget };
+  }
+
+  async migrate(id: string, targetId: string) {
+    if (id === targetId) {
+      throw new BadRequestException('Impossible de migrer une enveloppe vers elle-même.');
+    }
+
+    const source = await this.findOne(id);
+    const target = await this.findOne(targetId);
+
+    if (source.migratedToId) {
+      throw new BadRequestException(`Cette enveloppe a déjà été migrée vers "${source.migratedTo?.label ?? ''}".`);
+    }
+
+    if (target.migratedToId) {
+      throw new BadRequestException(
+        `L'enveloppe cible a elle-même été migrée vers "${target.migratedTo?.label ?? ''}". Choisissez une enveloppe active.`,
+      );
+    }
+
+    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount] =
+      await this.prisma.$transaction([
+        this.prisma.operation.updateMany({ where: { budgetId: id }, data: { budgetId: targetId } }),
+        this.prisma.operationSplit.updateMany({ where: { budgetId: id }, data: { budgetId: targetId } }),
+        this.prisma.subscription.updateMany({ where: { budgetId: id }, data: { budgetId: targetId } }),
+        this.prisma.subscriptionSplit.updateMany({ where: { budgetId: id }, data: { budgetId: targetId } }),
+        this.prisma.thirdParty.updateMany({ where: { budgetId: id }, data: { budgetId: targetId } }),
+        this.prisma.thirdPartySplit.updateMany({ where: { budgetId: id }, data: { budgetId: targetId } }),
+      ]);
+
+    const total =
+      operationsCount.count
+      + splitsCount.count
+      + subscriptionsCount.count
+      + subscriptionSplitsCount.count
+      + thirdPartiesCount.count
+      + thirdPartySplitsCount.count;
+
+    const now = new Date();
+    const report = [
+      `Migration effectuée le ${now.toLocaleString('fr-FR')}`,
+      `Enveloppe "${source.label}" migrée vers "${target.label}"`,
+      '',
+      `Opérations mises à jour : ${operationsCount.count}`,
+      `Opérations ventilées mises à jour : ${splitsCount.count}`,
+      `Abonnements mis à jour : ${subscriptionsCount.count}`,
+      `Abonnements ventilés mis à jour : ${subscriptionSplitsCount.count}`,
+      `Tiers mis à jour (enveloppe par défaut) : ${thirdPartiesCount.count}`,
+      `Tiers ventilés mis à jour : ${thirdPartySplitsCount.count}`,
+      '',
+      `Total : ${total} référence(s) mise(s) à jour.`,
+    ].join('\n');
+
+    // Désactivation forcée : la règle de solde nul ne s'applique pas ici, puisque
+    // toutes les références réelles viennent d'être déplacées vers la cible.
+    const updatedSource = await this.prisma.budget.update({
+      where: { id },
+      data: {
+        active: false,
+        migratedToId: targetId,
+        migrationReport: report,
+        migratedAt: now,
+      },
+      include: BUDGET_INCLUDE,
+    });
+
+    return {
+      report,
+      source: this.presenter(updatedSource),
+      target: this.presenter(await this.prisma.budget.findUniqueOrThrow({ where: { id: targetId }, include: BUDGET_INCLUDE })),
+    };
   }
 
   /**

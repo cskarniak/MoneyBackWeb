@@ -13,6 +13,10 @@ export type Category = {
   active: boolean;
   regroupementId: string | null;
   regroupement: Regroupement | null;
+  migratedToId: string | null;
+  migratedTo: { id: string; label: string } | null;
+  migrationReport: string | null;
+  migratedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -121,6 +125,20 @@ export function useDeleteCategory() {
   const qc = useQueryClient();
   return useMutation<CategoryDeleteResult, Error, string>({
     mutationFn: id => api.delete(`/categories/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export type MigrateCategoryResult = {
+  report: string;
+  source: Category;
+  target: Category;
+};
+
+export function useMigrateCategory() {
+  const qc = useQueryClient();
+  return useMutation<MigrateCategoryResult, Error, { id: string; targetId: string }>({
+    mutationFn: ({ id, targetId }) => api.post(`/categories/${id}/migrate`, { targetId }).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }

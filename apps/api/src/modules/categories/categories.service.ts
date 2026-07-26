@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateCategoryDto, UpdateCategoryDto, CategoryFiltersDto } from '@moneyback/shared';
+
+const GROUPING_INCLUDE = { grouping: { select: { id: true, label: true } }, migratedTo: { select: { id: true, label: true } } } as const;
 
 @Injectable()
 export class CategoriesService {
@@ -18,6 +20,10 @@ export class CategoriesService {
     updatedAt: Date;
     groupingId: string | null;
     grouping: { id: string; label: string } | null;
+    migratedToId: string | null;
+    migratedTo: { id: string; label: string } | null;
+    migrationReport: string | null;
+    migratedAt: Date | null;
   }) {
     const { grouping, groupingId, ...rest } = category;
 
@@ -46,7 +52,7 @@ export class CategoriesService {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.category.findMany({
         where,
-        include: { grouping: { select: { id: true, label: true } } },
+        include: GROUPING_INCLUDE,
         orderBy,
         skip,
         take: limit,
@@ -67,7 +73,7 @@ export class CategoriesService {
   async findOne(id: string) {
     const category = await this.prisma.category.findUnique({
       where: { id },
-      include: { grouping: { select: { id: true, label: true } } },
+      include: GROUPING_INCLUDE,
     });
     if (!category) throw new NotFoundException(`Catégorie ${id} introuvable`);
     return this.presenter(category);
@@ -84,7 +90,7 @@ export class CategoriesService {
         active: dto.active ?? true,
         ...(dto.regroupementId && { groupingId: dto.regroupementId }),
       },
-      include: { grouping: { select: { id: true, label: true } } },
+      include: GROUPING_INCLUDE,
     });
 
     return this.presenter(category);
@@ -103,7 +109,7 @@ export class CategoriesService {
         ...(dto.active !== undefined && { active: dto.active }),
         ...(dto.regroupementId !== undefined && { groupingId: dto.regroupementId }),
       },
-      include: { grouping: { select: { id: true, label: true } } },
+      include: GROUPING_INCLUDE,
     });
 
     return this.presenter(category);
@@ -112,7 +118,7 @@ export class CategoriesService {
   async remove(id: string) {
     const category = await this.findOne(id);
 
-    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount] =
+    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount, migratedFromCount] =
       await this.prisma.$transaction([
         this.prisma.operation.count({ where: { categoryId: id, deletedAt: null } }),
         this.prisma.operationSplit.count({ where: { categoryId: id } }),
@@ -120,6 +126,7 @@ export class CategoriesService {
         this.prisma.subscriptionSplit.count({ where: { categoryId: id } }),
         this.prisma.thirdParty.count({ where: { categoryId: id } }),
         this.prisma.thirdPartySplit.count({ where: { categoryId: id } }),
+        this.prisma.category.count({ where: { migratedToId: id } }),
       ]);
 
     const inUse =
@@ -128,13 +135,14 @@ export class CategoriesService {
       || subscriptionsCount > 0
       || subscriptionSplitsCount > 0
       || thirdPartiesCount > 0
-      || thirdPartySplitsCount > 0;
+      || thirdPartySplitsCount > 0
+      || migratedFromCount > 0;
 
     if (inUse) {
       const inactiveCategory = await this.prisma.category.update({
         where: { id },
         data: { active: false },
-        include: { grouping: { select: { id: true, label: true } } },
+        include: GROUPING_INCLUDE,
       });
 
       return { status: 'deactivated' as const, item: this.presenter(inactiveCategory) };
@@ -142,5 +150,76 @@ export class CategoriesService {
 
     await this.prisma.category.delete({ where: { id } });
     return { status: 'deleted' as const, item: category };
+  }
+
+  async migrate(id: string, targetId: string) {
+    if (id === targetId) {
+      throw new BadRequestException('Impossible de migrer une catégorie vers elle-même.');
+    }
+
+    const source = await this.findOne(id);
+    const target = await this.findOne(targetId);
+
+    if (source.migratedToId) {
+      throw new BadRequestException(
+        `Cette catégorie a déjà été migrée vers "${source.migratedTo?.label ?? ''}".`,
+      );
+    }
+
+    if (target.migratedToId) {
+      throw new BadRequestException(
+        `La catégorie cible a elle-même été migrée vers "${target.migratedTo?.label ?? ''}". Choisissez une catégorie active.`,
+      );
+    }
+
+    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount] =
+      await this.prisma.$transaction([
+        this.prisma.operation.updateMany({ where: { categoryId: id }, data: { categoryId: targetId } }),
+        this.prisma.operationSplit.updateMany({ where: { categoryId: id }, data: { categoryId: targetId } }),
+        this.prisma.subscription.updateMany({ where: { categoryId: id }, data: { categoryId: targetId } }),
+        this.prisma.subscriptionSplit.updateMany({ where: { categoryId: id }, data: { categoryId: targetId } }),
+        this.prisma.thirdParty.updateMany({ where: { categoryId: id }, data: { categoryId: targetId } }),
+        this.prisma.thirdPartySplit.updateMany({ where: { categoryId: id }, data: { categoryId: targetId } }),
+      ]);
+
+    const total =
+      operationsCount.count
+      + splitsCount.count
+      + subscriptionsCount.count
+      + subscriptionSplitsCount.count
+      + thirdPartiesCount.count
+      + thirdPartySplitsCount.count;
+
+    const now = new Date();
+    const report = [
+      `Migration effectuée le ${now.toLocaleString('fr-FR')}`,
+      `Catégorie "${source.label}" migrée vers "${target.label}"`,
+      '',
+      `Opérations mises à jour : ${operationsCount.count}`,
+      `Opérations ventilées mises à jour : ${splitsCount.count}`,
+      `Abonnements mis à jour : ${subscriptionsCount.count}`,
+      `Abonnements ventilés mis à jour : ${subscriptionSplitsCount.count}`,
+      `Tiers mis à jour (catégorie par défaut) : ${thirdPartiesCount.count}`,
+      `Tiers ventilés mis à jour : ${thirdPartySplitsCount.count}`,
+      '',
+      `Total : ${total} référence(s) mise(s) à jour.`,
+    ].join('\n');
+
+    const updatedSource = await this.prisma.category.update({
+      where: { id },
+      data: {
+        active: false,
+        migratedToId: targetId,
+        migrationReport: report,
+        migratedAt: now,
+      },
+      include: GROUPING_INCLUDE,
+    });
+
+    return {
+      report,
+      source: this.presenter(updatedSource),
+      target: this.presenter(await this.prisma.category.findUniqueOrThrow({ where: { id: targetId }, include: GROUPING_INCLUDE })),
+    };
   }
 }

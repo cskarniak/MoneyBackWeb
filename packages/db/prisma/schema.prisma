@@ -121,6 +121,12 @@ model Budget {
   movementTypeId String?       @map("type_mouvement_id")
   movementType   MovementType? @relation(fields: [movementTypeId], references: [id])
 
+  migratedToId    String?  @map("migre_vers_id")
+  migratedTo      Budget?  @relation("BudgetMigration", fields: [migratedToId], references: [id])
+  migratedFrom    Budget[] @relation("BudgetMigration")
+  migrationReport String?  @map("rapport_migration")
+  migratedAt      DateTime? @map("date_migration")
+
   operations         Operation[]
   operationSplits    OperationSplit[]
   subscriptions      Subscription[]
@@ -132,6 +138,7 @@ model Budget {
   @@index([dashboardGroupingId])
   @@index([movementTypeId])
   @@index([active])
+  @@index([migratedToId])
   @@map("budgets")
 }
 
@@ -150,6 +157,12 @@ model Category {
   groupingId String?   @map("regroupement_id")
   grouping   Grouping? @relation(fields: [groupingId], references: [id])
 
+  migratedToId    String?    @map("migre_vers_id")
+  migratedTo      Category?  @relation("CategoryMigration", fields: [migratedToId], references: [id])
+  migratedFrom    Category[] @relation("CategoryMigration")
+  migrationReport String?    @map("rapport_migration")
+  migratedAt      DateTime?  @map("date_migration")
+
   operations         Operation[]
   operationSplits    OperationSplit[]
   subscriptions      Subscription[]
@@ -159,6 +172,7 @@ model Category {
 
   @@index([groupingId])
   @@index([active])
+  @@index([migratedToId])
   @@map("categories")
 }
 
@@ -176,6 +190,12 @@ model ThirdParty {
   budgetId   String?   @map("budget_id")
   budget     Budget?   @relation(fields: [budgetId], references: [id])
 
+  migratedToId    String?      @map("migre_vers_id")
+  migratedTo      ThirdParty?  @relation("ThirdPartyMigration", fields: [migratedToId], references: [id])
+  migratedFrom    ThirdParty[] @relation("ThirdPartyMigration")
+  migrationReport String?      @map("rapport_migration")
+  migratedAt      DateTime?    @map("date_migration")
+
   operations    Operation[]
   subscriptions Subscription[]
   splits        ThirdPartySplit[]
@@ -185,6 +205,7 @@ model ThirdParty {
   @@index([budgetId])
   @@index([active])
   @@index([name])
+  @@index([migratedToId])
   @@map("tiers")
 }
 

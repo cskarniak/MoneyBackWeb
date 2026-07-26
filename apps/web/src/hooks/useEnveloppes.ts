@@ -32,6 +32,10 @@ export type Enveloppe = {
   regroupementTableauDeBord: Regroupement | null;
   movementTypeId: string | null;
   typeMouvement: TypeMouvement | null;
+  migratedToId: string | null;
+  migratedTo: { id: string; label: string } | null;
+  migrationReport: string | null;
+  migratedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -159,6 +163,20 @@ export function useDeleteEnveloppe() {
   const qc = useQueryClient();
   return useMutation<EnveloppeDeleteResult, Error, string>({
     mutationFn: id => api.delete(`/budgets/${id}`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export type MigrateEnveloppeResult = {
+  report: string;
+  source: Enveloppe;
+  target: Enveloppe;
+};
+
+export function useMigrateEnveloppe() {
+  const qc = useQueryClient();
+  return useMutation<MigrateEnveloppeResult, Error, { id: string; targetId: string }>({
+    mutationFn: ({ id, targetId }) => api.post(`/budgets/${id}/migrate`, { targetId }).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }

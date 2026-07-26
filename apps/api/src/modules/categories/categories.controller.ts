@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
-import { CategoryFiltersSchema } from '@moneyback/shared';
+import { CategoryFiltersSchema, MigrateEntitySchema } from '@moneyback/shared';
 import type { CreateCategoryDto, UpdateCategoryDto } from '@moneyback/shared';
 
 @ApiTags('categories')
@@ -34,5 +34,12 @@ export class CategoriesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.service.remove(id);
+  }
+
+  @Post(':id/migrate')
+  @ApiOperation({ summary: 'Migre toutes les références de cette catégorie vers une autre' })
+  migrate(@Param('id') id: string, @Body() body: unknown) {
+    const { targetId } = MigrateEntitySchema.parse(body);
+    return this.service.migrate(id, targetId);
   }
 }
