@@ -288,7 +288,7 @@ export function GroupingsList() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sortBy, sortOrder, deleteMutation.isPending, recentId],
+    [sortBy, sortOrder, deleteMutation.isPending, recentId, searchParams],
   );
 
   const table = useReactTable({
