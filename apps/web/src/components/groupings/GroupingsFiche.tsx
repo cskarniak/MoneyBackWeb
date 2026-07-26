@@ -103,7 +103,9 @@ export function GroupingsFiche({ id }: Props) {
   };
 
   const mutationError =
-    (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+    (isNew ? createMutation.error : updateMutation.error)?.message
+    ?? deleteMutation.error?.message
+    ?? null;
 
   if (!isNew && isLoading) {
     return (
@@ -263,8 +265,12 @@ export function GroupingsFiche({ id }: Props) {
                   loading={deleteMutation.isPending}
                   onClick={async () => {
                     if (!window.confirm(`Supprimer le regroupement "${regroupement?.label}" ?`)) return;
-                    await deleteMutation.mutateAsync(id!);
-                    router.push('/referentiels/regroupements');
+                    try {
+                      await deleteMutation.mutateAsync(id!);
+                      router.push('/referentiels/regroupements');
+                    } catch {
+                      // erreur affichée via mutationError
+                    }
                   }}
                 >
                   Supprimer

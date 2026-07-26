@@ -153,8 +153,9 @@ export function GroupingsList() {
     try {
       await deleteMutation.mutateAsync(g.id);
       notifications.show({ message: `"${g.label}" supprimé`, color: 'red' });
-    } catch {
-      setDeleteError(`Impossible de supprimer "${g.label}". Il est peut-être utilisé par des catégories.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      setDeleteError(message ?? `Impossible de supprimer "${g.label}".`);
     }
   };
 

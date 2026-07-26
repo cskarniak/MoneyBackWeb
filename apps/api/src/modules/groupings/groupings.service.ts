@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateGroupingDto, UpdateGroupingDto, GroupingFiltersDto } from '@moneyback/shared';
 
@@ -61,6 +61,24 @@ export class GroupingsService {
 
   async remove(id: string) {
     await this.findOne(id);
+
+    const [categoriesCount, budgetsCount, dashboardBudgetsCount] = await this.prisma.$transaction([
+      this.prisma.category.count({ where: { groupingId: id } }),
+      this.prisma.budget.count({ where: { groupingId: id } }),
+      this.prisma.budget.count({ where: { dashboardGroupingId: id } }),
+    ]);
+
+    if (categoriesCount > 0 || budgetsCount > 0 || dashboardBudgetsCount > 0) {
+      const details: string[] = [];
+      if (categoriesCount > 0) details.push(`${categoriesCount} catégorie(s)`);
+      if (budgetsCount > 0) details.push(`${budgetsCount} enveloppe(s)`);
+      if (dashboardBudgetsCount > 0) details.push(`${dashboardBudgetsCount} enveloppe(s) (tableau de bord)`);
+
+      throw new ConflictException(
+        `Impossible de supprimer ce regroupement : utilisé par ${details.join(', ')}.`,
+      );
+    }
+
     return this.prisma.grouping.delete({ where: { id } });
   }
 }
