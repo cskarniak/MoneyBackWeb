@@ -33,7 +33,7 @@ import {
   IconMenu2,
   IconDownload,
 } from '@tabler/icons-react';
-import { useRegroupements, useDeleteRegroupement, type Regroupement } from '@/hooks/useGroupings';
+import { useRegroupements, useDeleteRegroupement, type Regroupement, type RegroupementType } from '@/hooks/useGroupings';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
 const SALMON = '#ffe4d6';
@@ -57,6 +57,7 @@ export function GroupingsList() {
   const page = Number(searchParams.get('page') ?? '1');
   const limit = Number(searchParams.get('limit') ?? '20');
   const search = searchParams.get('search') ?? '';
+  const type = (searchParams.get('type') as RegroupementType | null) ?? undefined;
   const sortBy = (searchParams.get('sortBy') as 'label') ?? 'label';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
 
@@ -70,6 +71,7 @@ export function GroupingsList() {
     page,
     limit,
     search,
+    type,
     sortBy,
     sortOrder,
     highlightId: recentId ?? undefined,
@@ -123,6 +125,7 @@ export function GroupingsList() {
 
   const handleSearch = () => pushParams({ search: searchInput, page: '1' });
   const handleClear = () => { setSearchInput(''); pushParams({ search: null, page: '1' }); };
+  const handleTypeChange = (val: string | null) => pushParams({ type: val, page: '1' });
   const handleLimitChange = (val: string | null) => { if (val) pushParams({ limit: val, page: '1' }); };
   const handleExport = async () => {
     setIsExporting(true);
@@ -376,6 +379,21 @@ export function GroupingsList() {
               <ActionIcon size="lg" radius="md" variant="default" onClick={handleSearch} title="Rechercher">
                 <IconSearch size={13} />
               </ActionIcon>
+              <Select
+                size="sm"
+                radius="md"
+                placeholder="Tous les types"
+                value={type ?? null}
+                onChange={handleTypeChange}
+                clearable
+                data={[
+                  { value: 'category', label: 'Catégorie' },
+                  { value: 'budget', label: 'Poste' },
+                  { value: 'dashboard', label: 'Tableau de bord' },
+                ]}
+                style={{ width: 170 }}
+                aria-label="Type de regroupement"
+              />
               <Button size="sm" radius="md" variant="default" onClick={handleClear} style={toolbarButtonStyle}>
                 Clear
               </Button>

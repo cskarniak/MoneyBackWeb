@@ -18,8 +18,11 @@ export type RegroupementsResponse = {
   highlightIndex: number | null;
 };
 
+export type RegroupementType = 'category' | 'budget' | 'dashboard';
+
 export type RegroupementFilters = {
   search?: string;
+  type?: RegroupementType;
   page?: number;
   limit?: number;
   sortBy?: 'label';

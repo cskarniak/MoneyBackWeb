@@ -335,6 +335,7 @@ export type UpdateGroupingDto = z.infer<typeof UpdateGroupingSchema>;
 
 export const GroupingFiltersSchema = z.object({
   search: z.string().optional(),
+  type: z.enum(['category', 'budget', 'dashboard']).optional(),
   highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),

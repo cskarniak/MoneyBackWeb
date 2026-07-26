@@ -7,9 +7,14 @@ export class GroupingsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(filters: GroupingFiltersDto) {
-    const { search, highlightId, page, limit, sortBy, sortOrder } = filters;
+    const { search, type, highlightId, page, limit, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
-    const where = search ? { label: { contains: search, mode: 'insensitive' as const } } : {};
+    const where = {
+      ...(search && { label: { contains: search, mode: 'insensitive' as const } }),
+      ...(type === 'category' && { income: true }),
+      ...(type === 'budget' && { expense: true }),
+      ...(type === 'dashboard' && { dashboard: true }),
+    };
     const orderBy = { [sortBy]: sortOrder };
 
     const [items, total] = await this.prisma.$transaction([
