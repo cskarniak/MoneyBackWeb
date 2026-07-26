@@ -1,7 +1,7 @@
 'use client';
 
 import { CRUD } from '@/lib/crud-tokens';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,6 +64,7 @@ type Props = { id?: string };
 
 export function CategoriesFiche({ id }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isNew = !id;
 
   const { data: category, isLoading: loadingCat } = useCategory(id ?? '');
@@ -73,6 +74,14 @@ export function CategoriesFiche({ id }: Props) {
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
   const migrateMutation = useMigrateCategory();
+
+  const buildListUrl = (highlightId?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('highlight');
+    if (highlightId) params.set('highlight', highlightId);
+    const qs = params.toString();
+    return `/referentiels/categories${qs ? `?${qs}` : ''}`;
+  };
 
   const {
     register,
@@ -103,10 +112,10 @@ export function CategoriesFiche({ id }: Props) {
       const payload = toPayload(values);
       if (isNew) {
         const created = await createMutation.mutateAsync(payload);
-        router.push(`/referentiels/categories?highlight=${created.id}`);
+        router.push(buildListUrl(created.id));
       } else {
         await updateMutation.mutateAsync({ id: id!, ...payload });
-        router.push(`/referentiels/categories?highlight=${id}`);
+        router.push(buildListUrl(id));
       }
     } catch (err: unknown) {
       void err;
@@ -180,7 +189,7 @@ export function CategoriesFiche({ id }: Props) {
         >
           <Group justify="space-between" align="center" wrap="nowrap">
             <Text inherit fw={700}>Fiche catégorie</Text>
-            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/referentiels/categories')}>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push(buildListUrl())}>
               Fermer
             </Button>
           </Group>
@@ -336,7 +345,7 @@ export function CategoriesFiche({ id }: Props) {
                       if (!window.confirm(`Supprimer la catégorie "${category?.label}" ?`)) return;
                       try {
                         await deleteMutation.mutateAsync(id!);
-                        router.push('/referentiels/categories');
+                        router.push(buildListUrl());
                       } catch {
                         // erreur affichée via mutationError
                       }

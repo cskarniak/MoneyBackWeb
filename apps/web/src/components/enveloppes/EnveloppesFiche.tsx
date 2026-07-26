@@ -1,7 +1,7 @@
 'use client';
 
 import { CRUD } from '@/lib/crud-tokens';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -71,6 +71,7 @@ type Props = { id?: string };
 
 export function EnveloppesFiche({ id }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isNew = !id;
 
   const { data: enveloppe, isLoading: loadingEnveloppe } = useEnveloppe(id ?? '');
@@ -81,6 +82,14 @@ export function EnveloppesFiche({ id }: Props) {
   const updateMutation = useUpdateEnveloppe();
   const deleteMutation = useDeleteEnveloppe();
   const migrateMutation = useMigrateEnveloppe();
+
+  const buildListUrl = (highlightId?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('highlight');
+    if (highlightId) params.set('highlight', highlightId);
+    const qs = params.toString();
+    return `/referentiels/enveloppes${qs ? `?${qs}` : ''}`;
+  };
 
   const {
     register,
@@ -123,10 +132,10 @@ export function EnveloppesFiche({ id }: Props) {
       const payload = toPayload(values);
       if (isNew) {
         const created = await createMutation.mutateAsync(payload);
-        router.push(`/referentiels/enveloppes?highlight=${created.id}`);
+        router.push(buildListUrl(created.id));
       } else {
         await updateMutation.mutateAsync({ id: id!, ...payload });
-        router.push(`/referentiels/enveloppes?highlight=${id}`);
+        router.push(buildListUrl(id));
       }
     } catch (err: unknown) {
       void err;
@@ -204,7 +213,7 @@ export function EnveloppesFiche({ id }: Props) {
         >
           <Group justify="space-between" align="center" wrap="nowrap">
             <Text inherit fw={700}>Fiche enveloppe</Text>
-            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/referentiels/enveloppes')}>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push(buildListUrl())}>
               Fermer
             </Button>
           </Group>
@@ -396,7 +405,7 @@ export function EnveloppesFiche({ id }: Props) {
                           if (!window.confirm(`Supprimer l'enveloppe "${enveloppe?.label}" ?`)) return;
                           try {
                             await deleteMutation.mutateAsync(id!);
-                            router.push('/referentiels/enveloppes');
+                            router.push(buildListUrl());
                           } catch {
                             // erreur affichée via mutationError
                           }

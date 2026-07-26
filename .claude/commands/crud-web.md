@@ -78,7 +78,17 @@ Recette (implémentée pour les enveloppes — `budgets.service.ts` / `Enveloppe
    - **Piège à éviter** : si cette correction n'est pas gardée par un flag "une seule fois" (ex. dépendance `[data]` sans garde), elle se redéclenche à **chaque** changement de page — y compris quand l'utilisateur clique sur `Suivant`/`Précédent` — et le renvoie de force sur la page de l'enregistrement mis en évidence, rendant la pagination manuelle inutilisable juste après un retour de fiche.
    - Le surlignage visuel (`recentId === row.original.id` → gras + fond saumon) reste actif indéfiniment tant que le composant liste n'est pas démonté — c'est voulu, seule la correction de page doit être ponctuelle.
 
-## Accès secondaire depuis un écran principal (onglet)
+## Conserver les filtres lors de l'aller-retour vers la fiche
+
+Au-delà du champ de recherche texte (qui se soumet via un bouton/`Enter` et n'a pas ce piège), toute **zone de filtrage** de la liste — `Select` de type/statut, filtre par regroupement, case à cocher "actifs seulement", etc. — doit rester active quand on ouvre une fiche depuis la liste puis qu'on y revient (`Fermer`, `Annuler`, après enregistrement, après suppression). Sans ça, l'utilisateur perd son filtre à chaque modification d'un enregistrement, ce qui est très irritant sur les listes longues.
+
+Recette (corrigée sur les regroupements — `GroupingsList.tsx` / `GroupingsFiche.tsx` — à vérifier sur les autres listes qui ont ou auront ce genre de filtre) :
+
+1. **Ouverture de la fiche** : le lien "Modifier" (et "Nouveau") doit reprendre l'URL courante de la liste (`searchParams.toString()`) en query string, pas juste l'id — sinon la fiche n'a aucun moyen de savoir quels filtres étaient actifs.
+2. **Retour vers la liste** : dans la fiche, lire `useSearchParams()` et reconstruire l'URL de retour à partir de ces paramètres (en n'ajoutant/retirant que `highlight`) plutôt que de pousser une URL "propre" du type `/liste?highlight=id`. Centraliser ça dans un petit helper (`buildListUrl(highlightId?)`) réutilisé par `Fermer`, la suppression et la sauvegarde — `Annuler` peut rester sur `router.back()`, qui préserve l'URL par construction.
+3. **Piège spécifique aux `Select`/checkboxes de filtre** : si les actions de la liste (bouton "Modifier" typiquement) sont définies dans un `useMemo` (ex. `columns` pour un tableau react-table), **`searchParams` doit figurer dans le tableau de dépendances** de ce `useMemo`. Sinon, ajouter un nouveau filtre qui ne touche à aucune des dépendances existantes (`sortBy`, `sortOrder`, etc.) ne déclenche pas le recalcul du `useMemo` : le lien "Modifier" reste une fermeture figée sur l'URL d'un rendu précédent, et le nouveau filtre n'est jamais transmis à la fiche — bug silencieux, difficile à repérer sans tester précisément "je filtre puis j'édite puis je reviens".
+
+
 
 Règle générale, pas seulement pour les CRUD : dès qu'un écran principal (liste, fiche, synthèse) propose un accès vers un écran de consultation annexe qui n'est pas la navigation normale de l'appli (ex. zoom vers les statistiques détaillées d'une enveloppe depuis la synthèse enveloppes, zoom vers les opérations liées depuis les statistiques détaillées, accès aux statistiques d'une enveloppe depuis sa fiche ou depuis la saisie des opérations), cet accès doit s'ouvrir dans un **nouvel onglet du navigateur**, jamais en navigant dans l'onglet courant.
 

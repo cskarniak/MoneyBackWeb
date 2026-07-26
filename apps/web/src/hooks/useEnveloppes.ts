@@ -51,6 +51,7 @@ export type EnveloppesResponse = {
 export type EnveloppeFilters = {
   search?: string;
   active?: boolean;
+  regroupementId?: string | null;
   page?: number;
   limit?: number;
   sortBy?: 'label' | 'regroupement';

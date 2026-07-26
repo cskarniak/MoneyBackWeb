@@ -1,4 +1,5 @@
-import { Box, Title } from '@mantine/core';
+import { Suspense } from 'react';
+import { Box, Center, Loader, Title } from '@mantine/core';
 import { CategoriesFiche } from '@/components/categories/CategoriesFiche';
 
 export default function NewCategoriePage() {
@@ -7,7 +8,9 @@ export default function NewCategoriePage() {
       <Title order={2} mb="md" style={{ fontSize: 22, fontWeight: 700 }}>
         📂 Catégories
       </Title>
-      <CategoriesFiche />
+      <Suspense fallback={<Center style={{ minHeight: 200 }}><Loader size="sm" /></Center>}>
+        <CategoriesFiche />
+      </Suspense>
     </Box>
   );
 }

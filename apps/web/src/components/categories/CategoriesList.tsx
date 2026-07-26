@@ -22,6 +22,7 @@ import {
   Loader,
   Center,
   Stack,
+  Modal,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -32,8 +33,13 @@ import {
   IconAlertCircle,
   IconMenu2,
   IconDownload,
+  IconUserPlus,
+  IconX,
 } from '@tabler/icons-react';
-import { useCategories, useDeleteCategory, type Category } from '@/hooks/useCategories';
+import { useCategories, useCategoriesAll, useDeleteCategory, useUpdateCategory, type Category } from '@/hooks/useCategories';
+import { useRegroupement } from '@/hooks/useGroupings';
+import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { isSecondaryTabRequest } from '@/lib/secondary-tab';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
 const SALMON = '#ffe4d6';
@@ -46,16 +52,21 @@ const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
 export function CategoriesList() {
   const router = useRouter();
-
-  const handleClose = () => {
-    router.push('/');
-  };
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const handleClose = () => {
+    if (isSecondaryTabRequest(searchParams)) {
+      window.close();
+      return;
+    }
+    router.push('/');
+  };
 
   const page = Number(searchParams.get('page') ?? '1');
   const limit = Number(searchParams.get('limit') ?? '20');
   const search = searchParams.get('search') ?? '';
+  const regroupementId = searchParams.get('regroupementId');
   const sortBy = (searchParams.get('sortBy') as 'label' | 'regroupement') ?? 'label';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
 
@@ -64,16 +75,26 @@ export function CategoriesList() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [assignOpened, setAssignOpened] = useState(false);
+  const [assignSelection, setAssignSelection] = useState<string | null>(null);
 
   const { data, isLoading, error } = useCategories({
     page,
     limit,
     search,
+    regroupementId,
     sortBy,
     sortOrder,
     highlightId: recentId ?? undefined,
   });
+  const { data: regroupement } = useRegroupement(regroupementId ?? '');
+  const { data: allCategories = [] } = useCategoriesAll();
   const deleteMutation = useDeleteCategory();
+  const assignMutation = useUpdateCategory();
+
+  const assignOptions = allCategories
+    .filter(c => c.regroupementId !== regroupementId)
+    .map(c => ({ value: c.id, label: c.label }));
 
   const hasRepositionedRef = useRef(false);
 
@@ -271,7 +292,7 @@ export function CategoriesList() {
             <ActionIcon
               variant="subtle"
               size="md"
-              onClick={() => router.push(`/referentiels/categories/${row.original.id}`)}
+              onClick={() => router.push(`/referentiels/categories/${row.original.id}?${searchParams.toString()}`)}
               title="Modifier"
               style={actionIconStyle}
             >
@@ -293,7 +314,7 @@ export function CategoriesList() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sortBy, sortOrder, deleteMutation.isPending, recentId],
+    [sortBy, sortOrder, deleteMutation.isPending, recentId, searchParams],
   );
 
   const table = useReactTable({
@@ -329,6 +350,33 @@ export function CategoriesList() {
           </Group>
         </Box>
 
+        {regroupementId && (
+          <Box
+            style={{
+              background: '#f3effc',
+              borderLeft: `1px solid ${GRAY_BORDER}`,
+              borderRight: `1px solid ${GRAY_BORDER}`,
+              borderBottom: `1px solid ${GRAY_BORDER}`,
+              padding: '8px 16px',
+            }}
+          >
+            <Group justify="space-between" wrap="nowrap">
+              <Text size="sm">
+                Filtré sur le regroupement : <strong>{regroupement?.label ?? '...'}</strong>
+              </Text>
+              <Button
+                size="xs"
+                variant="subtle"
+                color="grape"
+                leftSection={<IconX size={12} />}
+                onClick={() => pushParams({ regroupementId: null, page: '1' })}
+              >
+                Retirer le filtre
+              </Button>
+            </Group>
+          </Box>
+        )}
+
         {/* Barre d'outils */}
         <Box
           style={{
@@ -355,11 +403,23 @@ export function CategoriesList() {
                 size="sm"
                 radius="md"
                 leftSection={<IconPlus size={13} />}
-                onClick={() => router.push('/referentiels/categories/new')}
+                onClick={() => router.push(`/referentiels/categories/new?${searchParams.toString()}`)}
                 style={primaryButtonStyle}
               >
                 Nouveau
               </Button>
+              {regroupementId && (
+                <Button
+                  size="sm"
+                  radius="md"
+                  variant="light"
+                  color="grape"
+                  leftSection={<IconUserPlus size={13} />}
+                  onClick={() => setAssignOpened(true)}
+                >
+                  Affecter une catégorie
+                </Button>
+              )}
             </Group>
             <Group gap={8} wrap="nowrap">
               <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
@@ -562,6 +622,48 @@ export function CategoriesList() {
           </Group>
         </Box>
       </Stack>
+
+      <Modal
+        opened={assignOpened}
+        onClose={() => { setAssignOpened(false); setAssignSelection(null); }}
+        title="Affecter une catégorie à ce regroupement"
+        centered
+      >
+        <Stack gap={16}>
+          <PositioningSelect
+            label="Catégorie"
+            placeholder="Choisir..."
+            data={assignOptions}
+            value={assignSelection}
+            onChange={setAssignSelection}
+            clearable
+          />
+          {assignMutation.isError && (
+            <Alert color="red" icon={<IconAlertCircle size={16} />}>
+              <Text size="sm">{assignMutation.error.message}</Text>
+            </Alert>
+          )}
+          <Group justify="flex-end" gap={8}>
+            <Button variant="default" onClick={() => { setAssignOpened(false); setAssignSelection(null); }}>
+              Annuler
+            </Button>
+            <Button
+              color="grape"
+              loading={assignMutation.isPending}
+              disabled={!assignSelection}
+              onClick={() => {
+                if (!assignSelection || !regroupementId) return;
+                assignMutation.mutate(
+                  { id: assignSelection, regroupementId },
+                  { onSuccess: () => { setAssignOpened(false); setAssignSelection(null); } },
+                );
+              }}
+            >
+              Affecter
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

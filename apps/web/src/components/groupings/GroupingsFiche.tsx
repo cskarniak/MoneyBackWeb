@@ -18,7 +18,7 @@ import {
   Loader,
   Center,
 } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconCategory, IconWallet } from '@tabler/icons-react';
 import {
   useRegroupement,
   useCreateRegroupement,
@@ -26,6 +26,7 @@ import {
   useDeleteRegroupement,
   type RegroupementPayload,
 } from '@/hooks/useGroupings';
+import { openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -229,10 +230,10 @@ export function GroupingsFiche({ id }: Props) {
               />
             </Group>
 
-            {/* Poste */}
+            {/* Enveloppe */}
             <Group gap={0} align="center">
               <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
-                Poste
+                Enveloppe
               </Text>
               <Checkbox
                 size="md"
@@ -252,6 +253,34 @@ export function GroupingsFiche({ id }: Props) {
                 onChange={e => setValue('dashboard', e.currentTarget.checked)}
               />
             </Group>
+
+            {!isNew && (
+              <Group gap={0} align="center">
+                <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                  Voir
+                </Text>
+                <Group gap={8}>
+                  <Button
+                    size="xs"
+                    radius="md"
+                    variant="outline"
+                    leftSection={<IconCategory size={14} />}
+                    onClick={() => openSecondaryTab(`/referentiels/categories?regroupementId=${id}`)}
+                  >
+                    Catégories de ce regroupement
+                  </Button>
+                  <Button
+                    size="xs"
+                    radius="md"
+                    variant="outline"
+                    leftSection={<IconWallet size={14} />}
+                    onClick={() => openSecondaryTab(`/referentiels/enveloppes?regroupementId=${id}`)}
+                  >
+                    Enveloppes de ce regroupement
+                  </Button>
+                </Group>
+              </Group>
+            )}
           </Stack>
 
           {/* Boutons */}
