@@ -110,7 +110,37 @@ export class CategoriesService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.category.delete({ where: { id } });
+    const category = await this.findOne(id);
+
+    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount] =
+      await this.prisma.$transaction([
+        this.prisma.operation.count({ where: { categoryId: id, deletedAt: null } }),
+        this.prisma.operationSplit.count({ where: { categoryId: id } }),
+        this.prisma.subscription.count({ where: { categoryId: id } }),
+        this.prisma.subscriptionSplit.count({ where: { categoryId: id } }),
+        this.prisma.thirdParty.count({ where: { categoryId: id } }),
+        this.prisma.thirdPartySplit.count({ where: { categoryId: id } }),
+      ]);
+
+    const inUse =
+      operationsCount > 0
+      || splitsCount > 0
+      || subscriptionsCount > 0
+      || subscriptionSplitsCount > 0
+      || thirdPartiesCount > 0
+      || thirdPartySplitsCount > 0;
+
+    if (inUse) {
+      const inactiveCategory = await this.prisma.category.update({
+        where: { id },
+        data: { active: false },
+        include: { grouping: { select: { id: true, label: true } } },
+      });
+
+      return { status: 'deactivated' as const, item: this.presenter(inactiveCategory) };
+    }
+
+    await this.prisma.category.delete({ where: { id } });
+    return { status: 'deleted' as const, item: category };
   }
 }

@@ -475,7 +475,10 @@ export function TiersFiche({ id }: Props) {
     }
   };
 
-  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+  const mutationError =
+    (isNew ? createMutation.error : updateMutation.error)?.message
+    ?? deleteMutation.error?.message
+    ?? null;
 
   if (!isNew && isLoading) {
     return (

@@ -195,6 +195,24 @@ export class AccountsService {
 
   async remove(id: string) {
     await this.findOne(id);
+
+    const [operationsCount, subscriptionsCount, importsCount] = await this.prisma.$transaction([
+      this.prisma.operation.count({ where: { accountId: id, deletedAt: null } }),
+      this.prisma.subscription.count({ where: { accountId: id } }),
+      this.prisma.import.count({ where: { accountId: id } }),
+    ]);
+
+    if (operationsCount > 0 || subscriptionsCount > 0 || importsCount > 0) {
+      const details: string[] = [];
+      if (operationsCount > 0) details.push(`${operationsCount} opération(s)`);
+      if (subscriptionsCount > 0) details.push(`${subscriptionsCount} abonnement(s)`);
+      if (importsCount > 0) details.push(`${importsCount} import(s)`);
+
+      throw new BadRequestException(
+        `Impossible de supprimer ce compte : utilisé par ${details.join(', ')}. Utilisez plutôt la fermeture de compte.`,
+      );
+    }
+
     return this.prisma.account.delete({ where: { id } });
   }
 

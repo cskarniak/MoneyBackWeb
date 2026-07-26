@@ -590,7 +590,18 @@ export class SubscriptionsService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.subscription.delete({ where: { id } });
+    const subscription = await this.findOne(id);
+
+    const operationsCount = await this.prisma.operation.count({
+      where: { subscriptionId: id, deletedAt: null },
+    });
+
+    if (operationsCount > 0) {
+      await this.prisma.subscription.update({ where: { id }, data: { active: false } });
+      return { status: 'deactivated' as const, item: await this.findOne(id) };
+    }
+
+    await this.prisma.subscription.delete({ where: { id } });
+    return { status: 'deleted' as const, item: subscription };
   }
 }

@@ -112,9 +112,14 @@ export function useUpdateCategory() {
   });
 }
 
+export type CategoryDeleteResult = {
+  status: 'deleted' | 'deactivated';
+  item: Category;
+};
+
 export function useDeleteCategory() {
   const qc = useQueryClient();
-  return useMutation<void, Error, string>({
+  return useMutation<CategoryDeleteResult, Error, string>({
     mutationFn: id => api.delete(`/categories/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });

@@ -266,8 +266,20 @@ export class ThirdPartiesService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.thirdParty.delete({ where: { id } });
+    const thirdParty = await this.findOne(id);
+
+    const [operationsCount, subscriptionsCount] = await this.prisma.$transaction([
+      this.prisma.operation.count({ where: { thirdPartyId: id, deletedAt: null } }),
+      this.prisma.subscription.count({ where: { thirdPartyId: id } }),
+    ]);
+
+    if (operationsCount > 0 || subscriptionsCount > 0) {
+      await this.prisma.thirdParty.update({ where: { id }, data: { active: false } });
+      return { status: 'deactivated' as const, item: await this.findOne(id) };
+    }
+
+    await this.prisma.thirdParty.delete({ where: { id } });
+    return { status: 'deleted' as const, item: thirdParty };
   }
 
   private buildMatchingRulesCreate(rules: ThirdPartyMatchingRuleDto[]) {

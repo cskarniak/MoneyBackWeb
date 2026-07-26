@@ -147,10 +147,17 @@ export function TiersList() {
     setDeleteError(null);
     if (!window.confirm(`Supprimer le tiers "${tiers.name}" ?`)) return;
     try {
-      await deleteMutation.mutateAsync(tiers.id);
-      notifications.show({ message: `"${tiers.name}" supprimé`, color: 'red' });
-    } catch {
-      setDeleteError(`Impossible de supprimer "${tiers.name}". Il est peut-être utilisé par des opérations ou des abonnements.`);
+      const result = await deleteMutation.mutateAsync(tiers.id);
+      notifications.show({
+        message:
+          result.status === 'deactivated'
+            ? `"${tiers.name}" est utilisé et a été rendu inactif`
+            : `"${tiers.name}" supprimé`,
+        color: result.status === 'deactivated' ? 'orange' : 'red',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      setDeleteError(message ?? `Impossible de supprimer "${tiers.name}".`);
     }
   };
 

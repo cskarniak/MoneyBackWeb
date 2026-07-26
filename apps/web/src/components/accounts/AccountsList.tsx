@@ -142,8 +142,9 @@ export function AccountsList() {
     try {
       await deleteMutation.mutateAsync(account.id);
       notifications.show({ message: `"${account.name}" supprimé`, color: 'red' });
-    } catch {
-      setDeleteError(`Impossible de supprimer "${account.name}". Il est peut-être utilisé par des opérations.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      setDeleteError(message ?? `Impossible de supprimer "${account.name}".`);
     }
   };
 

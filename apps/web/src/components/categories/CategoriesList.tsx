@@ -151,10 +151,17 @@ export function CategoriesList() {
     setDeleteError(null);
     if (!window.confirm(`Supprimer la catégorie "${cat.label}" ?`)) return;
     try {
-      await deleteMutation.mutateAsync(cat.id);
-      notifications.show({ message: `"${cat.label}" supprimée`, color: 'red' });
-    } catch {
-      setDeleteError(`Impossible de supprimer "${cat.label}". Elle est peut-être utilisée par des opérations.`);
+      const result = await deleteMutation.mutateAsync(cat.id);
+      notifications.show({
+        message:
+          result.status === 'deactivated'
+            ? `"${cat.label}" est utilisée et a été rendue inactive`
+            : `"${cat.label}" supprimée`,
+        color: result.status === 'deactivated' ? 'orange' : 'red',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      setDeleteError(message ?? `Impossible de supprimer "${cat.label}".`);
     }
   };
 

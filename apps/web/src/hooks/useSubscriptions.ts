@@ -241,9 +241,14 @@ export function useUpdateSubscription() {
   });
 }
 
+export type SubscriptionDeleteResult = {
+  status: 'deleted' | 'deactivated';
+  item: Subscription;
+};
+
 export function useDeleteSubscription() {
   const qc = useQueryClient();
-  return useMutation<void, Error, string>({
+  return useMutation<SubscriptionDeleteResult, Error, string>({
     mutationFn: id => api.delete(`/subscriptions/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });

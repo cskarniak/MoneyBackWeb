@@ -122,7 +122,10 @@ export function EnveloppesFiche({ id }: Props) {
     }
   };
 
-  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+  const mutationError =
+    (isNew ? createMutation.error : updateMutation.error)?.message
+    ?? deleteMutation.error?.message
+    ?? null;
   const regroupementOptions = regroupements
     .filter(r => r.expense)
     .map(r => ({ value: r.id, label: r.label }));
@@ -346,8 +349,12 @@ export function EnveloppesFiche({ id }: Props) {
                     loading={deleteMutation.isPending}
                     onClick={async () => {
                       if (!window.confirm(`Supprimer l'enveloppe "${enveloppe?.label}" ?`)) return;
-                      await deleteMutation.mutateAsync(id!);
-                      router.push('/referentiels/enveloppes');
+                      try {
+                        await deleteMutation.mutateAsync(id!);
+                        router.push('/referentiels/enveloppes');
+                      } catch {
+                        // erreur affichée via mutationError
+                      }
                     }}
                   >
                     Supprimer

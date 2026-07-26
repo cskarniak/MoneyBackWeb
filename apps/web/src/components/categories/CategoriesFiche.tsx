@@ -109,7 +109,9 @@ export function CategoriesFiche({ id }: Props) {
   };
 
   const mutationError =
-    (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+    (isNew ? createMutation.error : updateMutation.error)?.message
+    ?? deleteMutation.error?.message
+    ?? null;
 
   const regroupementOptions = regroupements
     .filter(r => r.income)
@@ -308,8 +310,12 @@ export function CategoriesFiche({ id }: Props) {
                   loading={deleteMutation.isPending}
                   onClick={async () => {
                     if (!window.confirm(`Supprimer la catégorie "${category?.label}" ?`)) return;
-                    await deleteMutation.mutateAsync(id!);
-                    router.push('/referentiels/categories');
+                    try {
+                      await deleteMutation.mutateAsync(id!);
+                      router.push('/referentiels/categories');
+                    } catch {
+                      // erreur affichée via mutationError
+                    }
                   }}
                 >
                   Supprimer

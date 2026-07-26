@@ -243,11 +243,18 @@ export function SubscriptionsFiche({ id }: Props) {
   const handleDelete = async () => {
     if (!id || !subscription) return;
     if (!window.confirm(`Supprimer l'abonnement "${subscription.label}" ?`)) return;
-    await deleteMutation.mutateAsync(id);
-    router.push('/abonnements');
+    try {
+      await deleteMutation.mutateAsync(id);
+      router.push('/abonnements');
+    } catch {
+      // erreur affichée via mutationError
+    }
   };
 
-  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+  const mutationError =
+    (isNew ? createMutation.error : updateMutation.error)?.message
+    ?? deleteMutation.error?.message
+    ?? null;
   const watchedVentilated = watch('ventilated');
   const watchedSplits = watch('splits');
   const splitRows = fields.map((field, index) => ({

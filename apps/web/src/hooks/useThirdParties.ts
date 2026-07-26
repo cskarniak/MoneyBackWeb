@@ -185,9 +185,14 @@ export function useUpdateThirdParty() {
   });
 }
 
+export type ThirdPartyDeleteResult = {
+  status: 'deleted' | 'deactivated';
+  item: ThirdParty;
+};
+
 export function useDeleteThirdParty() {
   const qc = useQueryClient();
-  return useMutation<void, Error, string>({
+  return useMutation<ThirdPartyDeleteResult, Error, string>({
     mutationFn: id => api.delete(`/third-parties/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });

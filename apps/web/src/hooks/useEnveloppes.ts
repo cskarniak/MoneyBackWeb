@@ -150,9 +150,14 @@ export function useUpdateEnveloppe() {
   });
 }
 
+export type EnveloppeDeleteResult = {
+  status: 'deleted' | 'deactivated';
+  item: Enveloppe;
+};
+
 export function useDeleteEnveloppe() {
   const qc = useQueryClient();
-  return useMutation<void, Error, string>({
+  return useMutation<EnveloppeDeleteResult, Error, string>({
     mutationFn: id => api.delete(`/budgets/${id}`).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });

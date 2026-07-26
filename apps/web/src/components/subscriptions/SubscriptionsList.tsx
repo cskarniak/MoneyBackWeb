@@ -189,10 +189,17 @@ export function SubscriptionsList() {
     setDeleteError(null);
     if (!window.confirm(`Supprimer l'abonnement "${subscription.label}" ?`)) return;
     try {
-      await deleteMutation.mutateAsync(subscription.id);
-      notifications.show({ message: `"${subscription.label}" supprimé`, color: 'red' });
-    } catch {
-      setDeleteError(`Impossible de supprimer "${subscription.label}".`);
+      const result = await deleteMutation.mutateAsync(subscription.id);
+      notifications.show({
+        message:
+          result.status === 'deactivated'
+            ? `"${subscription.label}" est utilisé et a été rendu inactif`
+            : `"${subscription.label}" supprimé`,
+        color: result.status === 'deactivated' ? 'orange' : 'red',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      setDeleteError(message ?? `Impossible de supprimer "${subscription.label}".`);
     }
   };
 

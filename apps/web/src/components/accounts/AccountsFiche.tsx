@@ -140,7 +140,10 @@ export function AccountsFiche({ id }: Props) {
     }
   };
 
-  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+  const mutationError =
+    (isNew ? createMutation.error : updateMutation.error)?.message
+    ?? deleteMutation.error?.message
+    ?? null;
 
   if (!isNew && loadingAccount) {
     return (
@@ -320,8 +323,12 @@ export function AccountsFiche({ id }: Props) {
                   loading={deleteMutation.isPending}
                   onClick={async () => {
                     if (!window.confirm(`Supprimer le compte "${account?.name}" ?`)) return;
-                    await deleteMutation.mutateAsync(id!);
-                    router.push('/comptes');
+                    try {
+                      await deleteMutation.mutateAsync(id!);
+                      router.push('/comptes');
+                    } catch {
+                      // erreur affichée via mutationError
+                    }
                   }}
                 >
                   Supprimer

@@ -183,8 +183,33 @@ export class BudgetsService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.budget.delete({ where: { id } });
+    const budget = await this.findOne(id);
+
+    const [operationsCount, splitsCount, subscriptionsCount, subscriptionSplitsCount, thirdPartiesCount, thirdPartySplitsCount] =
+      await this.prisma.$transaction([
+        this.prisma.operation.count({ where: { budgetId: id, deletedAt: null } }),
+        this.prisma.operationSplit.count({ where: { budgetId: id } }),
+        this.prisma.subscription.count({ where: { budgetId: id } }),
+        this.prisma.subscriptionSplit.count({ where: { budgetId: id } }),
+        this.prisma.thirdParty.count({ where: { budgetId: id } }),
+        this.prisma.thirdPartySplit.count({ where: { budgetId: id } }),
+      ]);
+
+    const inUse =
+      operationsCount > 0
+      || splitsCount > 0
+      || subscriptionsCount > 0
+      || subscriptionSplitsCount > 0
+      || thirdPartiesCount > 0
+      || thirdPartySplitsCount > 0;
+
+    if (inUse) {
+      const inactiveBudget = await this.update(id, { active: false });
+      return { status: 'deactivated' as const, item: inactiveBudget };
+    }
+
+    await this.prisma.budget.delete({ where: { id } });
+    return { status: 'deleted' as const, item: budget };
   }
 
   /**

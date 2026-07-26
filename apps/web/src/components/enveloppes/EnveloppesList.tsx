@@ -152,10 +152,17 @@ export function EnveloppesList() {
     setDeleteError(null);
     if (!window.confirm(`Supprimer l'enveloppe "${enveloppe.label}" ?`)) return;
     try {
-      await deleteMutation.mutateAsync(enveloppe.id);
-      notifications.show({ message: `"${enveloppe.label}" supprimée`, color: 'red' });
-    } catch {
-      setDeleteError(`Impossible de supprimer "${enveloppe.label}". Elle est peut-être utilisée par des opérations.`);
+      const result = await deleteMutation.mutateAsync(enveloppe.id);
+      notifications.show({
+        message:
+          result.status === 'deactivated'
+            ? `"${enveloppe.label}" est utilisée et a été rendue inactive`
+            : `"${enveloppe.label}" supprimée`,
+        color: result.status === 'deactivated' ? 'orange' : 'red',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      setDeleteError(message ?? `Impossible de supprimer "${enveloppe.label}".`);
     }
   };
 
