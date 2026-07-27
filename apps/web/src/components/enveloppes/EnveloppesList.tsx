@@ -30,6 +30,8 @@ import {
   IconDownload,
   IconUserPlus,
   IconX,
+  IconEye,
+  IconEyeOff,
 } from '@tabler/icons-react';
 import { useDeleteEnveloppe, useEnveloppes, useEnveloppesAll, useUpdateEnveloppe, type Enveloppe } from '@/hooks/useEnveloppes';
 import { useRegroupement } from '@/hooks/useGroupings';
@@ -61,6 +63,7 @@ export function EnveloppesList() {
   const regroupementId = searchParams.get('regroupementId');
   const sortBy = (searchParams.get('sortBy') as 'label' | 'regroupement') ?? 'label';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
+  const showInactive = searchParams.get('active') === 'false';
 
   const [recentId] = useState(() => searchParams.get('highlight'));
   const [searchInput, setSearchInput] = useState(search);
@@ -77,6 +80,7 @@ export function EnveloppesList() {
     regroupementId,
     sortBy,
     sortOrder,
+    active: showInactive ? false : true,
     highlightId: recentId ?? undefined,
   });
   const { data: regroupement } = useRegroupement(regroupementId ?? '');
@@ -441,6 +445,16 @@ export function EnveloppesList() {
               </ActionIcon>
               <Button size="sm" radius="md" variant="default" onClick={handleClear} style={toolbarButtonStyle}>
                 Clear
+              </Button>
+              <Button
+                size="sm"
+                radius="md"
+                variant="default"
+                leftSection={showInactive ? <IconEye size={13} /> : <IconEyeOff size={13} />}
+                onClick={() => pushParams({ active: showInactive ? null : 'false', page: '1' })}
+                style={toolbarButtonStyle}
+              >
+                {showInactive ? 'Voir les actives' : 'Voir les inactives'}
               </Button>
               <Button size="sm" radius="md" variant="default" leftSection={<IconDownload size={13} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
                 Excel

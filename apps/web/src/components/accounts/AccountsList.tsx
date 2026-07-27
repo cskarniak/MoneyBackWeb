@@ -19,7 +19,7 @@ import {
   Stack,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconDownload } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconDownload, IconEye, IconEyeOff } from '@tabler/icons-react';
 import { useAccounts, useDeleteAccount, type Account } from '@/hooks/useAccounts';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
 
@@ -42,6 +42,7 @@ export function AccountsList() {
   const search = searchParams.get('search') ?? '';
   const sortBy = (searchParams.get('sortBy') as 'name' | 'agency' | 'number') ?? 'name';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
+  const showClosed = searchParams.get('closed') === 'true';
 
   const [recentId] = useState(() => searchParams.get('highlight'));
   const [searchInput, setSearchInput] = useState(search);
@@ -55,6 +56,7 @@ export function AccountsList() {
     search,
     sortBy,
     sortOrder,
+    closed: showClosed ? true : false,
     highlightId: recentId ?? undefined,
   });
   const deleteMutation = useDeleteAccount();
@@ -359,6 +361,16 @@ export function AccountsList() {
               </ActionIcon>
               <Button size="sm" radius="md" variant="default" onClick={handleClear} style={toolbarButtonStyle}>
                 Clear
+              </Button>
+              <Button
+                size="sm"
+                radius="md"
+                variant="default"
+                leftSection={showClosed ? <IconEye size={13} /> : <IconEyeOff size={13} />}
+                onClick={() => pushParams({ closed: showClosed ? null : 'true', page: '1' })}
+                style={toolbarButtonStyle}
+              >
+                {showClosed ? 'Voir les ouverts' : 'Voir les fermés'}
               </Button>
               <Button size="sm" radius="md" variant="default" leftSection={<IconDownload size={13} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
                 Excel

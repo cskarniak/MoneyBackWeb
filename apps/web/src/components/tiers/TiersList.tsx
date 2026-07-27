@@ -32,6 +32,8 @@ import {
   IconAlertCircle,
   IconMenu2,
   IconDownload,
+  IconEye,
+  IconEyeOff,
 } from '@tabler/icons-react';
 import { useDeleteThirdParty, useThirdParties, type ThirdParty } from '@/hooks/useThirdParties';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
@@ -56,6 +58,7 @@ export function TiersList() {
   const search = searchParams.get('search') ?? '';
   const sortBy = (searchParams.get('sortBy') as 'name' | 'comment') ?? 'name';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc';
+  const showInactive = searchParams.get('active') === 'false';
   const [recentId] = useState(() => searchParams.get('highlight'));
   const [searchInput, setSearchInput] = useState(search);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -68,6 +71,7 @@ export function TiersList() {
     search,
     sortBy,
     sortOrder,
+    active: showInactive ? false : true,
     highlightId: recentId ?? undefined,
   });
   const deleteMutation = useDeleteThirdParty();
@@ -348,6 +352,15 @@ export function TiersList() {
               </ActionIcon>
               <Button variant="default" radius="md" onClick={handleClear}>
                 Clear
+              </Button>
+              <Button
+                variant="default"
+                radius="md"
+                leftSection={showInactive ? <IconEye size={14} /> : <IconEyeOff size={14} />}
+                onClick={() => pushParams({ active: showInactive ? null : 'false', page: '1' })}
+                style={toolbarButtonStyle}
+              >
+                {showInactive ? 'Voir les actifs' : 'Voir les inactifs'}
               </Button>
               <Button variant="default" radius="md" leftSection={<IconDownload size={14} />} onClick={handleExport} loading={isExporting} style={toolbarButtonStyle}>
                 Excel
