@@ -26,7 +26,7 @@ import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
-import { filterActiveOptions } from '@/lib/activeOptions';
+import { filterActiveOptions, filterCategoryOptionsByDirection } from '@/lib/activeOptions';
 import {
   useCreateSubscription,
   useDeleteSubscription,
@@ -316,7 +316,11 @@ export function SubscriptionsFiche({ id }: Props) {
     [subscription?.accountId],
   );
   const categoryOptions = filterActiveOptions(
-    categories.map(category => ({ value: category.id, label: category.label })),
+    categories.map(category => ({
+      value: category.id,
+      label: category.label,
+      direction: category.expense ? 'expense' as const : category.income ? 'income' as const : null,
+    })),
     value => !!categories.find(category => category.id === value)?.active,
     [subscription?.categoryId, ...watchedSplits.map(split => split.categoryId)],
   );
@@ -418,6 +422,20 @@ export function SubscriptionsFiche({ id }: Props) {
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}
                 error={errors.accountId?.message}
+              />
+            </Group>
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                Type mouvement
+              </Text>
+              <PositioningSelect
+                value={watch('movementTypeId') ?? null}
+                onChange={value => setValue('movementTypeId', value)}
+                data={movementTypeOptions}
+                clearable
+                styles={{ input: fieldInputStyle }}
+                style={{ flex: 1 }}
               />
             </Group>
 
@@ -525,7 +543,12 @@ export function SubscriptionsFiche({ id }: Props) {
               <PositioningSelect
                 value={watch('categoryId') ?? null}
                 onChange={value => setValue('categoryId', value)}
-                data={categoryOptions}
+                data={filterCategoryOptionsByDirection(
+                  categoryOptions,
+                  watch('expense'),
+                  watch('income'),
+                  !!movementTypes.find(movementType => movementType.id === watch('movementTypeId'))?.allowsCategoryReversal,
+                )}
                 clearable
                 disabled={loadingCategories || watchedVentilated}
                 placeholder={watchedVentilated ? 'Désactivée pour un abonnement ventilé' : 'Aucune'}
@@ -545,20 +568,6 @@ export function SubscriptionsFiche({ id }: Props) {
                 clearable
                 disabled={loadingEnveloppes || watchedVentilated}
                 placeholder={watchedVentilated ? 'Désactivée pour un abonnement ventilé' : 'Aucune'}
-                styles={{ input: fieldInputStyle }}
-                style={{ flex: 1 }}
-              />
-            </Group>
-
-            <Group gap={0} align="center">
-              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
-                Type mouvement
-              </Text>
-              <PositioningSelect
-                value={watch('movementTypeId') ?? null}
-                onChange={value => setValue('movementTypeId', value)}
-                data={movementTypeOptions}
-                clearable
                 styles={{ input: fieldInputStyle }}
                 style={{ flex: 1 }}
               />

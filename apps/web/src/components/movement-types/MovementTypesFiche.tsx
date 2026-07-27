@@ -37,6 +37,7 @@ const schema = z.object({
   code: z.string().max(3, 'Le code doit contenir au maximum 3 caractères').optional(),
   idSource: z.string().optional(),
   active: z.boolean(),
+  allowsCategoryReversal: z.boolean(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -48,6 +49,7 @@ function toPayload(values: FormValues): MovementTypePayload {
     code: values.code || null,
     idSource: values.idSource || null,
     active: values.active,
+    allowsCategoryReversal: values.allowsCategoryReversal,
   };
 }
 
@@ -74,6 +76,7 @@ export function MovementTypesFiche({ id }: Props) {
       code: '',
       idSource: '',
       active: true,
+      allowsCategoryReversal: false,
     },
   });
 
@@ -84,6 +87,7 @@ export function MovementTypesFiche({ id }: Props) {
         code: movementType.code ?? '',
         idSource: movementType.idSource ?? '',
         active: movementType.active,
+        allowsCategoryReversal: movementType.allowsCategoryReversal,
       });
     }
   }, [movementType, reset]);
@@ -223,6 +227,23 @@ export function MovementTypesFiche({ id }: Props) {
                 Actif
               </Text>
               <Checkbox size="md" checked={watch('active')} onChange={e => setValue('active', e.currentTarget.checked)} />
+            </Group>
+
+            <Group gap={0} align="flex-start">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={{ ...labelStyle, paddingTop: 4 }}>
+                Sens inverse catégorie
+              </Text>
+              <Stack gap={2}>
+                <Checkbox
+                  size="md"
+                  checked={watch('allowsCategoryReversal')}
+                  onChange={e => setValue('allowsCategoryReversal', e.currentTarget.checked)}
+                />
+                <Text fz={12} c="dimmed">
+                  Autorise ce type de mouvement à affecter une catégorie dans le sens inverse de son
+                  paramétrage (ex : remboursement, trop perçu). Ne s&apos;applique pas à la ventilation.
+                </Text>
+              </Stack>
             </Group>
           </Stack>
 

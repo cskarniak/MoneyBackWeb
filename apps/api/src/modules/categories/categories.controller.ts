@@ -16,6 +16,12 @@ export class CategoriesController {
     return this.service.findAll(filters);
   }
 
+  @Get('diagnostics/mixed-direction')
+  @ApiOperation({ summary: 'Liste les catégories utilisées à la fois en dépense et en recette' })
+  findMixedDirection() {
+    return this.service.findMixedDirectionUsage();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);

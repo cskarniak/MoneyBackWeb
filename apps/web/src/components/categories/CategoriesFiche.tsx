@@ -42,7 +42,7 @@ const LABEL_COLOR = '#1f2937';
 const schema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
   regroupementId: z.string().nullable().optional(),
-  sens: z.enum(['expense', 'income', 'none']),
+  sens: z.enum(['expense', 'income']),
   comment: z.string().optional(),
   active: z.boolean(),
 });
@@ -100,7 +100,7 @@ export function CategoriesFiche({ id }: Props) {
       reset({
         label: category.label,
         regroupementId: category.regroupementId,
-        sens: category.expense ? 'expense' : category.income ? 'income' : 'none',
+        sens: category.income ? 'income' : 'expense',
         comment: category.comment ?? '',
         active: category.active,
       });
@@ -286,7 +286,6 @@ export function CategoriesFiche({ id }: Props) {
                 <Stack gap={8}>
                   <Radio value="expense" label="Dépense" size="sm" disabled={isMigrated} />
                   <Radio value="income" label="Recette" size="sm" disabled={isMigrated} />
-                  <Radio value="none" label="Non défini" size="sm" disabled={isMigrated} />
                 </Stack>
               </Radio.Group>
             </Group>

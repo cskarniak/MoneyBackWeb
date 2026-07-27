@@ -16,6 +16,7 @@ import {
 import { IconAlertCircle, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { CRUD } from '@/lib/crud-tokens';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
+import { filterCategoryOptionsByDirection } from '@/lib/activeOptions';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 
@@ -31,6 +32,7 @@ export type SplitModalRow = {
 };
 
 type SelectOption = { value: string; label: string };
+type CategoryOption = SelectOption & { direction?: 'expense' | 'income' | null };
 
 type Props = {
   opened: boolean;
@@ -43,7 +45,7 @@ type Props = {
   splitExpense: number;
   splitIncome: number;
   enveloppeOptions?: SelectOption[];
-  categoryOptions?: SelectOption[];
+  categoryOptions?: CategoryOption[];
   onClose: () => void;
   onAddRow?: () => void;
   onRemoveRow?: (index: number) => void;
@@ -292,7 +294,7 @@ export function OperationSplitModal({
                       </Table.Td>
                       <Table.Td style={{ ...splitGridCellStyle, borderRight: editable ? `1px solid ${CRUD.couleurs.grilleTableau}` : 'none' }}>
                         <PositioningSelect
-                          data={editable ? categoryOptions : row.categorieLabel ? [{ value: row.categoryId ?? '__value__', label: row.categorieLabel }] : []}
+                          data={editable ? filterCategoryOptionsByDirection(categoryOptions, row.expense, row.income) : row.categorieLabel ? [{ value: row.categoryId ?? '__value__', label: row.categorieLabel }] : []}
                           value={editable ? row.categoryId : (row.categorieLabel ? row.categoryId ?? '__value__' : null)}
                           onChange={value => onChangeRow?.(index, 'categoryId', value)}
                           onKeyDown={event => onRowEnter?.(index)(event as React.KeyboardEvent<HTMLInputElement>)}

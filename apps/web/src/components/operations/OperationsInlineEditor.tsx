@@ -27,7 +27,7 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
-import { filterActiveOptions } from '@/lib/activeOptions';
+import { filterActiveOptions, filterCategoryOptionsByDirection } from '@/lib/activeOptions';
 import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
@@ -273,7 +273,11 @@ export function OperationsInlineEditor({
   const selectedThirdPartyId = watch('thirdPartyId');
 
   const categoryOptions = filterActiveOptions(
-    categories.map(category => ({ value: category.id, label: category.label })),
+    categories.map(category => ({
+      value: category.id,
+      label: category.label,
+      direction: category.expense ? 'expense' as const : category.income ? 'income' as const : null,
+    })),
     value => !!categories.find(category => category.id === value)?.active,
     [resolvedOperation?.categoryId, ...watchSplits.map(split => split.categoryId)],
   );
@@ -320,9 +324,13 @@ export function OperationsInlineEditor({
   const splitExpense = watchSplits.reduce((sum, split) => sum + asNumber(split.expense), 0);
   const splitIncome = watchSplits.reduce((sum, split) => sum + asNumber(split.income), 0);
   const remainingBalance = (income - expense) - (splitIncome - splitExpense);
+  const selectedMovementTypeId = watch('movementTypeId');
+  const categoryAllowReversal =
+    !!selectedMovementTypeId
+    && !!movementTypes.find(movementType => movementType.id === selectedMovementTypeId)?.allowsCategoryReversal;
   const displayedCategoryOptions = hasSplitRows
     ? [{ value: '__split__', label: 'Ventilé' }]
-    : categoryOptions;
+    : filterCategoryOptionsByDirection(categoryOptions, expense, income, categoryAllowReversal);
   const displayedEnveloppeOptions = hasSplitRows
     ? [{ value: '__split__', label: 'Ventilé' }]
     : enveloppeOptions;
@@ -585,6 +593,23 @@ export function OperationsInlineEditor({
             styles={{ input: inlineCellInputStyle }}
           />
         </Table.Td>
+        <Table.Td style={{ ...inlineCellTdStyle, width: SHORT_SELECT_WIDTH }}>
+          <PositioningSelect<ShortCodeOption>
+            data={displayedMovementTypeOptions}
+            value={watch('movementTypeId') ?? null}
+            onChange={val => setValue('movementTypeId', val, { shouldDirty: true })}
+            clearable
+            dropdownWidth={SHORT_SELECT_DROPDOWN_WIDTH}
+            getSearchText={option => [option.label, option.fullLabel]}
+            renderOption={option => (
+              <Group justify="space-between" gap={8} wrap="nowrap">
+                <Text size="sm" fw={600}>{option.label}</Text>
+                <Text size="xs" c="dimmed" truncate>{option.fullLabel}</Text>
+              </Group>
+            )}
+            styles={{ input: inlineCellInputStyle }}
+          />
+        </Table.Td>
         <Table.Td style={{ ...inlineCellTdStyle, width: 96 }}>
           <TextInput
             {...register('expense')}
@@ -716,29 +741,6 @@ export function OperationsInlineEditor({
                   w={DUE_DATE_WIDTH}
                   onKeyDown={handleRowEnter}
                   styles={{ input: inlineCellDateInputStyle }}
-                />
-              </Group>
-              <Group gap={6} wrap="nowrap">
-                <Tooltip label="Type de mouvement">
-                  <Text size="sm" c={INLINE_LABEL_COLOR} fw={500} style={{ cursor: 'help' }}>
-                    TM
-                  </Text>
-                </Tooltip>
-                <PositioningSelect<ShortCodeOption>
-                  data={displayedMovementTypeOptions}
-                  value={watch('movementTypeId') ?? null}
-                  onChange={val => setValue('movementTypeId', val, { shouldDirty: true })}
-                  clearable
-                  w={SHORT_SELECT_WIDTH}
-                  dropdownWidth={SHORT_SELECT_DROPDOWN_WIDTH}
-                  getSearchText={option => [option.label, option.fullLabel]}
-                  renderOption={option => (
-                    <Group justify="space-between" gap={8} wrap="nowrap">
-                      <Text size="sm" fw={600}>{option.label}</Text>
-                      <Text size="xs" c="dimmed" truncate>{option.fullLabel}</Text>
-                    </Group>
-                  )}
-                  styles={{ input: fieldInputStyle }}
                 />
               </Group>
               <Group gap={6} wrap="nowrap">

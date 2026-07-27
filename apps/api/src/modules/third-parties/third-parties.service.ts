@@ -138,12 +138,44 @@ export class ThirdPartiesService {
     return this.presenter(thirdParty);
   }
 
+  private resolveDirection(expense?: number | null, income?: number | null): 'expense' | 'income' | null {
+    if (Number(expense ?? 0) > 0) return 'expense';
+    if (Number(income ?? 0) > 0) return 'income';
+    return null;
+  }
+
+  private async assertSplitCategoryDirections(splits: Array<{ categoryId?: string | null; expense?: number | null; income?: number | null }>) {
+    const checks: Promise<void>[] = [];
+    for (const split of splits) {
+      if (!split.categoryId) continue;
+      const direction = this.resolveDirection(split.expense, split.income);
+      if (!direction) continue;
+      checks.push(
+        (async () => {
+          const category = await this.prisma.category.findUnique({
+            where: { id: split.categoryId! },
+            select: { label: true, expense: true, income: true },
+          });
+          if (!category) throw new NotFoundException(`Catégorie ${split.categoryId} introuvable`);
+          if (direction === 'expense' && !category.expense) {
+            throw new BadRequestException(`La catégorie "${category.label}" n'est pas paramétrée en dépense.`);
+          }
+          if (direction === 'income' && !category.income) {
+            throw new BadRequestException(`La catégorie "${category.label}" n'est pas paramétrée en recette.`);
+          }
+        })(),
+      );
+    }
+    await Promise.all(checks);
+  }
+
   async create(dto: CreateThirdPartyDto) {
     const matchingRules = (dto as CreateThirdPartyDto & { matchingRules?: ThirdPartyMatchingRuleDto[] }).matchingRules;
     const splits = (dto.splits ?? []).filter(
       split =>
         split.label || split.categoryId || split.budgetId || (split.expense ?? 0) > 0 || (split.income ?? 0) > 0,
     );
+    await this.assertSplitCategoryDirections(splits);
 
     const thirdParty = await this.prisma.thirdParty.create({
       data: {
@@ -180,6 +212,7 @@ export class ThirdPartiesService {
       split =>
         split.label || split.categoryId || split.budgetId || (split.expense ?? 0) > 0 || (split.income ?? 0) > 0,
     );
+    if (splits) await this.assertSplitCategoryDirections(splits);
 
     const thirdParty = await this.prisma.thirdParty.update({
       where: { id },

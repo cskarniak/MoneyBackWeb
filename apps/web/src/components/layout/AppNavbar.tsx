@@ -51,6 +51,7 @@ const OUTILS_ITEMS = [
   { label: "Suppression relevé", href: '/outils/suppression-releve', icon: IconReceiptOff },
   { label: 'Sauvegarde base', href: '/outils/sauvegarde-base', icon: IconDatabaseExport },
   { label: 'Anomalies', href: '/outils/anomalies', icon: IconBug },
+  { label: 'Catégories mixtes', href: '/outils/categories-mixtes', icon: IconArrowsShuffle },
 ];
 
 const FICHIERS_ITEMS = [

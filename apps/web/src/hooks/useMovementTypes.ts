@@ -7,6 +7,7 @@ export type MovementType = {
   code: string | null;
   idSource: string | null;
   active: boolean;
+  allowsCategoryReversal: boolean;
 };
 
 export type MovementTypesResponse = {
@@ -32,6 +33,7 @@ export type MovementTypePayload = {
   code?: string | null;
   idSource?: string | null;
   active: boolean;
+  allowsCategoryReversal: boolean;
 };
 
 export type MovementTypeDeleteResult = {

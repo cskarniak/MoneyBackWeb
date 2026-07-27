@@ -143,3 +143,24 @@ export function useMigrateCategory() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }
+
+export type MixedDirectionCategory = {
+  id: string;
+  label: string;
+  active: boolean;
+  expenseFlag: boolean;
+  incomeFlag: boolean;
+  expenseCount: number;
+  incomeCount: number;
+  expenseTotal: number;
+  incomeTotal: number;
+  sources: string[];
+};
+
+export function useMixedDirectionCategories() {
+  return useQuery<{ items: MixedDirectionCategory[] }>({
+    queryKey: [KEY, 'mixed-direction'],
+    queryFn: () => api.get('/categories/diagnostics/mixed-direction').then(r => r.data),
+    enabled: false,
+  });
+}

@@ -381,6 +381,7 @@ export const CreateMovementTypeSchema = z.object({
   code: z.string().max(3, 'Le code doit contenir au maximum 3 caractères').optional().nullable(),
   idSource: z.string().optional().nullable(),
   active: z.boolean().default(true),
+  allowsCategoryReversal: z.boolean().default(false),
 });
 
 export type CreateMovementTypeDto = z.infer<typeof CreateMovementTypeSchema>;

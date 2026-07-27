@@ -111,6 +111,37 @@ export class SubscriptionsService {
     }
   }
 
+  private resolveDirection(expense?: number | null, income?: number | null): 'expense' | 'income' | null {
+    if (Number(expense ?? 0) > 0) return 'expense';
+    if (Number(income ?? 0) > 0) return 'income';
+    return null;
+  }
+
+  private async assertCategoryDirection(categoryId: string, direction: 'expense' | 'income' | null, allowReversal = false) {
+    if (!direction) return;
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { label: true, expense: true, income: true },
+    });
+    if (!category) throw new NotFoundException(`Catégorie ${categoryId} introuvable`);
+    if (allowReversal) return;
+    if (direction === 'expense' && !category.expense) {
+      throw new BadRequestException(`La catégorie "${category.label}" n'est pas paramétrée en dépense.`);
+    }
+    if (direction === 'income' && !category.income) {
+      throw new BadRequestException(`La catégorie "${category.label}" n'est pas paramétrée en recette.`);
+    }
+  }
+
+  private async resolveMovementTypeAllowsReversal(movementTypeId?: string | null): Promise<boolean> {
+    if (!movementTypeId) return false;
+    const movementType = await this.prisma.movementType.findUnique({
+      where: { id: movementTypeId },
+      select: { allowsCategoryReversal: true },
+    });
+    return movementType?.allowsCategoryReversal ?? false;
+  }
+
   private async assertThirdPartyActive(thirdPartyId: string) {
     const thirdParty = await this.prisma.thirdParty.findUnique({ where: { id: thirdPartyId }, select: { active: true } });
     if (!thirdParty) throw new NotFoundException(`Tiers ${thirdPartyId} introuvable`);
@@ -123,17 +154,25 @@ export class SubscriptionsService {
     accountId?: string;
     budgetId?: string | null;
     categoryId?: string | null;
+    categoryDirection?: 'expense' | 'income' | null;
+    categoryAllowReversal?: boolean;
     thirdPartyId?: string | null;
-    splits?: Array<{ categoryId?: string | null; budgetId?: string | null }>;
+    splits?: Array<{ categoryId?: string | null; budgetId?: string | null; categoryDirection?: 'expense' | 'income' | null }>;
   }) {
     const checks: Promise<void>[] = [];
     if (dto.accountId) checks.push(this.assertAccountActive(dto.accountId));
     if (dto.budgetId) checks.push(this.assertBudgetActive(dto.budgetId));
-    if (dto.categoryId) checks.push(this.assertCategoryActive(dto.categoryId));
+    if (dto.categoryId) {
+      checks.push(this.assertCategoryActive(dto.categoryId));
+      checks.push(this.assertCategoryDirection(dto.categoryId, dto.categoryDirection ?? null, dto.categoryAllowReversal ?? false));
+    }
     if (dto.thirdPartyId) checks.push(this.assertThirdPartyActive(dto.thirdPartyId));
     for (const split of dto.splits ?? []) {
       if (split.budgetId) checks.push(this.assertBudgetActive(split.budgetId));
-      if (split.categoryId) checks.push(this.assertCategoryActive(split.categoryId));
+      if (split.categoryId) {
+        checks.push(this.assertCategoryActive(split.categoryId));
+        checks.push(this.assertCategoryDirection(split.categoryId, split.categoryDirection ?? null));
+      }
     }
     await Promise.all(checks);
   }
@@ -312,12 +351,19 @@ export class SubscriptionsService {
 
   async create(dto: CreateSubscriptionDto) {
     const splits = this.normalizeSplits(dto.splits);
+    const categoryAllowReversal = await this.resolveMovementTypeAllowsReversal(dto.movementTypeId);
     await this.assertSubscriptionEntitiesActive({
       accountId: dto.accountId,
       budgetId: dto.budgetId,
       categoryId: dto.categoryId,
+      categoryDirection: this.resolveDirection(dto.expense, dto.income),
+      categoryAllowReversal,
       thirdPartyId: dto.thirdPartyId,
-      splits,
+      splits: splits.map(split => ({
+        categoryId: split.categoryId,
+        budgetId: split.budgetId,
+        categoryDirection: this.resolveDirection(split.expense, split.income),
+      })),
     });
     const firstDueDate = new Date(dto.firstDueDate);
 
@@ -365,10 +411,18 @@ export class SubscriptionsService {
     const existingBudgetIds = new Set(existing.splits.map(split => split.budgetId).filter(Boolean));
     const existingCategoryIds = new Set(existing.splits.map(split => split.categoryId).filter(Boolean));
 
+    const effectiveMovementTypeId = dto.movementTypeId !== undefined ? dto.movementTypeId : existing.movementTypeId;
+    const categoryAllowReversal = await this.resolveMovementTypeAllowsReversal(effectiveMovementTypeId);
+
     await this.assertSubscriptionEntitiesActive({
       accountId: dto.accountId !== undefined && dto.accountId !== existing.accountId ? dto.accountId : undefined,
       budgetId: dto.budgetId !== undefined && dto.budgetId !== existing.budgetId ? dto.budgetId : undefined,
       categoryId: dto.categoryId !== undefined && dto.categoryId !== existing.categoryId ? dto.categoryId : undefined,
+      categoryDirection: this.resolveDirection(
+        dto.expense !== undefined ? dto.expense : Number(existing.expense),
+        dto.income !== undefined ? dto.income : Number(existing.income),
+      ),
+      categoryAllowReversal,
       thirdPartyId:
         dto.thirdPartyId !== undefined && dto.thirdPartyId !== existing.thirdPartyId ? dto.thirdPartyId : undefined,
       splits: (splits ?? [])
@@ -377,7 +431,11 @@ export class SubscriptionsService {
             (split.budgetId && !existingBudgetIds.has(split.budgetId))
             || (split.categoryId && !existingCategoryIds.has(split.categoryId)),
         )
-        .map(split => ({ budgetId: split.budgetId, categoryId: split.categoryId })),
+        .map(split => ({
+          budgetId: split.budgetId,
+          categoryId: split.categoryId,
+          categoryDirection: this.resolveDirection(split.expense, split.income),
+        })),
     });
 
     const subscription = await this.prisma.subscription.update({

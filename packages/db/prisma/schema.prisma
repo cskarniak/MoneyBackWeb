@@ -69,11 +69,12 @@ model PaymentMethod {
 }
 
 model MovementType {
-  id       String  @id @default(uuid())
-  label    String  @map("libelle")
-  code     String? @map("code")
-  idSource String? @map("id_source")
-  active   Boolean @default(true) @map("actif")
+  id                     String  @id @default(uuid())
+  label                  String  @map("libelle")
+  code                   String? @map("code")
+  idSource               String? @map("id_source")
+  active                 Boolean @default(true) @map("actif")
+  allowsCategoryReversal Boolean @default(false) @map("autorise_sens_inverse")
 
   budgets       Budget[]
   operations    Operation[]

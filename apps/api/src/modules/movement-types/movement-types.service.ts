@@ -56,6 +56,7 @@ export class MovementTypesService {
         code: dto.code ?? null,
         idSource: dto.idSource ?? null,
         active: dto.active ?? true,
+        allowsCategoryReversal: dto.allowsCategoryReversal ?? false,
       },
     });
   }
@@ -69,6 +70,7 @@ export class MovementTypesService {
         ...(dto.code !== undefined && { code: dto.code ?? null }),
         ...(dto.idSource !== undefined && { idSource: dto.idSource ?? null }),
         ...(dto.active !== undefined && { active: dto.active }),
+        ...(dto.allowsCategoryReversal !== undefined && { allowsCategoryReversal: dto.allowsCategoryReversal }),
       },
     });
   }

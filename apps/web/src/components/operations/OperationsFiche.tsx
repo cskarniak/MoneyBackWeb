@@ -30,7 +30,7 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
-import { filterActiveOptions } from '@/lib/activeOptions';
+import { filterActiveOptions, filterCategoryOptionsByDirection } from '@/lib/activeOptions';
 import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
@@ -231,7 +231,11 @@ export function OperationsFiche({ id }: Props) {
     [operation?.accountId],
   );
   const categoryOptions = filterActiveOptions(
-    categories.map(category => ({ value: category.id, label: category.label })),
+    categories.map(category => ({
+      value: category.id,
+      label: category.label,
+      direction: category.expense ? 'expense' as const : category.income ? 'income' as const : null,
+    })),
     value => !!categories.find(category => category.id === value)?.active,
     [operation?.categoryId, ...watchSplits.map(split => split.categoryId)],
   );
@@ -274,9 +278,13 @@ export function OperationsFiche({ id }: Props) {
   const income = asNumber(watch('income'));
   const splitExpense = watchSplits.reduce((sum, split) => sum + asNumber(split.expense), 0);
   const splitIncome = watchSplits.reduce((sum, split) => sum + asNumber(split.income), 0);
+  const selectedMovementTypeId = watch('movementTypeId');
+  const categoryAllowReversal =
+    !!selectedMovementTypeId
+    && !!movementTypes.find(movementType => movementType.id === selectedMovementTypeId)?.allowsCategoryReversal;
   const displayedCategoryOptions = hasSplitRows
     ? [{ value: '__split__', label: 'Ventilé' }]
-    : categoryOptions;
+    : filterCategoryOptionsByDirection(categoryOptions, expense, income, categoryAllowReversal);
   const displayedEnveloppeOptions = hasSplitRows
     ? [{ value: '__split__', label: 'Ventilé' }]
     : enveloppeOptions;
@@ -684,7 +692,7 @@ export function OperationsFiche({ id }: Props) {
                               <PositioningSelect data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <PositioningSelect data={categoryOptions} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable styles={{ input: fieldInputStyle }} />
+                              <PositioningSelect data={filterCategoryOptionsByDirection(categoryOptions, split.expense, split.income)} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
                               <ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>

@@ -419,7 +419,11 @@ export function TiersFiche({ id }: Props) {
   const categoryOptions = useMemo(
     () =>
       filterActiveOptions(
-        categories.map(category => ({ value: category.id, label: category.label })),
+        categories.map(category => ({
+          value: category.id,
+          label: category.label,
+          direction: category.expense ? 'expense' as const : category.income ? 'income' as const : null,
+        })),
         value => !!categories.find(category => category.id === value)?.active,
         [tiers?.categoryId, watchedCategoryId, ...(watchedSplits ?? []).map(split => split.categoryId)],
       ),

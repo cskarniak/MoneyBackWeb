@@ -46,8 +46,8 @@ function toMonthDateBounds(monthKey: string) {
 
 function getDefaultRange(): [Date, Date] {
   const now = new Date();
-  const to = new Date(now.getFullYear(), now.getMonth(), 1);
-  const from = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const from = new Date(now.getFullYear(), 0, 1);
+  const to = new Date(now.getFullYear(), 11, 1);
   return [from, to];
 }
 
@@ -69,18 +69,17 @@ export function MonthlyCategoryDashboardWorkspace() {
   const totalsByMonth = useMemo(() => {
     const months = dashboardQuery.data?.months ?? [];
     const items = dashboardQuery.data?.items ?? [];
-    const totals: Record<string, { totalExpense: number; totalIncome: number }> = {};
+    const totals: Record<string, { balance: number }> = {};
 
     for (const month of months) {
-      totals[month] = { totalExpense: 0, totalIncome: 0 };
+      totals[month] = { balance: 0 };
     }
 
     for (const item of items) {
       for (const month of months) {
         const amount = item.monthly[month];
         if (!amount) continue;
-        totals[month].totalExpense += Number(amount.totalExpense || 0);
-        totals[month].totalIncome += Number(amount.totalIncome || 0);
+        totals[month].balance += Number(amount.totalIncome || 0) - Number(amount.totalExpense || 0);
       }
     }
 
@@ -117,7 +116,7 @@ export function MonthlyCategoryDashboardWorkspace() {
 
   return (
     <Box style={{ padding: '20px 24px' }}>
-      <Stack gap={18} style={{ maxWidth: 1180, margin: '0 auto' }}>
+      <Stack gap={18} style={{ width: '100%' }}>
         <Text fw={700} fz={22}>Tableau de bord mensuel</Text>
 
         <Box
@@ -184,7 +183,7 @@ export function MonthlyCategoryDashboardWorkspace() {
             </Group>
 
             <Text fz={13} c={TEXT_MUTED}>
-              Somme des opérations (et lignes de ventilation) rattachées à une catégorie, regroupées par code
+              Solde des opérations (et lignes de ventilation) rattachées à une catégorie, regroupées par code
               regroupement de catégorie, mois par mois. Clique sur un montant pour voir le détail des opérations
               qui le composent.
             </Text>
@@ -227,7 +226,7 @@ export function MonthlyCategoryDashboardWorkspace() {
           ) : (
             <Box style={{ overflowX: 'auto' }}>
               <Table
-                style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 600 + months.length * 220 }}
+                style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 300 + months.length * 110 }}
                 styles={{
                   th: {
                     padding: '5px 10px',
@@ -248,20 +247,23 @@ export function MonthlyCategoryDashboardWorkspace() {
               >
                 <Table.Thead>
                   <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
-                    <Table.Th rowSpan={2} style={{ textAlign: 'left', minWidth: 220 }}>
+                    <Table.Th
+                      style={{
+                        textAlign: 'left',
+                        minWidth: 220,
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 2,
+                        background: CRUD.couleurs.fondEnteteTableau,
+                      }}
+                    >
                       Regroupement
                     </Table.Th>
                     {months.map(month => (
-                      <Table.Th key={month} colSpan={2} style={{ minWidth: 220 }}>
+                      <Table.Th key={month} style={{ minWidth: 110 }}>
                         {formatMonthLabel(month)}
                       </Table.Th>
                     ))}
-                  </Table.Tr>
-                  <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
-                    {months.flatMap(month => [
-                      <Table.Th key={`${month}-expense`}>Dépense</Table.Th>,
-                      <Table.Th key={`${month}-income`}>Recette</Table.Th>,
-                    ])}
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -269,35 +271,38 @@ export function MonthlyCategoryDashboardWorkspace() {
                     const rowBackground = index % 2 === 1 ? CRUD.couleurs.fondLignePaire : CRUD.couleurs.fondLigneImpaire;
                     return (
                       <Table.Tr key={item.groupingId ?? '__none__'}>
-                        <Table.Td style={{ background: rowBackground, textAlign: 'left', fontWeight: 600 }}>
+                        <Table.Td
+                          style={{
+                            background: rowBackground,
+                            textAlign: 'left',
+                            fontWeight: 600,
+                            position: 'sticky',
+                            left: 0,
+                            zIndex: 1,
+                          }}
+                        >
                           {item.groupingLabel}
                         </Table.Td>
-                        {months.flatMap(month => {
+                        {months.map(month => {
                           const amount = item.monthly[month] ?? { totalExpense: '0', totalIncome: '0' };
+                          const balance = Number(amount.totalIncome || 0) - Number(amount.totalExpense || 0);
                           const clickable = item.groupingId !== null;
                           const cellStyle = {
                             background: rowBackground,
                             cursor: clickable ? 'pointer' : undefined,
                             textDecoration: clickable ? 'underline' : undefined,
+                            color: balance < 0 ? NEGATIVE_AMOUNT : undefined,
                           } as const;
-                          return [
+                          return (
                             <Table.Td
-                              key={`${month}-expense`}
-                              style={{ ...cellStyle, color: Number(amount.totalExpense) !== 0 ? NEGATIVE_AMOUNT : undefined }}
-                              onClick={() => openDrillDown(item.groupingId, month)}
-                              title={clickable ? 'Voir le détail des opérations' : undefined}
-                            >
-                              {formatAmount(amount.totalExpense)}
-                            </Table.Td>,
-                            <Table.Td
-                              key={`${month}-income`}
+                              key={month}
                               style={cellStyle}
                               onClick={() => openDrillDown(item.groupingId, month)}
                               title={clickable ? 'Voir le détail des opérations' : undefined}
                             >
-                              {formatAmount(amount.totalIncome)}
-                            </Table.Td>,
-                          ];
+                              {formatAmount(String(balance))}
+                            </Table.Td>
+                          );
                         })}
                       </Table.Tr>
                     );
@@ -305,17 +310,24 @@ export function MonthlyCategoryDashboardWorkspace() {
                 </Table.Tbody>
                 <Table.Tfoot>
                   <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
-                    <Table.Th style={{ textAlign: 'left' }}>Total</Table.Th>
-                    {months.flatMap(month => {
-                      const total = totalsByMonth[month] ?? { totalExpense: 0, totalIncome: 0 };
-                      return [
-                        <Table.Th key={`${month}-total-expense`} style={{ color: total.totalExpense !== 0 ? NEGATIVE_AMOUNT : undefined }}>
-                          {formatAmount(String(total.totalExpense))}
-                        </Table.Th>,
-                        <Table.Th key={`${month}-total-income`}>
-                          {formatAmount(String(total.totalIncome))}
-                        </Table.Th>,
-                      ];
+                    <Table.Th
+                      style={{
+                        textAlign: 'left',
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 2,
+                        background: CRUD.couleurs.fondEnteteTableau,
+                      }}
+                    >
+                      Total
+                    </Table.Th>
+                    {months.map(month => {
+                      const total = totalsByMonth[month] ?? { balance: 0 };
+                      return (
+                        <Table.Th key={month} style={{ color: total.balance < 0 ? NEGATIVE_AMOUNT : undefined }}>
+                          {formatAmount(String(total.balance))}
+                        </Table.Th>
+                      );
                     })}
                   </Table.Tr>
                 </Table.Tfoot>

@@ -41,6 +41,37 @@ export class OperationsService {
     }
   }
 
+  private resolveDirection(expense?: number | null, income?: number | null): 'expense' | 'income' | null {
+    if (Number(expense ?? 0) > 0) return 'expense';
+    if (Number(income ?? 0) > 0) return 'income';
+    return null;
+  }
+
+  private async assertCategoryDirection(categoryId: string, direction: 'expense' | 'income' | null, allowReversal = false) {
+    if (!direction) return;
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { label: true, expense: true, income: true },
+    });
+    if (!category) throw new NotFoundException(`Catégorie ${categoryId} introuvable`);
+    if (allowReversal) return;
+    if (direction === 'expense' && !category.expense) {
+      throw new BadRequestException(`La catégorie "${category.label}" n'est pas paramétrée en dépense.`);
+    }
+    if (direction === 'income' && !category.income) {
+      throw new BadRequestException(`La catégorie "${category.label}" n'est pas paramétrée en recette.`);
+    }
+  }
+
+  private async resolveMovementTypeAllowsReversal(movementTypeId?: string | null): Promise<boolean> {
+    if (!movementTypeId) return false;
+    const movementType = await this.prisma.movementType.findUnique({
+      where: { id: movementTypeId },
+      select: { allowsCategoryReversal: true },
+    });
+    return movementType?.allowsCategoryReversal ?? false;
+  }
+
   private async assertThirdPartyActive(thirdPartyId: string) {
     const thirdParty = await this.prisma.thirdParty.findUnique({ where: { id: thirdPartyId }, select: { active: true } });
     if (!thirdParty) throw new NotFoundException(`Tiers ${thirdPartyId} introuvable`);
@@ -53,17 +84,25 @@ export class OperationsService {
     accountId?: string;
     budgetId?: string | null;
     categoryId?: string | null;
+    categoryDirection?: 'expense' | 'income' | null;
+    categoryAllowReversal?: boolean;
     thirdPartyId?: string | null;
-    splits?: Array<{ categoryId?: string | null; budgetId?: string | null }>;
+    splits?: Array<{ categoryId?: string | null; budgetId?: string | null; categoryDirection?: 'expense' | 'income' | null }>;
   }) {
     const checks: Promise<void>[] = [];
     if (dto.accountId) checks.push(this.assertAccountActive(dto.accountId));
     if (dto.budgetId) checks.push(this.assertBudgetActive(dto.budgetId));
-    if (dto.categoryId) checks.push(this.assertCategoryActive(dto.categoryId));
+    if (dto.categoryId) {
+      checks.push(this.assertCategoryActive(dto.categoryId));
+      checks.push(this.assertCategoryDirection(dto.categoryId, dto.categoryDirection ?? null, dto.categoryAllowReversal ?? false));
+    }
     if (dto.thirdPartyId) checks.push(this.assertThirdPartyActive(dto.thirdPartyId));
     for (const split of dto.splits ?? []) {
       if (split.budgetId) checks.push(this.assertBudgetActive(split.budgetId));
-      if (split.categoryId) checks.push(this.assertCategoryActive(split.categoryId));
+      if (split.categoryId) {
+        checks.push(this.assertCategoryActive(split.categoryId));
+        checks.push(this.assertCategoryDirection(split.categoryId, split.categoryDirection ?? null));
+      }
     }
     await Promise.all(checks);
   }
@@ -529,12 +568,19 @@ export class OperationsService {
 
   async create(dto: CreateOperationDto) {
     const splits = (dto.splits ?? []).filter(split => split.label || split.categoryId || split.budgetId || split.expense > 0 || split.income > 0);
+    const categoryAllowReversal = await this.resolveMovementTypeAllowsReversal(dto.movementTypeId);
     await this.assertOperationEntitiesActive({
       accountId: dto.accountId,
       budgetId: dto.budgetId,
       categoryId: dto.categoryId,
+      categoryDirection: this.resolveDirection(dto.expense, dto.income),
+      categoryAllowReversal,
       thirdPartyId: dto.thirdPartyId,
-      splits,
+      splits: splits.map(split => ({
+        categoryId: split.categoryId,
+        budgetId: split.budgetId,
+        categoryDirection: this.resolveDirection(split.expense, split.income),
+      })),
     });
     const operation = await this.prisma.operation.create({
       data: {
@@ -597,6 +643,7 @@ export class OperationsService {
         budgetId: true,
         categoryId: true,
         thirdPartyId: true,
+        movementTypeId: true,
         splits: { select: { categoryId: true, budgetId: true } },
       },
     });
@@ -612,11 +659,19 @@ export class OperationsService {
     const existingBudgetIds = new Set(existingOperation.splits.map(split => split.budgetId).filter(Boolean));
     const existingCategoryIds = new Set(existingOperation.splits.map(split => split.categoryId).filter(Boolean));
 
+    const effectiveMovementTypeId = dto.movementTypeId !== undefined ? dto.movementTypeId : existingOperation.movementTypeId;
+    const categoryAllowReversal = await this.resolveMovementTypeAllowsReversal(effectiveMovementTypeId);
+
     await this.assertOperationEntitiesActive({
       accountId: dto.accountId !== undefined && dto.accountId !== existingOperation.accountId ? dto.accountId : undefined,
       budgetId: dto.budgetId !== undefined && dto.budgetId !== existingOperation.budgetId ? dto.budgetId : undefined,
       categoryId:
         dto.categoryId !== undefined && dto.categoryId !== existingOperation.categoryId ? dto.categoryId : undefined,
+      categoryDirection: this.resolveDirection(
+        dto.expense !== undefined ? dto.expense : Number(existingOperation.expense),
+        dto.income !== undefined ? dto.income : Number(existingOperation.income),
+      ),
+      categoryAllowReversal,
       thirdPartyId:
         dto.thirdPartyId !== undefined && dto.thirdPartyId !== existingOperation.thirdPartyId
           ? dto.thirdPartyId
@@ -627,7 +682,11 @@ export class OperationsService {
             (split.budgetId && !existingBudgetIds.has(split.budgetId))
             || (split.categoryId && !existingCategoryIds.has(split.categoryId)),
         )
-        .map(split => ({ budgetId: split.budgetId, categoryId: split.categoryId })),
+        .map(split => ({
+          budgetId: split.budgetId,
+          categoryId: split.categoryId,
+          categoryDirection: this.resolveDirection(split.expense, split.income),
+        })),
     });
 
     const operation = await this.prisma.operation.update({

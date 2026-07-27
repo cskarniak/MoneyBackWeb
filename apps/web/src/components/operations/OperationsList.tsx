@@ -20,6 +20,7 @@ import {
   Loader,
   Center,
   Stack,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload, IconWand, IconDotsVertical } from '@tabler/icons-react';
@@ -49,6 +50,7 @@ const OPERATION_COLUMN_WIDTHS: Record<string, string> = {
   tiers: '14%',
   categorie: '14%',
   enveloppe: '14%',
+  movementType: '60px',
   expense: '96px',
   income: '96px',
   actions: '148px',
@@ -828,6 +830,26 @@ export function OperationsList() {
             style={rowTextStyle(row.original, cursorTargetId === row.original.id)}
           >
             {row.original.splits.length > 0 ? 'Ventilé' : (row.original.enveloppe?.label ?? '—')}
+          </Text>
+        ),
+      },
+      {
+        id: 'movementType',
+        header: () => (
+          <Tooltip label="Type de mouvement">
+            <span style={{ ...thStyle(), cursor: 'help' }}>TM</span>
+          </Tooltip>
+        ),
+        cell: ({ row }) => (
+          <Text
+            fz={OPERATIONS_ROW_FONT_SIZE}
+            fw={cursorTargetId === row.original.id ? 700 : 400}
+            lh={1}
+            truncate
+            title={row.original.typeMouvement?.label ?? undefined}
+            style={rowTextStyle(row.original, cursorTargetId === row.original.id)}
+          >
+            {row.original.typeMouvement?.code || row.original.typeMouvement?.label || '—'}
           </Text>
         ),
       },
