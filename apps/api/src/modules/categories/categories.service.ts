@@ -166,97 +166,225 @@ export class CategoriesService {
     return { status: 'deleted' as const, item: category };
   }
 
-  async findMixedDirectionUsage() {
+  private resolveDirection(expense?: unknown, income?: unknown): 'expense' | 'income' | null {
+    if (Number(expense ?? 0) > 0) return 'expense';
+    if (Number(income ?? 0) > 0) return 'income';
+    return null;
+  }
+
+  async findMixedDirectionDetail(dateFrom: Date, dateTo: Date) {
+    const categoryDirectionOf = (category: { expense: boolean; income: boolean }): 'expense' | 'income' | null =>
+      category.expense ? 'expense' : category.income ? 'income' : null;
+
+    const categorySelect = { id: true, label: true, expense: true, income: true } as const;
+
     const [operations, operationSplits, subscriptions, subscriptionSplits, thirdPartySplits] = await Promise.all([
       this.prisma.operation.findMany({
-        where: { categoryId: { not: null }, deletedAt: null },
-        select: { categoryId: true, expense: true, income: true },
+        where: { categoryId: { not: null }, deletedAt: null, operationDate: { gte: dateFrom, lte: dateTo } },
+        select: {
+          id: true,
+          label: true,
+          operationDate: true,
+          expense: true,
+          income: true,
+          accountId: true,
+          account: { select: { name: true } },
+          category: { select: categorySelect },
+          movementType: { select: { label: true, code: true } },
+        },
       }),
       this.prisma.operationSplit.findMany({
-        where: { categoryId: { not: null } },
-        select: { categoryId: true, expense: true, income: true },
+        where: {
+          categoryId: { not: null },
+          operation: { deletedAt: null, operationDate: { gte: dateFrom, lte: dateTo } },
+        },
+        select: {
+          id: true,
+          label: true,
+          expense: true,
+          income: true,
+          category: { select: categorySelect },
+          operation: {
+            select: {
+              id: true,
+              label: true,
+              operationDate: true,
+              accountId: true,
+              account: { select: { name: true } },
+              movementType: { select: { label: true, code: true } },
+            },
+          },
+        },
       }),
       this.prisma.subscription.findMany({
         where: { categoryId: { not: null } },
-        select: { categoryId: true, expense: true, income: true },
+        select: {
+          id: true,
+          label: true,
+          expense: true,
+          income: true,
+          category: { select: categorySelect },
+          movementType: { select: { label: true, code: true } },
+        },
       }),
       this.prisma.subscriptionSplit.findMany({
         where: { categoryId: { not: null } },
-        select: { categoryId: true, expense: true, income: true },
+        select: {
+          id: true,
+          label: true,
+          expense: true,
+          income: true,
+          category: { select: categorySelect },
+          subscription: { select: { id: true, label: true, movementType: { select: { label: true, code: true } } } },
+        },
       }),
       this.prisma.thirdPartySplit.findMany({
         where: { categoryId: { not: null } },
-        select: { categoryId: true, expense: true, income: true },
+        select: {
+          id: true,
+          label: true,
+          expense: true,
+          income: true,
+          category: { select: categorySelect },
+          thirdParty: { select: { id: true, name: true } },
+        },
       }),
     ]);
 
-    type Stat = { expenseCount: number; incomeCount: number; expenseTotal: number; incomeTotal: number; sources: Set<string> };
-    const stats = new Map<string, Stat>();
-
-    const ingest = (rows: Array<{ categoryId: string | null; expense: unknown; income: unknown }>, sourceLabel: string) => {
-      for (const row of rows) {
-        const categoryId = row.categoryId;
-        if (!categoryId) continue;
-        const expense = Number(row.expense ?? 0);
-        const income = Number(row.income ?? 0);
-        if (expense <= 0 && income <= 0) continue;
-
-        let entry = stats.get(categoryId);
-        if (!entry) {
-          entry = { expenseCount: 0, incomeCount: 0, expenseTotal: 0, incomeTotal: 0, sources: new Set() };
-          stats.set(categoryId, entry);
-        }
-        if (expense > 0) {
-          entry.expenseCount += 1;
-          entry.expenseTotal += expense;
-          entry.sources.add(sourceLabel);
-        }
-        if (income > 0) {
-          entry.incomeCount += 1;
-          entry.incomeTotal += income;
-          entry.sources.add(sourceLabel);
-        }
-      }
+    type AnomalyRow = {
+      source: 'operation' | 'operationSplit' | 'subscription' | 'subscriptionSplit' | 'thirdPartySplit';
+      id: string;
+      openId: string;
+      date: string | null;
+      label: string;
+      accountName: string | null;
+      categoryId: string;
+      categoryLabel: string;
+      categoryDirection: 'expense' | 'income' | null;
+      amountDirection: 'expense' | 'income';
+      amount: number;
+      accountId: string | null;
+      movementTypeLabel: string | null;
     };
 
-    ingest(operations, 'Opérations');
-    ingest(operationSplits, 'Opérations ventilées');
-    ingest(subscriptions, 'Abonnements');
-    ingest(subscriptionSplits, 'Abonnements ventilés');
-    ingest(thirdPartySplits, 'Tiers ventilés');
+    const movementTypeLabelOf = (movementType: { label: string; code: string | null } | null | undefined) =>
+      movementType ? (movementType.code ? `${movementType.code} - ${movementType.label}` : movementType.label) : null;
 
-    const mixedCategoryIds = [...stats.entries()]
-      .filter(([, stat]) => stat.expenseCount > 0 && stat.incomeCount > 0)
-      .map(([categoryId]) => categoryId);
+    const rows: AnomalyRow[] = [];
 
-    if (mixedCategoryIds.length === 0) {
-      return { items: [] };
+    for (const op of operations) {
+      if (!op.category) continue;
+      const direction = this.resolveDirection(op.expense, op.income);
+      const categoryDirection = categoryDirectionOf(op.category);
+      if (!direction || direction === categoryDirection) continue;
+      rows.push({
+        source: 'operation',
+        id: op.id,
+        openId: op.id,
+        date: op.operationDate.toISOString(),
+        label: op.label,
+        accountName: op.account?.name ?? null,
+        accountId: op.accountId,
+        movementTypeLabel: movementTypeLabelOf(op.movementType),
+        categoryId: op.category.id,
+        categoryLabel: op.category.label,
+        categoryDirection,
+        amountDirection: direction,
+        amount: direction === 'expense' ? Number(op.expense) : Number(op.income),
+      });
     }
 
-    const categories = await this.prisma.category.findMany({
-      where: { id: { in: mixedCategoryIds } },
-      select: { id: true, label: true, active: true, expense: true, income: true },
-    });
+    for (const split of operationSplits) {
+      if (!split.category || !split.operation) continue;
+      const direction = this.resolveDirection(split.expense, split.income);
+      const categoryDirection = categoryDirectionOf(split.category);
+      if (!direction || direction === categoryDirection) continue;
+      rows.push({
+        source: 'operationSplit',
+        id: split.id,
+        openId: split.operation.id,
+        date: split.operation.operationDate.toISOString(),
+        label: split.label || split.operation.label,
+        accountName: split.operation.account?.name ?? null,
+        accountId: split.operation.accountId,
+        movementTypeLabel: movementTypeLabelOf(split.operation.movementType),
+        categoryId: split.category.id,
+        categoryLabel: split.category.label,
+        categoryDirection,
+        amountDirection: direction,
+        amount: direction === 'expense' ? Number(split.expense) : Number(split.income),
+      });
+    }
 
-    const items = categories
-      .map(category => {
-        const stat = stats.get(category.id)!;
-        return {
-          id: category.id,
-          label: category.label,
-          active: category.active,
-          expenseFlag: category.expense,
-          incomeFlag: category.income,
-          expenseCount: stat.expenseCount,
-          incomeCount: stat.incomeCount,
-          expenseTotal: stat.expenseTotal,
-          incomeTotal: stat.incomeTotal,
-          sources: [...stat.sources],
-        };
-      })
-      .sort((a, b) => a.label.localeCompare(b.label, 'fr-FR'));
+    for (const subscription of subscriptions) {
+      if (!subscription.category) continue;
+      const direction = this.resolveDirection(subscription.expense, subscription.income);
+      const categoryDirection = categoryDirectionOf(subscription.category);
+      if (!direction || direction === categoryDirection) continue;
+      rows.push({
+        source: 'subscription',
+        id: subscription.id,
+        openId: subscription.id,
+        date: null,
+        label: subscription.label,
+        accountName: null,
+        accountId: null,
+        movementTypeLabel: movementTypeLabelOf(subscription.movementType),
+        categoryId: subscription.category.id,
+        categoryLabel: subscription.category.label,
+        categoryDirection,
+        amountDirection: direction,
+        amount: direction === 'expense' ? Number(subscription.expense) : Number(subscription.income),
+      });
+    }
 
-    return { items };
+    for (const split of subscriptionSplits) {
+      if (!split.category || !split.subscription) continue;
+      const direction = this.resolveDirection(split.expense, split.income);
+      const categoryDirection = categoryDirectionOf(split.category);
+      if (!direction || direction === categoryDirection) continue;
+      rows.push({
+        source: 'subscriptionSplit',
+        id: split.id,
+        openId: split.subscription.id,
+        date: null,
+        label: split.label || split.subscription.label,
+        accountName: null,
+        accountId: null,
+        movementTypeLabel: movementTypeLabelOf(split.subscription.movementType),
+        categoryId: split.category.id,
+        categoryLabel: split.category.label,
+        categoryDirection,
+        amountDirection: direction,
+        amount: direction === 'expense' ? Number(split.expense) : Number(split.income),
+      });
+    }
+
+    for (const split of thirdPartySplits) {
+      if (!split.category || !split.thirdParty) continue;
+      const direction = this.resolveDirection(split.expense, split.income);
+      const categoryDirection = categoryDirectionOf(split.category);
+      if (!direction || direction === categoryDirection) continue;
+      rows.push({
+        source: 'thirdPartySplit',
+        id: split.id,
+        openId: split.thirdParty.id,
+        date: null,
+        label: split.label || split.thirdParty.name,
+        accountName: null,
+        accountId: null,
+        movementTypeLabel: null,
+        categoryId: split.category.id,
+        categoryLabel: split.category.label,
+        categoryDirection,
+        amountDirection: direction,
+        amount: direction === 'expense' ? Number(split.expense) : Number(split.income),
+      });
+    }
+
+    rows.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+
+    return { items: rows };
   }
 
   async migrate(id: string, targetId: string) {

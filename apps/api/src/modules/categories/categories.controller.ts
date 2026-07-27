@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CategoryFiltersSchema, MigrateEntitySchema } from '@moneyback/shared';
@@ -17,9 +17,18 @@ export class CategoriesController {
   }
 
   @Get('diagnostics/mixed-direction')
-  @ApiOperation({ summary: 'Liste les catégories utilisées à la fois en dépense et en recette' })
-  findMixedDirection() {
-    return this.service.findMixedDirectionUsage();
+  @ApiOperation({ summary: 'Détail des mouvements dont le sens contredit le sens configuré de leur catégorie' })
+  findMixedDirection(@Query('dateFrom') dateFrom?: string, @Query('dateTo') dateTo?: string) {
+    if (!dateFrom || !dateTo) {
+      throw new BadRequestException('dateFrom et dateTo sont obligatoires.');
+    }
+    const from = new Date(dateFrom);
+    const to = new Date(dateTo);
+    to.setUTCHours(23, 59, 59, 999);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+      throw new BadRequestException('dateFrom / dateTo invalides.');
+    }
+    return this.service.findMixedDirectionDetail(from, to);
   }
 
   @Get(':id')

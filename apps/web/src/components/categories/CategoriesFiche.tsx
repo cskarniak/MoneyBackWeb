@@ -33,6 +33,7 @@ import {
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
+import { isSecondaryTabRequest } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -66,6 +67,7 @@ export function CategoriesFiche({ id }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isNew = !id;
+  const isSecondaryTab = isSecondaryTabRequest(searchParams);
 
   const { data: category, isLoading: loadingCat } = useCategory(id ?? '');
   const { data: regroupements = [], isLoading: loadingRegroupements } = useRegroupementsAll();
@@ -106,6 +108,14 @@ export function CategoriesFiche({ id }: Props) {
       });
     }
   }, [category, reset]);
+
+  const handleClose = () => {
+    if (isSecondaryTab) {
+      window.close();
+      return;
+    }
+    router.push(buildListUrl());
+  };
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -189,7 +199,7 @@ export function CategoriesFiche({ id }: Props) {
         >
           <Group justify="space-between" align="center" wrap="nowrap">
             <Text inherit fw={700}>Fiche catégorie</Text>
-            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push(buildListUrl())}>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={handleClose}>
               Fermer
             </Button>
           </Group>
@@ -367,7 +377,7 @@ export function CategoriesFiche({ id }: Props) {
                 size="sm"
                 radius="md"
                 variant="default"
-                onClick={() => router.back()}
+                onClick={handleClose}
               >
                 {isMigrated ? 'Fermer' : 'Annuler'}
               </Button>

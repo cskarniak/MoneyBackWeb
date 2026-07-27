@@ -144,23 +144,31 @@ export function useMigrateCategory() {
   });
 }
 
-export type MixedDirectionCategory = {
+export type MixedDirectionAnomalyRow = {
+  source: 'operation' | 'operationSplit' | 'subscription' | 'subscriptionSplit' | 'thirdPartySplit';
   id: string;
+  openId: string;
+  date: string | null;
   label: string;
-  active: boolean;
-  expenseFlag: boolean;
-  incomeFlag: boolean;
-  expenseCount: number;
-  incomeCount: number;
-  expenseTotal: number;
-  incomeTotal: number;
-  sources: string[];
+  accountName: string | null;
+  accountId: string | null;
+  movementTypeLabel: string | null;
+  categoryId: string;
+  categoryLabel: string;
+  categoryDirection: 'expense' | 'income' | null;
+  amountDirection: 'expense' | 'income';
+  amount: number;
 };
 
-export function useMixedDirectionCategories() {
-  return useQuery<{ items: MixedDirectionCategory[] }>({
-    queryKey: [KEY, 'mixed-direction'],
-    queryFn: () => api.get('/categories/diagnostics/mixed-direction').then(r => r.data),
+export type MixedDirectionFilters = {
+  dateFrom: string;
+  dateTo: string;
+};
+
+export function useMixedDirectionCategories(filters: MixedDirectionFilters) {
+  return useQuery<{ items: MixedDirectionAnomalyRow[] }>({
+    queryKey: [KEY, 'mixed-direction', filters],
+    queryFn: () => api.get('/categories/diagnostics/mixed-direction', { params: filters }).then(r => r.data),
     enabled: false,
   });
 }
