@@ -60,7 +60,7 @@ export function BudgetBalancesRebuildWorkspace() {
             <Text fz={13} c={TEXT_MUTED}>
               Rejoue toutes les opérations et ventilations existantes pour recalculer, à la date de référence
               choisie, le solde de chaque enveloppe (colonne <em>balance</em>, sur la date d&apos;opération) et son
-              solde en date d&apos;échéance (colonne <em>invoiceBalance</em>), puis les enregistre sur
+              solde en date de rattachement (colonne <em>invoiceBalance</em>), puis les enregistre sur
               l&apos;enveloppe avec cette date de référence.
             </Text>
 

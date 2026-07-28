@@ -326,6 +326,7 @@ export const CreateGroupingSchema = z.object({
   expense: z.boolean().default(false),
   income: z.boolean().default(false),
   dashboard: z.boolean().default(false),
+  dashboardKind: z.enum(['expense', 'income']).optional().nullable(),
 });
 
 export type CreateGroupingDto = z.infer<typeof CreateGroupingSchema>;
@@ -728,3 +729,11 @@ export const BankCsvConfirmSchema = z.object({
 });
 
 export type BankCsvConfirmDto = z.infer<typeof BankCsvConfirmSchema>;
+
+// ─── App settings ─────────────────────────────────────────────────────────────
+
+export const UpdateCurrentMonthSchema = z.object({
+  currentMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Format attendu : AAAA-MM'),
+});
+
+export type UpdateCurrentMonthDto = z.infer<typeof UpdateCurrentMonthSchema>;

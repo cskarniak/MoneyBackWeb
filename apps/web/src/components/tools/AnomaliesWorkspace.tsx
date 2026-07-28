@@ -173,7 +173,7 @@ export function AnomaliesWorkspace() {
 
   const handleFixDueDate = async () => {
     if (!dueDateResult || dueDateResult.anomalyCount === 0) return;
-    if (!window.confirm(`Corriger ${dueDateResult.anomalyCount} opération(s) en reportant la date d'opération vers la date d'échéance ?`)) return;
+    if (!window.confirm(`Corriger ${dueDateResult.anomalyCount} opération(s) en reportant la date d'opération vers la date de rattachement ?`)) return;
     try {
       const fixRes = await missingDueDateMutation.mutateAsync({
         accountId: accountId ?? undefined,
@@ -294,8 +294,8 @@ export function AnomaliesWorkspace() {
           </Stack>
         </PanelBox>
 
-        {/* ── Résultat : date d'échéance manquante ── */}
-        <PanelBox title="Date d'échéance manquante" icon={<IconBug size={16} />}>
+        {/* ── Résultat : date de rattachement manquante ── */}
+        <PanelBox title="Date de rattachement manquante" icon={<IconBug size={16} />}>
           {missingDueDateMutation.isPending ? (
             <Center style={{ minHeight: 140 }}>
               <Loader size="sm" />
@@ -314,7 +314,7 @@ export function AnomaliesWorkspace() {
                       : `${dueDateResult.anomalyCount} anomalie(s) détectée(s)`}
                   </Text>
                   <Text c={TEXT_MUTED} fz={13}>
-                    Correction : reporter la date d'opération vers la date d'échéance
+                    Correction : reporter la date d'opération vers la date de rattachement
                   </Text>
                   {dueDateResult.applied ? (
                     <Text c="green" fz={13} fw={600}>
@@ -341,7 +341,7 @@ export function AnomaliesWorkspace() {
                     <Table.Th fz={LOG_TABLE_FONT_SIZE} style={COMPACT_CELL}>Date opération</Table.Th>
                     <Table.Th fz={LOG_TABLE_FONT_SIZE} style={COMPACT_CELL}>Libellé</Table.Th>
                     <Table.Th fz={LOG_TABLE_FONT_SIZE} style={COMPACT_CELL_RIGHT}>Montant</Table.Th>
-                    <Table.Th fz={LOG_TABLE_FONT_SIZE} style={COMPACT_CELL}>Date échéance</Table.Th>
+                    <Table.Th fz={LOG_TABLE_FONT_SIZE} style={COMPACT_CELL}>Date rattachement</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>

@@ -282,7 +282,7 @@ export class BudgetsService {
 
   /**
    * RebuildBudgetBalances : recalcule et persiste le solde de chaque enveloppe
-   * (`balance` sur la date d'opération, `invoiceBalance` sur la date d'échéance)
+   * (`balance` sur la date d'opération, `invoiceBalance` sur la date de rattachement)
    * à partir des opérations et ventilations existantes, à la date de référence fournie
    * (ou à la date du jour par défaut). La date de référence utilisée est elle-même
    * persistée sur l'enveloppe (`balanceReferenceDate`).

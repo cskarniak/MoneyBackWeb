@@ -21,6 +21,7 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useAccount, useCreateAccount, useDeleteAccount, useUpdateAccount, type AccountPayload } from '@/hooks/useAccounts';
+import { openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -313,7 +314,17 @@ export function AccountsFiche({ id }: Props) {
               background: FIELD_BG,
             }}
           >
-            <Box>
+            <Group gap={8}>
+              {!isNew && (
+                <Button
+                  size="xs"
+                  radius="md"
+                  variant="outline"
+                  onClick={() => openSecondaryTab(`/statistiques?accountId=${id}&autoRun=true`)}
+                >
+                  Voir les statistiques
+                </Button>
+              )}
               {!isNew && (
                 <Button
                   size="xs"
@@ -334,7 +345,7 @@ export function AccountsFiche({ id }: Props) {
                   Supprimer
                 </Button>
               )}
-            </Box>
+            </Group>
             <Group gap="var(--crud-form-footer-gap)">
               <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
                 Annuler

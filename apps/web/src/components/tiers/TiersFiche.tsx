@@ -36,6 +36,7 @@ import {
 } from '@/hooks/useThirdParties';
 import { OperationSplitModal } from '../operations/OperationSplitModal';
 import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
+import { openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -795,6 +796,17 @@ export function TiersFiche({ id }: Props) {
             }}
           >
             <Group gap={8}>
+              {!isNew && (
+                <Button
+                  type="button"
+                  size="xs"
+                  radius="md"
+                  variant="outline"
+                  onClick={() => openSecondaryTab(`/statistiques?thirdPartyId=${id}&autoRun=true`)}
+                >
+                  Voir les statistiques
+                </Button>
+              )}
               {!isNew && !tiers?.migratedToId && (
                 <>
                   <Button

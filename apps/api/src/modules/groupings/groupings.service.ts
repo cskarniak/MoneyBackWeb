@@ -46,6 +46,7 @@ export class GroupingsService {
         expense: dto.expense ?? false,
         income: dto.income ?? false,
         dashboard: dto.dashboard ?? false,
+        dashboardKind: dto.dashboardKind ?? null,
       },
     });
   }
@@ -60,6 +61,7 @@ export class GroupingsService {
         ...(dto.expense !== undefined && { expense: dto.expense }),
         ...(dto.income !== undefined && { income: dto.income }),
         ...(dto.dashboard !== undefined && { dashboard: dto.dashboard }),
+        ...(dto.dashboardKind !== undefined && { dashboardKind: dto.dashboardKind }),
       },
     });
   }

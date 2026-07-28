@@ -154,9 +154,10 @@ export function CategoriesList() {
       const count = await exportPaginatedListToExcel({
         endpoint: '/categories',
         params: { search, sortBy, sortOrder },
-        headers: ['Libellé', 'Regroupement', 'Actif'],
+        headers: ['Libellé', 'Type', 'Regroupement', 'Actif'],
         mapItem: item => [
           item.label,
+          item.income ? 'Recette' : item.expense ? 'Dépense' : '',
           ((item.regroupement as { label?: string } | null | undefined)?.label)
             ?? ((item.grouping as { label?: string } | null | undefined)?.label)
             ?? '',
@@ -235,8 +236,10 @@ export function CategoriesList() {
         return '22px';
       case 'label':
         return '40%';
+      case 'type':
+        return '90px';
       case 'regroupement':
-        return '180px';
+        return '120px';
       case 'active':
         return '76px';
       case 'actions':
@@ -265,6 +268,15 @@ export function CategoriesList() {
           </span>
         ),
         cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
+      },
+      {
+        id: 'type',
+        header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Type</span>,
+        cell: ({ row }) => (
+          <Text fz={CRUD.typographie.tailleTexte} style={{ textAlign: 'center' }} c={row.original.income ? 'teal' : row.original.expense ? 'red' : 'dimmed'}>
+            {row.original.income ? 'Recette' : row.original.expense ? 'Dépense' : '—'}
+          </Text>
+        ),
       },
       {
         id: 'regroupement',

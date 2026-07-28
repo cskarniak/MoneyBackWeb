@@ -499,7 +499,11 @@ export function OperationsFiche({ id }: Props) {
                     <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
                       <Table.Th>Compte</Table.Th>
                       <Table.Th>Date</Table.Th>
-                      <Table.Th>Echéance</Table.Th>
+                      <Table.Th>
+                        <Tooltip label="Date de rattachement">
+                          <Text inherit span style={{ cursor: 'help' }}>Rattach.</Text>
+                        </Tooltip>
+                      </Table.Th>
                       <Table.Th style={{ width: SHORT_SELECT_WIDTH }}>
                         <Tooltip label="Type de mouvement">
                           <Text inherit span style={{ cursor: 'help' }}>TM</Text>

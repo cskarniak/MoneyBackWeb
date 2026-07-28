@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import api from '@/lib/api';
 
-// ─── Date d'échéance manquante ───────────────────────────────────────────────
+// ─── Date de rattachement manquante ──────────────────────────────────────────
 
 export type MissingDueDateItem = {
   operationId: string;

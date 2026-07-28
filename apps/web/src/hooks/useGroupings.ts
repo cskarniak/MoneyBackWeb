@@ -8,6 +8,7 @@ export type Regroupement = {
   expense: boolean;
   income: boolean;
   dashboard: boolean;
+  dashboardKind: 'expense' | 'income' | null;
 };
 
 export type RegroupementsResponse = {
@@ -36,6 +37,7 @@ export type RegroupementPayload = {
   expense: boolean;
   income: boolean;
   dashboard: boolean;
+  dashboardKind?: 'expense' | 'income' | null;
 };
 
 const KEY = 'regroupements';

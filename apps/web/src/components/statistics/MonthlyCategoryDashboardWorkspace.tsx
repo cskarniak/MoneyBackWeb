@@ -9,9 +9,11 @@ import { useAccountsAll } from '@/hooks/useAccounts';
 import {
   useMonthlyCategoryDashboard,
   type MonthlyCategoryDashboardFilters,
+  type MonthlyCategoryDashboardItem,
 } from '@/hooks/useMonthlyCategoryDashboard';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { openSecondaryTab } from '@/lib/secondary-tab';
+import { useCurrentMonth } from '@/hooks/useCurrentMonth';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -23,6 +25,10 @@ function formatAmount(value: string) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function formatUnsignedAmount(value: number) {
+  return formatAmount(String(Math.abs(value)));
 }
 
 function formatMonthLabel(monthKey: string) {
@@ -53,6 +59,8 @@ function getDefaultRange(): [Date, Date] {
 
 export function MonthlyCategoryDashboardWorkspace() {
   const { data: accounts = [] } = useAccountsAll();
+  const { data: currentMonthData } = useCurrentMonth();
+  const currentMonth = currentMonthData?.currentMonth ?? null;
   const [defaultFrom, defaultTo] = useMemo(getDefaultRange, []);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [monthFrom, setMonthFrom] = useState<Date | null>(defaultFrom);
@@ -66,9 +74,17 @@ export function MonthlyCategoryDashboardWorkspace() {
     [accounts],
   );
 
-  const totalsByMonth = useMemo(() => {
+  const expenseItems = useMemo(
+    () => (dashboardQuery.data?.items ?? []).filter(item => item.kind === 'expense'),
+    [dashboardQuery.data],
+  );
+  const incomeItems = useMemo(
+    () => (dashboardQuery.data?.items ?? []).filter(item => item.kind === 'income'),
+    [dashboardQuery.data],
+  );
+
+  function buildTotalsByMonth(items: MonthlyCategoryDashboardItem[]) {
     const months = dashboardQuery.data?.months ?? [];
-    const items = dashboardQuery.data?.items ?? [];
     const totals: Record<string, { balance: number }> = {};
 
     for (const month of months) {
@@ -84,7 +100,24 @@ export function MonthlyCategoryDashboardWorkspace() {
     }
 
     return totals;
-  }, [dashboardQuery.data]);
+  }
+
+  // La moyenne compte les mois à 0 (utile pour provisionner une dépense semestrielle/annuelle type
+  // assurance), mais s'arrête au « mois en cours » : un mois futur pas encore atteint ne doit pas
+  // tirer la moyenne vers le bas artificiellement.
+  function buildTotalAverage(totals: Record<string, { balance: number }>) {
+    const months = dashboardQuery.data?.months ?? [];
+    const countedMonths = currentMonth ? months.filter(month => month <= currentMonth) : months;
+    if (countedMonths.length === 0) return 0;
+
+    const sum = countedMonths.reduce((acc, month) => acc + (totals[month]?.balance ?? 0), 0);
+    return sum / countedMonths.length;
+  }
+
+  const expenseTotalsByMonth = useMemo(() => buildTotalsByMonth(expenseItems), [expenseItems, dashboardQuery.data]);
+  const incomeTotalsByMonth = useMemo(() => buildTotalsByMonth(incomeItems), [incomeItems, dashboardQuery.data]);
+  const expenseTotalAverage = useMemo(() => buildTotalAverage(expenseTotalsByMonth), [expenseTotalsByMonth, dashboardQuery.data]);
+  const incomeTotalAverage = useMemo(() => buildTotalAverage(incomeTotalsByMonth), [incomeTotalsByMonth, dashboardQuery.data]);
 
   const handleRun = () => {
     if (!monthFrom || !monthTo) return;
@@ -101,8 +134,9 @@ export function MonthlyCategoryDashboardWorkspace() {
     const { firstDay, lastDay } = toMonthDateBounds(month);
     const params = new URLSearchParams();
     params.set('categoryGroupingId', groupingId);
-    params.set('operationDateFrom', firstDay);
-    params.set('operationDateTo', lastDay);
+    params.set('dueDateFrom', firstDay);
+    params.set('dueDateTo', lastDay);
+    params.set('sortByDueDate', 'true');
     params.set('autoRun', 'true');
     if (submittedFilters?.accountId) {
       params.set('accountId', submittedFilters.accountId);
@@ -112,7 +146,6 @@ export function MonthlyCategoryDashboardWorkspace() {
   };
 
   const months = dashboardQuery.data?.months ?? [];
-  const items = dashboardQuery.data?.items ?? [];
 
   return (
     <Box style={{ padding: '20px 24px' }}>
@@ -184,8 +217,11 @@ export function MonthlyCategoryDashboardWorkspace() {
 
             <Text fz={13} c={TEXT_MUTED}>
               Solde des opérations (et lignes de ventilation) rattachées à une catégorie, regroupées par code
-              regroupement de catégorie, mois par mois. Clique sur un montant pour voir le détail des opérations
-              qui le composent.
+              regroupement de catégorie, mois par mois — seuls les regroupements cochés « Tableau de bord »
+              (fiche Regroupements) apparaissent ici. Clique sur un montant pour voir le détail des opérations
+              qui le composent. La moyenne mensuelle compte les mois à 0 (utile pour provisionner une dépense
+              semestrielle ou annuelle) mais s'arrête au « Mois en cours » réglé en haut de l'écran : un mois
+              futur pas encore atteint n'est jamais compté.
             </Text>
           </Stack>
         </Box>
@@ -219,14 +255,14 @@ export function MonthlyCategoryDashboardWorkspace() {
             <Center style={{ minHeight: 160 }}>
               <Text c={TEXT_MUTED}>Lance le calcul pour afficher le tableau de bord.</Text>
             </Center>
-          ) : items.length === 0 ? (
+          ) : expenseItems.length === 0 && incomeItems.length === 0 ? (
             <Center style={{ minHeight: 160 }}>
               <Text c={TEXT_MUTED}>Aucune opération avec catégorie trouvée sur cette période.</Text>
             </Center>
           ) : (
             <Box style={{ overflowX: 'auto' }}>
               <Table
-                style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 300 + months.length * 110 }}
+                style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 410 + months.length * 110 }}
                 styles={{
                   th: {
                     padding: '5px 10px',
@@ -259,6 +295,9 @@ export function MonthlyCategoryDashboardWorkspace() {
                     >
                       Regroupement
                     </Table.Th>
+                    <Table.Th style={{ minWidth: 110 }}>
+                      Moyenne mensuelle
+                    </Table.Th>
                     {months.map(month => (
                       <Table.Th key={month} style={{ minWidth: 110 }}>
                         {formatMonthLabel(month)}
@@ -267,70 +306,118 @@ export function MonthlyCategoryDashboardWorkspace() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {items.map((item, index) => {
-                    const rowBackground = index % 2 === 1 ? CRUD.couleurs.fondLignePaire : CRUD.couleurs.fondLigneImpaire;
-                    return (
-                      <Table.Tr key={item.groupingId ?? '__none__'}>
-                        <Table.Td
+                  {[
+                    { label: 'Dépenses', items: expenseItems, kind: 'expense' as const, totalsByMonth: expenseTotalsByMonth, totalAverage: expenseTotalAverage },
+                    { label: 'Revenus', items: incomeItems, kind: 'income' as const, totalsByMonth: incomeTotalsByMonth, totalAverage: incomeTotalAverage },
+                  ].flatMap(section => {
+                    if (section.items.length === 0) return [];
+
+                    const unsigned = section.kind === 'expense';
+
+                    const rows = section.items.map((item, index) => {
+                      const rowBackground = index % 2 === 1 ? CRUD.couleurs.fondLignePaire : CRUD.couleurs.fondLigneImpaire;
+                      const countedMonths = currentMonth ? months.filter(month => month <= currentMonth) : months;
+                      const rowTotal = countedMonths.reduce((sum, month) => {
+                        const amount = item.monthly[month] ?? { totalExpense: '0', totalIncome: '0' };
+                        return sum + (Number(amount.totalIncome || 0) - Number(amount.totalExpense || 0));
+                      }, 0);
+                      const rowAverage = countedMonths.length > 0 ? rowTotal / countedMonths.length : 0;
+                      return (
+                        <Table.Tr key={item.groupingId ?? '__none__'}>
+                          <Table.Td
+                            style={{
+                              background: rowBackground,
+                              textAlign: 'left',
+                              fontWeight: 600,
+                              position: 'sticky',
+                              left: 0,
+                              zIndex: 1,
+                            }}
+                          >
+                            {item.groupingLabel}
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              background: rowBackground,
+                              fontWeight: 600,
+                              color: !unsigned && rowAverage < 0 ? NEGATIVE_AMOUNT : undefined,
+                            }}
+                          >
+                            {unsigned ? formatUnsignedAmount(rowAverage) : formatAmount(String(rowAverage))}
+                          </Table.Td>
+                          {months.map(month => {
+                            const amount = item.monthly[month] ?? { totalExpense: '0', totalIncome: '0' };
+                            const balance = Number(amount.totalIncome || 0) - Number(amount.totalExpense || 0);
+                            const clickable = item.groupingId !== null;
+                            const cellStyle = {
+                              background: rowBackground,
+                              cursor: clickable ? 'pointer' : undefined,
+                              textDecoration: clickable ? 'underline' : undefined,
+                              color: !unsigned && balance < 0 ? NEGATIVE_AMOUNT : undefined,
+                            } as const;
+                            return (
+                              <Table.Td
+                                key={month}
+                                style={cellStyle}
+                                onClick={() => openDrillDown(item.groupingId, month)}
+                                title={clickable ? 'Voir le détail des opérations' : undefined}
+                              >
+                                {unsigned ? formatUnsignedAmount(balance) : formatAmount(String(balance))}
+                              </Table.Td>
+                            );
+                          })}
+                        </Table.Tr>
+                      );
+                    });
+
+                    const subtotalRow = (
+                      <Table.Tr key={`${section.kind}-subtotal`} style={{ background: CRUD.couleurs.fondEnteteTableau }}>
+                        <Table.Th
                           style={{
-                            background: rowBackground,
                             textAlign: 'left',
-                            fontWeight: 600,
                             position: 'sticky',
                             left: 0,
-                            zIndex: 1,
+                            zIndex: 2,
+                            background: CRUD.couleurs.fondEnteteTableau,
                           }}
                         >
-                          {item.groupingLabel}
-                        </Table.Td>
+                          Total {section.label.toLowerCase()}
+                        </Table.Th>
+                        <Table.Th style={{ textAlign: 'right', color: !unsigned && section.totalAverage < 0 ? NEGATIVE_AMOUNT : undefined }}>
+                          {unsigned ? formatUnsignedAmount(section.totalAverage) : formatAmount(String(section.totalAverage))}
+                        </Table.Th>
                         {months.map(month => {
-                          const amount = item.monthly[month] ?? { totalExpense: '0', totalIncome: '0' };
-                          const balance = Number(amount.totalIncome || 0) - Number(amount.totalExpense || 0);
-                          const clickable = item.groupingId !== null;
-                          const cellStyle = {
-                            background: rowBackground,
-                            cursor: clickable ? 'pointer' : undefined,
-                            textDecoration: clickable ? 'underline' : undefined,
-                            color: balance < 0 ? NEGATIVE_AMOUNT : undefined,
-                          } as const;
+                          const total = section.totalsByMonth[month] ?? { balance: 0 };
                           return (
-                            <Table.Td
-                              key={month}
-                              style={cellStyle}
-                              onClick={() => openDrillDown(item.groupingId, month)}
-                              title={clickable ? 'Voir le détail des opérations' : undefined}
-                            >
-                              {formatAmount(String(balance))}
-                            </Table.Td>
+                            <Table.Th key={month} style={{ textAlign: 'right', color: !unsigned && total.balance < 0 ? NEGATIVE_AMOUNT : undefined }}>
+                              {unsigned ? formatUnsignedAmount(total.balance) : formatAmount(String(total.balance))}
+                            </Table.Th>
                           );
                         })}
                       </Table.Tr>
                     );
+
+                    return [
+                      <Table.Tr key={`${section.kind}-header`} style={{ background: CRUD.couleurs.fondEnteteTableau }}>
+                        <Table.Th
+                          colSpan={2 + months.length}
+                          style={{
+                            textAlign: 'left',
+                            position: 'sticky',
+                            left: 0,
+                            fontSize: 13,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.03em',
+                          }}
+                        >
+                          {section.label}
+                        </Table.Th>
+                      </Table.Tr>,
+                      ...rows,
+                      subtotalRow,
+                    ];
                   })}
                 </Table.Tbody>
-                <Table.Tfoot>
-                  <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
-                    <Table.Th
-                      style={{
-                        textAlign: 'left',
-                        position: 'sticky',
-                        left: 0,
-                        zIndex: 2,
-                        background: CRUD.couleurs.fondEnteteTableau,
-                      }}
-                    >
-                      Total
-                    </Table.Th>
-                    {months.map(month => {
-                      const total = totalsByMonth[month] ?? { balance: 0 };
-                      return (
-                        <Table.Th key={month} style={{ color: total.balance < 0 ? NEGATIVE_AMOUNT : undefined }}>
-                          {formatAmount(String(total.balance))}
-                        </Table.Th>
-                      );
-                    })}
-                  </Table.Tr>
-                </Table.Tfoot>
               </Table>
             </Box>
           )}

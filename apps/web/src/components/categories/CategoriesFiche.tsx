@@ -33,7 +33,7 @@ import {
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
-import { isSecondaryTabRequest } from '@/lib/secondary-tab';
+import { isSecondaryTabRequest, openSecondaryTab } from '@/lib/secondary-tab';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -342,6 +342,25 @@ export function CategoriesFiche({ id }: Props) {
             }}
           >
             <Group gap={8}>
+              {!isNew && (
+                <Button
+                  size="xs"
+                  radius="md"
+                  variant="outline"
+                  onClick={() => {
+                    const now = new Date();
+                    const pad = (value: number) => String(value).padStart(2, '0');
+                    const year = now.getFullYear();
+                    const month = now.getMonth();
+                    const lastDay = new Date(year, month + 1, 0).getDate();
+                    const monthStart = `${year}-${pad(month + 1)}-01`;
+                    const monthEnd = `${year}-${pad(month + 1)}-${pad(lastDay)}`;
+                    openSecondaryTab(`/statistiques?categoryId=${id}&dueDateFrom=${monthStart}&dueDateTo=${monthEnd}&autoRun=true`);
+                  }}
+                >
+                  Voir les statistiques
+                </Button>
+              )}
               {!isNew && !category?.migratedToId && (
                 <>
                   <Button

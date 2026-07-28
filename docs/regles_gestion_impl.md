@@ -54,6 +54,15 @@ Statuts possibles :
 - Regle : lors de l'enregistrement d'une operation, une ligne de ventilation vide n'est pas conservee.
 - Definition : une ligne est consideree vide si elle ne porte ni libelle, ni categorie, ni enveloppe, ni montant.
 
+#### RG-OPE-006 - La date d'echeance est une date de rattachement comptable
+
+- Statut : `implementee`
+- Regle : le champ historiquement appele "date d'echeance" (`operations.date_echeance`, `operation_splits.date_periode`) represente la periode comptable a laquelle une operation doit etre rattachee, pas une echeance de paiement au sens propre.
+- Regle : la date d'operation (`date_operation`) sert uniquement au rapprochement bancaire (date reelle du mouvement sur le compte) ; elle ne doit pas etre utilisee pour du reporting par periode.
+- Exemple : une facture d'assurance annuelle reglee le 20/01 pour l'exercice precedent doit avoir sa date d'operation au 20/01, mais sa date de rattachement au 31/12 de l'annee precedente, pour que la depense tombe dans le bon exercice.
+- Regle : la date de rattachement effective d'une ligne se calcule par priorite decroissante : `date_periode` de la ligne de ventilation (si ventilee), sinon `date_echeance` de l'operation, sinon `date_operation` (formule `COALESCE(s.date_periode, o.date_echeance, o.date_operation)`, voir `effectiveDueDate` dans `StatisticsService`).
+- Intention : les libelles utilisateur emploient "date de rattachement" (et non "date d'echeance") des que l'ecran porte sur ce champ ; les noms techniques (`dueDate`, `effectiveDueDate`, `date_echeance`) ne sont pas renommes pour eviter une migration lourde.
+
 ### Statistiques
 
 #### RG-STAT-001 - Ordre d'affichage et solde progressif des statistiques detaillees
@@ -63,6 +72,21 @@ Statuts possibles :
 - Regle : si l'option de tri par date d'echeance est inactive, la liste doit etre triee par date d'operation decroissante puis par identifiant d'enregistrement decroissant.
 - Regle : le solde progressif doit etre calcule en partant de la fin de la liste vers le debut.
 - Intention : obtenir un ordre de lecture descendant par date, tout en conservant un solde cumule coherent calcule depuis le bas de la liste.
+
+#### RG-STAT-002 - Les statistiques par periode se basent sur la date de rattachement
+
+- Statut : `implementee`
+- Regle : toute statistique qui agrege des operations par mois ou par periode (tableau de bord mensuel des categories, synthese enveloppes en mode date d'echeance) doit grouper sur la date de rattachement effective (voir RG-OPE-006), pas sur la date d'operation.
+- Intention : une operation reglee en debut d'annee mais rattachee a l'exercice precedent doit compter dans le mois/exercice de rattachement, pas dans le mois ou elle a ete passee en banque.
+- Regle : le drill-down depuis une case du tableau de bord mensuel vers les statistiques detaillees doit filtrer sur `dueDateFrom`/`dueDateTo` (avec tri par date de rattachement), coherent avec le mode d'agregation.
+
+#### RG-STAT-003 - Moyenne mensuelle du tableau de bord et "mois en cours"
+
+- Statut : `implementee`
+- Regle : la moyenne mensuelle affichee sur le tableau de bord mensuel des categories compte les mois sans mouvement comme des mois a 0 (elle ne les exclut pas du denominateur).
+- Intention : permettre de provisionner une depense non mensuelle (ex. assurance reglee deux fois par an) en lissant sur l'ensemble des mois de la periode, y compris ceux sans reglement.
+- Regle : la moyenne ne compte que les mois inferieurs ou egaux au parametre global "Mois en cours" (`Setting` cle `current_month`, reglable dans la barre de navigation) ; un mois futur pas encore atteint n'est jamais compte, pour ne pas tirer artificiellement la moyenne vers le bas.
+- Regle : par defaut, "Mois en cours" vaut le mois calendaire reel, mais reste modifiable manuellement (ex. si la saisie comptable d'un mois n'est pas encore cloturee).
 
 ### Tiers
 

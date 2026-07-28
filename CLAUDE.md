@@ -113,6 +113,9 @@ Pour les arbitrages métier validés au fil des sessions, consulter aussi `docs/
 Le **solde progressif** affiché dans AG Grid est calculé localement côté frontend pour la fluidité d'affichage — le backend reste la source de vérité en cas d'écart.
 Pour les **statistiques détaillées** triées par date d'échéance, l'échéance la plus proche doit être en haut, la plus lointaine en bas, et le solde progressif doit être calculé de bas en haut.
 
+- **Date d'échéance = date de rattachement comptable** (`operations.date_echeance`, `operation_splits.date_periode`), pas une échéance de paiement : elle indique la période à laquelle rattacher l'opération (ex. facture d'assurance payée le 20/01 mais rattachée au 31/12 de l'exercice précédent). La date d'opération ne sert qu'au rapprochement bancaire. Toute agrégation par mois/période (tableau de bord mensuel, synthèse enveloppes) doit se baser sur la date de rattachement effective — `COALESCE(s.date_periode, o.date_echeance, o.date_operation)`, voir `effectiveDueDate` dans `StatisticsService` — jamais sur la date d'opération. Les libellés utilisateur disent « date de rattachement » ; les noms techniques (`dueDate`, `date_echeance`) restent inchangés pour éviter une migration lourde. Détail complet : `docs/regles_gestion_impl.md` (RG-OPE-006, RG-STAT-002).
+- **« Mois en cours »** (`Setting` clé `current_month`, réglable dans la barre de navigation, `GET/PATCH /api/app-settings/current-month`) : mois de référence par défaut égal au mois calendaire réel, mais modifiable manuellement. Sert à plafonner les moyennes mensuelles (ex. tableau de bord mensuel des catégories) — un mois futur pas encore atteint n'est jamais compté, alors qu'un mois passé sans mouvement compte comme 0 (utile pour provisionner une dépense non mensuelle, ex. assurance semestrielle). Détail complet : `docs/regles_gestion_impl.md` (RG-STAT-003).
+
 ## Variables d'environnement
 
 Copier `.env.example` → `.env`. Variables critiques :

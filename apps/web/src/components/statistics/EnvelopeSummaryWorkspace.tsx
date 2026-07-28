@@ -441,7 +441,7 @@ export function EnvelopeSummaryWorkspace() {
 
             <Group align="center" wrap="wrap" gap="xl">
               <Checkbox
-                label="Calcul sur les dates d'échéance"
+                label="Calcul sur les dates de rattachement"
                 checked={useDueDate}
                 onChange={event => setUseDueDate(event.currentTarget.checked)}
               />

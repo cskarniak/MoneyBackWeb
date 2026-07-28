@@ -11,7 +11,7 @@ export class AnomaliesController {
   constructor(private readonly service: AnomaliesService) {}
 
   @Post('missing-due-date')
-  @ApiOperation({ summary: 'Détecte les opérations sans date d\'échéance et propose de reporter la date d\'opération' })
+  @ApiOperation({ summary: 'Détecte les opérations sans date de rattachement et propose de reporter la date d\'opération' })
   checkMissingDueDate(
     @Body(new ValidationPipe({ whitelist: false, transform: true })) body: FixableBody,
   ) {

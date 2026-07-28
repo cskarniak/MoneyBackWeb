@@ -11,6 +11,7 @@ import {
   Button,
   Checkbox,
   Group,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -39,9 +40,15 @@ const schema = z.object({
   expense: z.boolean(),
   income: z.boolean(),
   dashboard: z.boolean(),
+  dashboardKind: z.enum(['expense', 'income']).nullable(),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+const DASHBOARD_KIND_OPTIONS = [
+  { value: 'expense', label: 'Dépense' },
+  { value: 'income', label: 'Revenu' },
+];
 
 function toPayload(values: FormValues): RegroupementPayload {
   return {
@@ -50,6 +57,7 @@ function toPayload(values: FormValues): RegroupementPayload {
     expense: values.expense,
     income: values.income,
     dashboard: values.dashboard,
+    dashboardKind: values.dashboard ? values.dashboardKind : null,
   };
 }
 
@@ -82,7 +90,7 @@ export function GroupingsFiche({ id }: Props) {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { label: '', idSource: '', expense: false, income: false, dashboard: false },
+    defaultValues: { label: '', idSource: '', expense: false, income: false, dashboard: false, dashboardKind: null },
   });
 
   useEffect(() => {
@@ -93,6 +101,7 @@ export function GroupingsFiche({ id }: Props) {
         expense: regroupement.expense,
         income: regroupement.income,
         dashboard: regroupement.dashboard,
+        dashboardKind: regroupement.dashboardKind,
       });
     }
   }, [regroupement, reset]);
@@ -250,9 +259,31 @@ export function GroupingsFiche({ id }: Props) {
               <Checkbox
                 size="md"
                 checked={watch('dashboard')}
-                onChange={e => setValue('dashboard', e.currentTarget.checked)}
+                onChange={e => {
+                  const checked = e.currentTarget.checked;
+                  setValue('dashboard', checked);
+                  if (!checked) setValue('dashboardKind', null);
+                }}
               />
             </Group>
+
+            {watch('dashboard') && (
+              <Group gap={0} align="center">
+                <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                  Type dans le tableau de bord
+                </Text>
+                <Select
+                  size="sm"
+                  radius="md"
+                  style={{ flex: 1 }}
+                  data={DASHBOARD_KIND_OPTIONS}
+                  value={watch('dashboardKind')}
+                  onChange={value => setValue('dashboardKind', value as 'expense' | 'income' | null)}
+                  placeholder="Choisir..."
+                  styles={{ input: fieldInputStyle }}
+                />
+              </Group>
+            )}
 
             {!isNew && (
               <Group gap={0} align="center">

@@ -91,7 +91,7 @@ function buildExcelXml(rows: DetailedStatisticsItem[]) {
   const headers = [
     'Compte',
     'Date opération',
-    'Date échéance',
+    'Date de rattachement',
     'No pièce',
     'Libellé',
     'Solde ligne',
@@ -258,6 +258,8 @@ export function DetailedStatisticsWorkspace() {
 
     const budgetId = searchParams.get('budgetId');
     const accountId = searchParams.get('accountId');
+    const categoryId = searchParams.get('categoryId');
+    const thirdPartyId = searchParams.get('thirdPartyId');
     const categoryGroupingId = searchParams.get('categoryGroupingId');
     const operationDateFrom = searchParams.get('operationDateFrom') ?? '';
     const operationDateTo = searchParams.get('operationDateTo') ?? '';
@@ -274,6 +276,8 @@ export function DetailedStatisticsWorkspace() {
     if (
       !budgetId
       && !accountId
+      && !categoryId
+      && !thirdPartyId
       && !categoryGroupingId
       && !operationDateFrom
       && !operationDateTo
@@ -293,8 +297,8 @@ export function DetailedStatisticsWorkspace() {
     const nextFilters: DraftFilters = {
       accountId,
       budgetId,
-      categoryId: null,
-      thirdPartyId: null,
+      categoryId,
+      thirdPartyId,
       categoryGroupingId,
       budgetGroupingId: null,
       search: '',
@@ -974,7 +978,7 @@ export function DetailedStatisticsWorkspace() {
               />
               <TextInput
                 size={FILTER_INPUT_SIZE}
-                label="Date échéance du"
+                label="Date de rattachement du"
                 type="date"
                 value={draftFilters.dueDateFrom}
                 onChange={event => {
@@ -999,7 +1003,7 @@ export function DetailedStatisticsWorkspace() {
             <Group justify="space-between" align="center" style={{ paddingTop: 0 }}>
               <Checkbox
                 size="sm"
-                label="Tri par date d'échéance"
+                label="Tri par date de rattachement"
                 checked={draftFilters.sortByDueDate}
                 onChange={event => {
                   const checked = event.currentTarget.checked;
@@ -1035,7 +1039,7 @@ export function DetailedStatisticsWorkspace() {
                 <Text fw={600}>{statisticsQuery.data?.total ?? 0} ligne(s)</Text>
                 <Group gap={18}>
                   <Text size="sm">
-                    Solde: <strong style={{ color: getAmountColor(statisticsQuery.data?.totalBalance ?? '0') }}>{formatAmount(statisticsQuery.data?.totalBalance ?? '0')}</strong>
+                    Total soldes lignes: <strong style={{ color: getAmountColor(statisticsQuery.data?.totalBalance ?? '0') }}>{formatAmount(statisticsQuery.data?.totalBalance ?? '0')}</strong>
                   </Text>
                 </Group>
               </Group>
@@ -1046,7 +1050,7 @@ export function DetailedStatisticsWorkspace() {
                     <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
                       {renderSortableHeader('Cpte', 'accountName', { width: 170 })}
                       {renderSortableHeader('Date', 'operationDate')}
-                      {renderSortableHeader('Date échéance', 'effectiveDueDate')}
+                      {renderSortableHeader('Date rattachement', 'effectiveDueDate')}
                       {renderSortableHeader('No pièce', 'pieceNumber', { width: 66 })}
                       {renderSortableHeader('Libellé', 'label', { width: 260 })}
                       {renderSortableHeader('Solde ligne', 'balance', { width: 92, whiteSpace: 'normal', lineHeight: 1.1 })}

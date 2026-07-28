@@ -67,6 +67,7 @@ type EnvelopeSummaryRow = {
 type MonthlyCategoryDashboardRow = {
   groupingId: string | null;
   groupingLabel: string | null;
+  groupingDashboardKind: string | null;
   month: Date;
   totalExpense: Prisma.Decimal | null;
   totalIncome: Prisma.Decimal | null;
@@ -466,8 +467,8 @@ export class StatisticsService {
 
     const whereClauses: Prisma.Sql[] = [
       Prisma.sql`entry.category_id IS NOT NULL`,
-      Prisma.sql`entry.operation_date >= ${rangeStart}`,
-      Prisma.sql`entry.operation_date < ${rangeEndExclusive}`,
+      Prisma.sql`entry.reference_date >= ${rangeStart}`,
+      Prisma.sql`entry.reference_date < ${rangeEndExclusive}`,
     ];
 
     if (filters.accountId) {
@@ -492,7 +493,10 @@ export class StatisticsService {
             WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.recette
             ELSE o.recette
           END AS income,
-          o.date_operation AS operation_date
+          -- Date de rattachement : date de la période de ventilation si présente, sinon date d'échéance
+          -- de l'opération, sinon sa date d'opération bancaire. C'est cette date qui sert de référence
+          -- comptable (voir docs/regles_gestion_impl.md), pas la date d'opération.
+          COALESCE(s.date_periode, o.date_echeance, o.date_operation) AS reference_date
         FROM operations o
         LEFT JOIN operations_ventilees s ON s.operation_id = o.id
         WHERE o.date_suppression IS NULL
@@ -505,14 +509,15 @@ export class StatisticsService {
       SELECT
         g.id AS "groupingId",
         g.libelle AS "groupingLabel",
-        date_trunc('month', entry.operation_date)::date AS "month",
+        g.sens_tableau_bord AS "groupingDashboardKind",
+        date_trunc('month', entry.reference_date)::date AS "month",
         SUM(entry.expense) AS "totalExpense",
         SUM(entry.income) AS "totalIncome"
       FROM entry
       INNER JOIN categories c ON c.id = entry.category_id
-      LEFT JOIN regroupements g ON g.id = c.regroupement_id
+      INNER JOIN regroupements g ON g.id = c.regroupement_id AND g.tableau_bord = true
       ${whereSql}
-      GROUP BY g.id, g.libelle, date_trunc('month', entry.operation_date)
+      GROUP BY g.id, g.libelle, g.sens_tableau_bord, date_trunc('month', entry.reference_date)
       ORDER BY g.libelle ASC NULLS LAST, month ASC
     `);
 
@@ -521,6 +526,7 @@ export class StatisticsService {
       {
         groupingId: string | null;
         groupingLabel: string;
+        groupingDashboardKind: string | null;
         monthly: Record<string, { totalExpense: string; totalIncome: string }>;
       }
     >();
@@ -532,7 +538,10 @@ export class StatisticsService {
         group = {
           groupingId: row.groupingId,
           groupingLabel: row.groupingLabel ?? 'Sans regroupement',
-          monthly: Object.fromEntries(months.map(month => [month, { totalExpense: '0', totalIncome: '0' }])),
+          groupingDashboardKind: row.groupingDashboardKind,
+          // Un mois absent de cet objet signifie qu'aucune opération n'a été enregistrée ce mois-là pour ce
+          // regroupement (à distinguer d'un mois avec des opérations dont le solde net vaut 0).
+          monthly: {},
         };
         groupsByKey.set(key, group);
       }
@@ -544,9 +553,24 @@ export class StatisticsService {
       };
     }
 
-    const items = Array.from(groupsByKey.values()).sort((a, b) =>
-      a.groupingLabel.localeCompare(b.groupingLabel, 'fr', { sensitivity: 'base' }),
-    );
+    // Le sens (dépense/revenu) d'un regroupement est décidé explicitement sur sa fiche (dashboardKind).
+    // Repli sur le solde net calculé uniquement pour les regroupements pas encore classés — les flags
+    // depense/recette portés par regroupements servent à un tout autre usage (type de regroupement
+    // catégorie vs budget, voir GroupingsService.findAll) et ne reflètent pas le sens de l'argent.
+    const items = Array.from(groupsByKey.values())
+      .map(group => {
+        let kind: 'expense' | 'income';
+        if (group.groupingDashboardKind === 'expense' || group.groupingDashboardKind === 'income') {
+          kind = group.groupingDashboardKind;
+        } else {
+          const totalExpense = Object.values(group.monthly).reduce((sum, m) => sum + Number(m.totalExpense || 0), 0);
+          const totalIncome = Object.values(group.monthly).reduce((sum, m) => sum + Number(m.totalIncome || 0), 0);
+          kind = totalExpense >= totalIncome ? 'expense' : 'income';
+        }
+
+        return { ...group, kind };
+      })
+      .sort((a, b) => a.groupingLabel.localeCompare(b.groupingLabel, 'fr', { sensitivity: 'base' }));
 
     return { months, items };
   }

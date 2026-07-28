@@ -2,6 +2,8 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Badge, Box, Button, Group, Menu, Text } from '@mantine/core';
+import { MonthPickerInput } from '@mantine/dates';
+import { useCurrentMonth, useUpdateCurrentMonth } from '@/hooks/useCurrentMonth';
 import {
   IconCoins,
   IconChevronDown,
@@ -70,6 +72,15 @@ const ACTIVE_COLOR = '#51cf66';
 const APP_ENV_LABEL = process.env.NEXT_PUBLIC_APP_ENV_LABEL;
 const APP_ENV_DESCRIPTION = process.env.NEXT_PUBLIC_APP_ENV_DESCRIPTION;
 
+function monthKeyToDate(monthKey: string) {
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Date(year, month - 1, 1);
+}
+
+function dateToMonthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function isImportItemActive(pathname: string, href: string) {
   if (href === '/imports') {
     return (
@@ -85,6 +96,8 @@ function isImportItemActive(pathname: string, href: string) {
 export function AppNavbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: currentMonthData } = useCurrentMonth();
+  const updateCurrentMonth = useUpdateCurrentMonth();
 
   const fichiersActive = FICHIERS_ITEMS.some(item => pathname.startsWith(item.href));
   const outilsActive = OUTILS_ITEMS.some(item => pathname.startsWith(item.href));
@@ -321,6 +334,27 @@ export function AppNavbar() {
               ) : null}
             </Group>
           ) : null}
+          <Group gap={6} wrap="nowrap" title="Mois de référence utilisé pour les moyennes de provisionnement (tableau de bord mensuel)">
+            <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
+              Mois en cours
+            </Text>
+            <MonthPickerInput
+              size="xs"
+              valueFormat="MMMM YYYY"
+              value={currentMonthData ? monthKeyToDate(currentMonthData.currentMonth) : null}
+              onChange={date => date && updateCurrentMonth.mutate(dateToMonthKey(date))}
+              style={{ width: 130 }}
+              styles={{
+                input: {
+                  background: '#25262b',
+                  border: '1px solid #373a40',
+                  color: '#c1c2c5',
+                  minHeight: 26,
+                  height: 26,
+                },
+              }}
+            />
+          </Group>
           <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
             Admin
           </Text>

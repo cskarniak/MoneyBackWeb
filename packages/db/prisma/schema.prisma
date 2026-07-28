@@ -91,6 +91,7 @@ model Grouping {
   income        Boolean @default(false) @map("recette")
   dashboard     Boolean @default(false) @map("tableau_bord")
   dashboardType String? @map("type_tableau_bord")
+  dashboardKind String? @map("sens_tableau_bord")
   categoryType  String? @map("type_categorie")
   budgetType    String? @map("type_budget")
 

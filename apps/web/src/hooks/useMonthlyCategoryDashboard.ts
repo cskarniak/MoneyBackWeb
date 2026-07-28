@@ -15,6 +15,7 @@ export type MonthlyAmount = {
 export type MonthlyCategoryDashboardItem = {
   groupingId: string | null;
   groupingLabel: string;
+  kind: 'expense' | 'income';
   monthly: Record<string, MonthlyAmount>;
 };
 
