@@ -101,6 +101,13 @@ function toLocalDateOnly(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
+// Les filtres de date arrivent en ISO (ex. "2026-06-01T00:00:00.000Z") construits côté frontend en UTC à
+// partir d'une saisie AAAA-MM-JJ : les 10 premiers caractères donnent la date calendaire voulue, sans jamais
+// repasser par un objet Date (qui réintroduirait un risque de décalage de fuseau côté SQL).
+function toDateOnly(isoValue: string) {
+  return isoValue.slice(0, 10);
+}
+
 @Injectable()
 export class StatisticsService {
   constructor(private prisma: PrismaService) {}
@@ -249,23 +256,26 @@ export class StatisticsService {
       whereClauses.push(Prisma.sql`o.numero_piece ILIKE ${`%${filters.pieceNumber}%`}`);
     }
 
+    // Comparaisons en dates calendaires pures (::date des deux côtés) : comparer directement une colonne
+    // timestamp (sans fuseau) à un objet Date/timestamptz laisse Postgres appliquer un cast implicite selon
+    // le fuseau de la session, ce qui peut faire déborder une opération du 1er du mois sur le mois précédent.
     if (filters.operationDateFrom) {
-      whereClauses.push(Prisma.sql`o.date_operation >= ${new Date(filters.operationDateFrom)}`);
+      whereClauses.push(Prisma.sql`o.date_operation::date >= ${toDateOnly(filters.operationDateFrom)}::date`);
     }
 
     if (filters.operationDateTo) {
-      whereClauses.push(Prisma.sql`o.date_operation <= ${new Date(filters.operationDateTo)}`);
+      whereClauses.push(Prisma.sql`o.date_operation::date <= ${toDateOnly(filters.operationDateTo)}::date`);
     }
 
     if (filters.dueDateFrom) {
       whereClauses.push(
-        Prisma.sql`COALESCE(s.date_periode, o.date_echeance, o.date_operation) >= ${new Date(filters.dueDateFrom)}`,
+        Prisma.sql`COALESCE(s.date_periode, o.date_echeance, o.date_operation)::date >= ${toDateOnly(filters.dueDateFrom)}::date`,
       );
     }
 
     if (filters.dueDateTo) {
       whereClauses.push(
-        Prisma.sql`COALESCE(s.date_periode, o.date_echeance, o.date_operation) <= ${new Date(filters.dueDateTo)}`,
+        Prisma.sql`COALESCE(s.date_periode, o.date_echeance, o.date_operation)::date <= ${toDateOnly(filters.dueDateTo)}::date`,
       );
     }
 
@@ -453,22 +463,32 @@ export class StatisticsService {
     const from = parseMonth(filters.monthFrom, 'monthFrom');
     const to = parseMonth(filters.monthTo, 'monthTo');
 
-    const rangeStart = new Date(Date.UTC(from.year, from.month - 1, 1));
-    const rangeEndExclusive = new Date(Date.UTC(to.year, to.month, 1));
-
-    if (rangeStart >= rangeEndExclusive) {
+    if (from.year > to.year || (from.year === to.year && from.month > to.month)) {
       throw new BadRequestException('monthFrom doit être antérieur ou égal à monthTo.');
     }
 
     const months: string[] = [];
-    for (let cursor = new Date(rangeStart); cursor < rangeEndExclusive; cursor.setUTCMonth(cursor.getUTCMonth() + 1)) {
-      months.push(toMonthKey(cursor));
+    for (let year = from.year, month = from.month; year < to.year || (year === to.year && month <= to.month); ) {
+      months.push(`${year}-${String(month).padStart(2, '0')}`);
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
     }
+
+    // Comparaisons en dates calendaires pures (chaînes AAAA-MM-JJ, castées ::date des deux côtés) plutôt
+    // qu'avec des objets Date/timestamptz : sinon Postgres caste implicitement la colonne timestamp (sans
+    // fuseau) selon le fuseau de la session, ce qui décale une opération du 1er du mois vers le mois
+    // précédent et fausse les totaux mensuels.
+    const rangeStartStr = `${from.year}-${String(from.month).padStart(2, '0')}-01`;
+    const rangeEndLastDay = new Date(to.year, to.month, 0).getDate();
+    const rangeEndStr = `${to.year}-${String(to.month).padStart(2, '0')}-${String(rangeEndLastDay).padStart(2, '0')}`;
 
     const whereClauses: Prisma.Sql[] = [
       Prisma.sql`entry.category_id IS NOT NULL`,
-      Prisma.sql`entry.reference_date >= ${rangeStart}`,
-      Prisma.sql`entry.reference_date < ${rangeEndExclusive}`,
+      Prisma.sql`entry.reference_date::date >= ${rangeStartStr}::date`,
+      Prisma.sql`entry.reference_date::date <= ${rangeEndStr}::date`,
     ];
 
     if (filters.accountId) {
@@ -510,14 +530,14 @@ export class StatisticsService {
         g.id AS "groupingId",
         g.libelle AS "groupingLabel",
         g.sens_tableau_bord AS "groupingDashboardKind",
-        date_trunc('month', entry.reference_date)::date AS "month",
+        date_trunc('month', entry.reference_date::date)::date AS "month",
         SUM(entry.expense) AS "totalExpense",
         SUM(entry.income) AS "totalIncome"
       FROM entry
       INNER JOIN categories c ON c.id = entry.category_id
       INNER JOIN regroupements g ON g.id = c.regroupement_id AND g.tableau_bord = true
       ${whereSql}
-      GROUP BY g.id, g.libelle, g.sens_tableau_bord, date_trunc('month', entry.reference_date)
+      GROUP BY g.id, g.libelle, g.sens_tableau_bord, date_trunc('month', entry.reference_date::date)
       ORDER BY g.libelle ASC NULLS LAST, month ASC
     `);
 

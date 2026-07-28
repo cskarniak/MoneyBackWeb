@@ -80,6 +80,8 @@ export function CategoriesList() {
   const [isExporting, setIsExporting] = useState(false);
   const [assignOpened, setAssignOpened] = useState(false);
   const [assignSelection, setAssignSelection] = useState<string | null>(null);
+  const [justAssignedId, setJustAssignedId] = useState<string | null>(null);
+  const highlightedId = justAssignedId ?? recentId;
 
   const { data, isLoading, error } = useCategories({
     page,
@@ -89,7 +91,7 @@ export function CategoriesList() {
     sortBy,
     sortOrder,
     active: showInactive ? false : true,
-    highlightId: recentId ?? undefined,
+    highlightId: highlightedId ?? undefined,
   });
   const { data: regroupement } = useRegroupement(regroupementId ?? '');
   const { data: allCategories = [] } = useCategoriesAll();
@@ -139,6 +141,20 @@ export function CategoriesList() {
     },
     [searchParams, pathname, router],
   );
+
+  const hasRepositionedForAssignRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!justAssignedId || !data || hasRepositionedForAssignRef.current === justAssignedId) return;
+    hasRepositionedForAssignRef.current = justAssignedId;
+
+    if (data.highlightIndex != null) {
+      const targetPage = Math.floor(data.highlightIndex / limit) + 1;
+      if (targetPage !== page) {
+        pushParams({ page: String(targetPage) });
+      }
+    }
+  }, [justAssignedId, data, limit, page, pushParams]);
 
   const handleSort = (col: 'label' | 'regroupement') => {
     const newOrder = sortBy === col && sortOrder === 'asc' ? 'desc' : 'asc';
@@ -255,7 +271,7 @@ export function CategoriesList() {
         id: 'cursor',
         header: () => <span style={thStyle()} />,
         cell: ({ row }) => (
-          <Text fz={11} fw={700} lh={1} ta="center" c={recentId === row.original.id ? '#4c73f0' : 'transparent'}>
+          <Text fz={11} fw={700} lh={1} ta="center" c={highlightedId === row.original.id ? '#4c73f0' : 'transparent'}>
             ▶
           </Text>
         ),
@@ -267,7 +283,7 @@ export function CategoriesList() {
             Libellé{sortIcon('label')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={highlightedId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         id: 'type',
@@ -286,7 +302,7 @@ export function CategoriesList() {
           </span>
         ),
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'} truncate title={row.original.regroupement?.label}>
+          <Text fz={CRUD.typographie.tailleTexte} fw={highlightedId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'} truncate title={row.original.regroupement?.label}>
             {row.original.regroupement?.label ?? '—'}
           </Text>
         ),
@@ -330,7 +346,7 @@ export function CategoriesList() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sortBy, sortOrder, deleteMutation.isPending, recentId, searchParams],
+    [sortBy, sortOrder, deleteMutation.isPending, highlightedId, searchParams],
   );
 
   const table = useReactTable({
@@ -380,15 +396,27 @@ export function CategoriesList() {
               <Text size="sm">
                 Filtré sur le regroupement : <strong>{regroupement?.label ?? '...'}</strong>
               </Text>
-              <Button
-                size="xs"
-                variant="subtle"
-                color="grape"
-                leftSection={<IconX size={12} />}
-                onClick={() => pushParams({ regroupementId: null, page: '1' })}
-              >
-                Retirer le filtre
-              </Button>
+              <Group gap={8} wrap="nowrap">
+                <Button
+                  size="xs"
+                  radius="md"
+                  variant="light"
+                  color="grape"
+                  leftSection={<IconUserPlus size={13} />}
+                  onClick={() => setAssignOpened(true)}
+                >
+                  Affecter une catégorie
+                </Button>
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="grape"
+                  leftSection={<IconX size={12} />}
+                  onClick={() => pushParams({ regroupementId: null, page: '1' })}
+                >
+                  Retirer le filtre
+                </Button>
+              </Group>
             </Group>
           </Box>
         )}
@@ -424,18 +452,6 @@ export function CategoriesList() {
               >
                 Nouveau
               </Button>
-              {regroupementId && (
-                <Button
-                  size="sm"
-                  radius="md"
-                  variant="light"
-                  color="grape"
-                  leftSection={<IconUserPlus size={13} />}
-                  onClick={() => setAssignOpened(true)}
-                >
-                  Affecter une catégorie
-                </Button>
-              )}
             </Group>
             <Group gap={8} wrap="nowrap">
               <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
@@ -679,9 +695,20 @@ export function CategoriesList() {
               disabled={!assignSelection}
               onClick={() => {
                 if (!assignSelection || !regroupementId) return;
+                const assignedLabel = allCategories.find(c => c.id === assignSelection)?.label ?? '';
                 assignMutation.mutate(
                   { id: assignSelection, regroupementId },
-                  { onSuccess: () => { setAssignOpened(false); setAssignSelection(null); } },
+                  {
+                    onSuccess: () => {
+                      setAssignOpened(false);
+                      setJustAssignedId(assignSelection);
+                      setAssignSelection(null);
+                      notifications.show({
+                        message: `"${assignedLabel}" affectée à ce regroupement`,
+                        color: 'green',
+                      });
+                    },
+                  },
                 );
               }}
             >
