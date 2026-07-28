@@ -742,7 +742,7 @@ export function DetailedStatisticsWorkspace() {
   );
 
   return (
-    <Box style={{ maxWidth: 1440, margin: '0 auto' }}>
+    <Box style={{ maxWidth: 1600, margin: '0 auto' }}>
       <Stack gap={0}>
         <Box
           style={{
@@ -1045,12 +1045,12 @@ export function DetailedStatisticsWorkspace() {
               </Group>
 
               <Box style={{ overflowX: 'auto' }}>
-                <Table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 1100 }}>
+                <Table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 1440 }}>
                   <Table.Thead>
                     <Table.Tr style={{ background: CRUD.couleurs.fondEnteteTableau }}>
                       {renderSortableHeader('Cpte', 'accountName', { width: 170 })}
-                      {renderSortableHeader('Date', 'operationDate')}
-                      {renderSortableHeader('Date rattachement', 'effectiveDueDate')}
+                      {renderSortableHeader('Date', 'operationDate', { width: 90 })}
+                      {renderSortableHeader('Rattachement', 'effectiveDueDate', { width: 120 })}
                       {renderSortableHeader('No pièce', 'pieceNumber', { width: 66 })}
                       {renderSortableHeader('Libellé', 'label', { width: 260 })}
                       {renderSortableHeader('Solde ligne', 'balance', { width: 92, whiteSpace: 'normal', lineHeight: 1.1 })}
