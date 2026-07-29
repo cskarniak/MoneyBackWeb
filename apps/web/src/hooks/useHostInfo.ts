@@ -14,7 +14,7 @@ export type HostInfo = {
 export function useHostInfo() {
   return useQuery<HostInfo>({
     queryKey: ['host-info', 'web'],
-    queryFn: () => fetch('/api/host-info').then(r => r.json()),
+    queryFn: () => fetch('/diagnostics/host-info').then(r => r.json()),
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
