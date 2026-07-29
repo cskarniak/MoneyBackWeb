@@ -2,9 +2,9 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Badge, Box, Button, Group, Menu, Text } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { MonthPickerInput } from '@mantine/dates';
 import { useCurrentMonth, useUpdateCurrentMonth } from '@/hooks/useCurrentMonth';
-import { useApiHostInfo, useHostInfo } from '@/hooks/useHostInfo';
 import {
   IconCoins,
   IconChevronDown,
@@ -17,6 +17,7 @@ import {
   IconBuildingBank,
   IconRepeat,
   IconTool,
+  IconMenu2,
   IconCalendarRepeat,
   IconDatabaseExport,
   IconFileImport,
@@ -27,11 +28,12 @@ import {
   IconBug,
   IconCalculator,
   IconLayoutDashboard,
+  IconLogout,
+  IconServer,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
   { label: 'Opérations', prefix: '/operations' },
-  { label: 'Portefeuille', prefix: '/portefeuille' },
 ];
 
 const STATISTICS_ITEMS = [
@@ -47,6 +49,7 @@ const IMPORT_ITEMS = [
 
 const OUTILS_ITEMS = [
   { label: 'Environnement actif', href: '/outils/environnement', icon: IconSettings },
+  { label: 'Administration machine', href: '/outils/administration-machine', icon: IconServer },
   { label: 'Affectation tiers', href: '/outils/affectation-tiers', icon: IconUserCheck },
   { label: 'Génération abonnements', href: '/outils/generation-abonnements', icon: IconCalendarRepeat },
   { label: 'Recalcul soldes enveloppes', href: '/outils/recalcul-soldes-enveloppes', icon: IconCalculator },
@@ -68,10 +71,19 @@ const FICHIERS_ITEMS = [
   { label: 'Tiers', href: '/referentiels/tiers', icon: IconUsers },
 ];
 
+const NARROW_MENU_SECTIONS = [
+  { label: null, items: [{ label: 'Opérations', href: '/operations', icon: IconChartBar }] },
+  { label: 'Statistiques', items: STATISTICS_ITEMS },
+  { label: 'Imports', items: IMPORT_ITEMS },
+  { label: 'Outils', items: OUTILS_ITEMS },
+  { label: 'Fichiers', items: FICHIERS_ITEMS },
+];
+
 const DARK_BG = '#1a1b1e';
 const ACTIVE_COLOR = '#51cf66';
 const APP_ENV_LABEL = process.env.NEXT_PUBLIC_APP_ENV_LABEL;
 const APP_ENV_DESCRIPTION = process.env.NEXT_PUBLIC_APP_ENV_DESCRIPTION;
+const LAUNCHER_URL = process.env.NEXT_PUBLIC_LAUNCHER_URL ?? 'https://apps.home';
 
 function monthKeyToDate(monthKey: string) {
   const [year, month] = monthKey.split('-').map(Number);
@@ -99,13 +111,13 @@ export function AppNavbar() {
   const router = useRouter();
   const { data: currentMonthData } = useCurrentMonth();
   const updateCurrentMonth = useUpdateCurrentMonth();
-  const { data: hostInfo } = useHostInfo();
-  const { data: apiHostInfo } = useApiHostInfo();
+  const isNarrow = useMediaQuery('(max-width: 900px)', false, { getInitialValueInEffect: true });
 
   const fichiersActive = FICHIERS_ITEMS.some(item => pathname.startsWith(item.href));
   const outilsActive = OUTILS_ITEMS.some(item => pathname.startsWith(item.href));
   const importsActive = IMPORT_ITEMS.some(item => isImportItemActive(pathname, item.href));
   const statisticsActive = STATISTICS_ITEMS.some(item => pathname.startsWith(item.href));
+  const anyNavActive = fichiersActive || outilsActive || importsActive || statisticsActive || pathname.startsWith('/operations');
 
   return (
     <Box
@@ -128,7 +140,71 @@ export function AppNavbar() {
         </Group>
 
         {/* Nav links */}
-        <Group gap={0} wrap="nowrap" style={{ overflow: 'hidden', flex: 1, justifyContent: 'center' }}>
+        {isNarrow ? (
+          <Group style={{ flex: 1, justifyContent: 'center' }}>
+            <Menu
+              position="bottom-start"
+              offset={4}
+              styles={{
+                dropdown: { background: '#25262b', border: '1px solid #373a40', padding: '4px 0', maxHeight: '80vh', overflowY: 'auto' },
+                item: { color: '#c1c2c5', padding: '7px 14px', fontSize: 13 },
+                label: { color: '#868e96', fontSize: 11, textTransform: 'uppercase' },
+              }}
+            >
+              <Menu.Target>
+                <Button
+                  variant="subtle"
+                  size="xs"
+                  leftSection={<IconMenu2 size={14} />}
+                  rightSection={<IconChevronDown size={11} />}
+                  style={{
+                    color: anyNavActive ? ACTIVE_COLOR : '#adb5bd',
+                    fontWeight: anyNavActive ? 700 : 400,
+                    background: 'transparent',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Menu
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {NARROW_MENU_SECTIONS.map(section => (
+                  <Box key={section.label ?? 'root'}>
+                    {section.label ? <Menu.Label>{section.label}</Menu.Label> : null}
+                    {section.items.map(item => {
+                      const active = item.href === '/operations'
+                        ? pathname.startsWith('/operations')
+                        : pathname.startsWith(item.href);
+                      return (
+                        <Menu.Item
+                          key={item.href}
+                          leftSection={<item.icon size={14} />}
+                          onClick={() => router.push(item.href)}
+                          style={{ color: active ? ACTIVE_COLOR : '#c1c2c5', fontWeight: active ? 600 : 400 }}
+                        >
+                          {item.label}
+                        </Menu.Item>
+                      );
+                    })}
+                  </Box>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+        ) : (
+        <Group
+          gap={0}
+          wrap="nowrap"
+          className="app-navbar-links"
+          style={{
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            minWidth: 0,
+            flex: 1,
+            justifyContent: 'center',
+            scrollbarWidth: 'none',
+          }}
+        >
           {FLAT_LINKS.map(link => {
             const active = pathname.startsWith(link.prefix);
             return (
@@ -322,6 +398,7 @@ export function AppNavbar() {
             </Menu.Dropdown>
           </Menu>
         </Group>
+        )}
 
         {/* Right */}
         <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
@@ -330,51 +407,25 @@ export function AppNavbar() {
               <Badge color="orange" variant="filled" radius="sm">
                 {APP_ENV_LABEL}
               </Badge>
-              {APP_ENV_DESCRIPTION ? (
+              {APP_ENV_DESCRIPTION && !isNarrow ? (
                 <Text size="xs" style={{ color: '#fab005', whiteSpace: 'nowrap' }}>
                   {APP_ENV_DESCRIPTION}
                 </Text>
               ) : null}
             </Group>
           ) : null}
-          {hostInfo ? (
-            <Group
-              gap={6}
-              wrap="nowrap"
-              title={`Machine exécutant le front (Next.js) • ${hostInfo.platform} ${hostInfo.release} • ${hostInfo.cpuModel ?? 'CPU inconnu'} (${hostInfo.cpuCount} cœurs) • ${hostInfo.totalMemGB} Go RAM`}
-            >
-              <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
-                Front
-              </Text>
-              <Badge color="gray" variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>
-                {hostInfo.hostname}
-              </Badge>
-            </Group>
-          ) : null}
-          {apiHostInfo ? (
-            <Group
-              gap={6}
-              wrap="nowrap"
-              title={`Machine exécutant l'API (NestJS) • ${apiHostInfo.platform} ${apiHostInfo.release} • ${apiHostInfo.cpuModel ?? 'CPU inconnu'} (${apiHostInfo.cpuCount} cœurs) • ${apiHostInfo.totalMemGB} Go RAM`}
-            >
-              <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
-                API
-              </Text>
-              <Badge color="gray" variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>
-                {apiHostInfo.hostname}
-              </Badge>
-            </Group>
-          ) : null}
           <Group gap={6} wrap="nowrap" title="Mois de référence utilisé pour les moyennes de provisionnement (tableau de bord mensuel)">
-            <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
-              Mois en cours
-            </Text>
+            {!isNarrow ? (
+              <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
+                Mois en cours
+              </Text>
+            ) : null}
             <MonthPickerInput
               size="xs"
               valueFormat="MMMM YYYY"
               value={currentMonthData ? monthKeyToDate(currentMonthData.currentMonth) : null}
               onChange={date => date && updateCurrentMonth.mutate(dateToMonthKey(date))}
-              style={{ width: 130 }}
+              style={{ width: isNarrow ? 108 : 130 }}
               styles={{
                 input: {
                   background: '#25262b',
@@ -386,11 +437,23 @@ export function AppNavbar() {
               }}
             />
           </Group>
-          <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
-            Admin
-          </Text>
+          {!isNarrow ? (
+            <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
+              Admin
+            </Text>
+          ) : null}
           <Button size="xs" variant="default" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
             Déconnexion
+          </Button>
+          <Button
+            size="xs"
+            variant="default"
+            leftSection={<IconLogout size={13} />}
+            style={{ fontSize: 12, whiteSpace: 'nowrap' }}
+            title="Retourner au lanceur d'applications"
+            onClick={() => { window.location.href = LAUNCHER_URL; }}
+          >
+            Sortie
           </Button>
         </Group>
       </Group>

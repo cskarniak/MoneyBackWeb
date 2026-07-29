@@ -27,3 +27,9 @@
   border-radius: 4px;
   border: 2px solid #d0d5dd;
 }
+
+/* Barre de navigation principale : les liens défilent horizontalement plutôt que
+   de se faire écraser par le contenu à droite (env/mois/déconnexion) sur petit écran. */
+.app-navbar-links::-webkit-scrollbar {
+  display: none;
+}
