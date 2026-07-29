@@ -73,6 +73,12 @@ type MonthlyCategoryDashboardRow = {
   totalIncome: Prisma.Decimal | null;
 };
 
+type MonthlyCategoryDashboardUngroupedRow = {
+  month: Date;
+  totalExpense: Prisma.Decimal | null;
+  totalIncome: Prisma.Decimal | null;
+};
+
 function parseMonth(value: string, fieldName: string) {
   const match = /^(\d{4})-(\d{2})$/.exec(value);
   if (!match) {
@@ -249,6 +255,45 @@ export class StatisticsService {
             ELSE b.regroupement_id
           END
         ) = ${filters.budgetGroupingId}`,
+      );
+    }
+
+    // "Non regroupées" (voir findMonthlyCategoryDashboard) : ni catégorie assignée, ni catégorie
+    // rattachée à un regroupement — les deux cas sont couverts par un regroupement de catégorie NULL.
+    if (filters.uncategorized) {
+      whereClauses.push(
+        Prisma.sql`(
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN csplit.regroupement_id
+            ELSE c.regroupement_id
+          END
+        ) IS NULL`,
+      );
+    }
+
+    // "Regroupées masquées" (voir findMonthlyCategoryDashboard) : catégorie rattachée à un regroupement
+    // bien réel, mais dont la case "Tableau de bord" n'est pas cochée — donc absent du tableau de bord
+    // par choix explicite, à distinguer du cas "non regroupées" (aucun regroupement du tout).
+    if (filters.hiddenGrouping) {
+      whereClauses.push(
+        Prisma.sql`(
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN gcsplit.tableau_bord
+            ELSE gc.tableau_bord
+          END
+        ) = false`,
+      );
+    }
+
+    if (filters.direction) {
+      const column = filters.direction === 'expense' ? Prisma.sql`depense` : Prisma.sql`recette`;
+      whereClauses.push(
+        Prisma.sql`(
+          CASE
+            WHEN o.type_operation IN ('V', 'P') AND s.id IS NOT NULL THEN s.${column}
+            ELSE o.${column}
+          END
+        ) > 0`,
       );
     }
 
@@ -485,19 +530,34 @@ export class StatisticsService {
     const rangeEndLastDay = new Date(to.year, to.month, 0).getDate();
     const rangeEndStr = `${to.year}-${String(to.month).padStart(2, '0')}-${String(rangeEndLastDay).padStart(2, '0')}`;
 
-    const whereClauses: Prisma.Sql[] = [
-      Prisma.sql`entry.category_id IS NOT NULL`,
+    const commonWhereClauses: Prisma.Sql[] = [
       Prisma.sql`entry.reference_date::date >= ${rangeStartStr}::date`,
       Prisma.sql`entry.reference_date::date <= ${rangeEndStr}::date`,
     ];
 
     if (filters.accountId) {
-      whereClauses.push(Prisma.sql`entry.account_id = ${filters.accountId}`);
+      commonWhereClauses.push(Prisma.sql`entry.account_id = ${filters.accountId}`);
     }
 
-    const whereSql = Prisma.sql`WHERE ${Prisma.join(whereClauses, ' AND ')}`;
+    const commonWhereSql = Prisma.sql`WHERE ${Prisma.join(commonWhereClauses, ' AND ')}`;
 
-    const rows = await this.prisma.$queryRaw<MonthlyCategoryDashboardRow[]>(Prisma.sql`
+    // "Non regroupées" : catégorie non assignée, ou catégorie assignée mais rattachée à aucun
+    // regroupement — dans les deux cas c.regroupement_id (via LEFT JOIN) vaut NULL. Ce bucket assure
+    // que le tableau de bord reste exhaustif : toute dépense/recette a une ligne, catégorisée ou non.
+    const ungroupedWhereSql = Prisma.sql`WHERE ${Prisma.join(
+      [...commonWhereClauses, Prisma.sql`(entry.category_id IS NULL OR c.regroupement_id IS NULL)`],
+      ' AND ',
+    )}`;
+
+    // "Regroupées masquées" : catégorie rattachée à un regroupement bien réel, mais dont la case
+    // "Tableau de bord" n'est pas cochée sur sa fiche — absentes du tableau de bord par choix explicite,
+    // à distinguer du bucket "non regroupées" ci-dessus (aucun regroupement du tout).
+    const hiddenGroupingWhereSql = Prisma.sql`WHERE ${Prisma.join(
+      [...commonWhereClauses, Prisma.sql`c.id IS NOT NULL AND g.id IS NOT NULL AND g.tableau_bord = false`],
+      ' AND ',
+    )}`;
+
+    const entryCte = Prisma.sql`
       WITH entry AS (
         SELECT
           o.compte_id AS account_id,
@@ -525,7 +585,10 @@ export class StatisticsService {
             OR o.type_operation NOT IN ('V', 'P')
             OR s.id IS NOT NULL
           )
-      )
+      )`;
+
+    const rows = await this.prisma.$queryRaw<MonthlyCategoryDashboardRow[]>(Prisma.sql`
+      ${entryCte}
       SELECT
         g.id AS "groupingId",
         g.libelle AS "groupingLabel",
@@ -536,9 +599,36 @@ export class StatisticsService {
       FROM entry
       INNER JOIN categories c ON c.id = entry.category_id
       INNER JOIN regroupements g ON g.id = c.regroupement_id AND g.tableau_bord = true
-      ${whereSql}
+      ${commonWhereSql}
       GROUP BY g.id, g.libelle, g.sens_tableau_bord, date_trunc('month', entry.reference_date::date)
       ORDER BY g.libelle ASC NULLS LAST, month ASC
+    `);
+
+    const ungroupedRows = await this.prisma.$queryRaw<MonthlyCategoryDashboardUngroupedRow[]>(Prisma.sql`
+      ${entryCte}
+      SELECT
+        date_trunc('month', entry.reference_date::date)::date AS "month",
+        SUM(entry.expense) AS "totalExpense",
+        SUM(entry.income) AS "totalIncome"
+      FROM entry
+      LEFT JOIN categories c ON c.id = entry.category_id
+      ${ungroupedWhereSql}
+      GROUP BY date_trunc('month', entry.reference_date::date)
+      ORDER BY month ASC
+    `);
+
+    const hiddenGroupingRows = await this.prisma.$queryRaw<MonthlyCategoryDashboardUngroupedRow[]>(Prisma.sql`
+      ${entryCte}
+      SELECT
+        date_trunc('month', entry.reference_date::date)::date AS "month",
+        SUM(entry.expense) AS "totalExpense",
+        SUM(entry.income) AS "totalIncome"
+      FROM entry
+      LEFT JOIN categories c ON c.id = entry.category_id
+      LEFT JOIN regroupements g ON g.id = c.regroupement_id
+      ${hiddenGroupingWhereSql}
+      GROUP BY date_trunc('month', entry.reference_date::date)
+      ORDER BY month ASC
     `);
 
     const groupsByKey = new Map<
@@ -572,6 +662,65 @@ export class StatisticsService {
         totalIncome: (row.totalIncome ?? new Prisma.Decimal(0)).toString(),
       };
     }
+
+    // Lignes de contrôle en paires (une par sens), construites à partir d'un bucket de lignes mensuelles
+    // brutes, pour que l'utilisateur puisse vérifier que le tableau de bord couvre bien toutes les
+    // opérations. Le drill-down cible /statistiques?<sentinelParam>=true&direction=expense|income (pas de
+    // vrai regroupement à filtrer, voir openDrillDown côté front).
+    function addSentinelPair(
+      rowsForBucket: MonthlyCategoryDashboardUngroupedRow[],
+      expenseId: string,
+      expenseLabel: string,
+      incomeId: string,
+      incomeLabel: string,
+    ) {
+      const expenseGroup = {
+        groupingId: expenseId,
+        groupingLabel: expenseLabel,
+        groupingDashboardKind: 'expense' as const,
+        monthly: {} as Record<string, { totalExpense: string; totalIncome: string }>,
+      };
+      const incomeGroup = {
+        groupingId: incomeId,
+        groupingLabel: incomeLabel,
+        groupingDashboardKind: 'income' as const,
+        monthly: {} as Record<string, { totalExpense: string; totalIncome: string }>,
+      };
+
+      for (const row of rowsForBucket) {
+        const monthKey = toMonthKey(row.month);
+        expenseGroup.monthly[monthKey] = {
+          totalExpense: (row.totalExpense ?? new Prisma.Decimal(0)).toString(),
+          totalIncome: '0',
+        };
+        incomeGroup.monthly[monthKey] = {
+          totalExpense: '0',
+          totalIncome: (row.totalIncome ?? new Prisma.Decimal(0)).toString(),
+        };
+      }
+
+      if (Object.keys(expenseGroup.monthly).length > 0) {
+        groupsByKey.set(expenseGroup.groupingId, expenseGroup);
+      }
+      if (Object.keys(incomeGroup.monthly).length > 0) {
+        groupsByKey.set(incomeGroup.groupingId, incomeGroup);
+      }
+    }
+
+    addSentinelPair(
+      ungroupedRows,
+      '__uncategorized_expense__',
+      'Dépenses non regroupées',
+      '__uncategorized_income__',
+      'Recettes non regroupées',
+    );
+    addSentinelPair(
+      hiddenGroupingRows,
+      '__hidden_grouping_expense__',
+      'Dépenses regroupées masquées',
+      '__hidden_grouping_income__',
+      'Recettes regroupées masquées',
+    );
 
     // Le sens (dépense/revenu) d'un regroupement est décidé explicitement sur sa fiche (dashboardKind).
     // Repli sur le solde net calculé uniquement pour les regroupements pas encore classés — les flags

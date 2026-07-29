@@ -148,6 +148,15 @@ export const DetailedStatisticsFiltersSchema = z.object({
   thirdPartyId: z.string().uuid().optional(),
   categoryGroupingId: z.string().uuid().optional(),
   budgetGroupingId: z.string().uuid().optional(),
+  uncategorized: z.preprocess(
+    v => (v === 'true' ? true : v === 'false' ? false : undefined),
+    z.boolean().optional(),
+  ),
+  hiddenGrouping: z.preprocess(
+    v => (v === 'true' ? true : v === 'false' ? false : undefined),
+    z.boolean().optional(),
+  ),
+  direction: z.enum(['expense', 'income']).optional(),
   pieceNumber: z.string().optional(),
   operationDateFrom: z.string().datetime().optional(),
   operationDateTo: z.string().datetime().optional(),

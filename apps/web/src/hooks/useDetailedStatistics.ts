@@ -8,6 +8,9 @@ export type DetailedStatisticsFilters = {
   thirdPartyId?: string;
   categoryGroupingId?: string;
   budgetGroupingId?: string;
+  uncategorized?: boolean;
+  hiddenGrouping?: boolean;
+  direction?: 'expense' | 'income';
   pieceNumber?: string;
   operationDateFrom?: string;
   operationDateTo?: string;

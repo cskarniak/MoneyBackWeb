@@ -31,6 +31,9 @@ type DraftFilters = {
   thirdPartyId: string | null;
   categoryGroupingId: string | null;
   budgetGroupingId: string | null;
+  uncategorized: boolean;
+  hiddenGrouping: boolean;
+  direction: 'expense' | 'income' | null;
   search: string;
   pieceNumber: string;
   operationDateFrom: string;
@@ -191,6 +194,9 @@ function buildSubmittedFilters(filters: DraftFilters): DetailedStatisticsFilters
     thirdPartyId: filters.thirdPartyId ?? undefined,
     categoryGroupingId: filters.categoryGroupingId ?? undefined,
     budgetGroupingId: filters.budgetGroupingId ?? undefined,
+    uncategorized: filters.uncategorized || undefined,
+    hiddenGrouping: filters.hiddenGrouping || undefined,
+    direction: filters.direction ?? undefined,
     pieceNumber: filters.pieceNumber || undefined,
     operationDateFrom: toIsoDate(filters.operationDateFrom),
     operationDateTo: filters.operationDateTo ? new Date(`${filters.operationDateTo}T23:59:59.999Z`).toISOString() : undefined,
@@ -215,6 +221,9 @@ export function DetailedStatisticsWorkspace() {
     thirdPartyId: null,
     categoryGroupingId: null,
     budgetGroupingId: null,
+    uncategorized: false,
+    hiddenGrouping: false,
+    direction: null,
     search: '',
     pieceNumber: '',
     operationDateFrom: '',
@@ -261,6 +270,12 @@ export function DetailedStatisticsWorkspace() {
     const categoryId = searchParams.get('categoryId');
     const thirdPartyId = searchParams.get('thirdPartyId');
     const categoryGroupingId = searchParams.get('categoryGroupingId');
+    const uncategorizedParam = searchParams.get('uncategorized');
+    const uncategorized = uncategorizedParam === 'true';
+    const hiddenGroupingParam = searchParams.get('hiddenGrouping');
+    const hiddenGrouping = hiddenGroupingParam === 'true';
+    const directionParam = searchParams.get('direction');
+    const direction = directionParam === 'expense' || directionParam === 'income' ? directionParam : null;
     const operationDateFrom = searchParams.get('operationDateFrom') ?? '';
     const operationDateTo = searchParams.get('operationDateTo') ?? '';
     const dueDateFrom = searchParams.get('dueDateFrom') ?? '';
@@ -279,6 +294,9 @@ export function DetailedStatisticsWorkspace() {
       && !categoryId
       && !thirdPartyId
       && !categoryGroupingId
+      && !uncategorized
+      && !hiddenGrouping
+      && !direction
       && !operationDateFrom
       && !operationDateTo
       && !dueDateFrom
@@ -301,6 +319,9 @@ export function DetailedStatisticsWorkspace() {
       thirdPartyId,
       categoryGroupingId,
       budgetGroupingId: null,
+      uncategorized,
+      hiddenGrouping,
+      direction,
       search: '',
       pieceNumber: '',
       operationDateFrom,
@@ -824,6 +845,9 @@ export function DetailedStatisticsWorkspace() {
                     thirdPartyId: null,
                     categoryGroupingId: null,
                     budgetGroupingId: null,
+                    uncategorized: false,
+                    hiddenGrouping: false,
+                    direction: null,
                     search: '',
                     pieceNumber: '',
                     operationDateFrom: '',
@@ -1030,6 +1054,20 @@ export function DetailedStatisticsWorkspace() {
             </Center>
           ) : (
             <Stack gap={0}>
+              {submittedFilters?.uncategorized && (
+                <Alert color="orange" icon={<IconAlertCircle size={16} />} m="md" mb={0}>
+                  <Text size="sm">
+                    {`Filtré sur les opérations ${submittedFilters.direction === 'income' ? 'de recette' : 'de dépense'} sans catégorie, ou dont la catégorie n'est rattachée à aucun regroupement.`}
+                  </Text>
+                </Alert>
+              )}
+              {submittedFilters?.hiddenGrouping && (
+                <Alert color="orange" icon={<IconAlertCircle size={16} />} m="md" mb={0}>
+                  <Text size="sm">
+                    {`Filtré sur les opérations ${submittedFilters.direction === 'income' ? 'de recette' : 'de dépense'} dont la catégorie est rattachée à un regroupement non coché « Tableau de bord ».`}
+                  </Text>
+                </Alert>
+              )}
               {exportError && (
                 <Alert color="red" icon={<IconAlertCircle size={16} />} m="md" mb={0}>
                   <Text size="sm">{exportError}</Text>

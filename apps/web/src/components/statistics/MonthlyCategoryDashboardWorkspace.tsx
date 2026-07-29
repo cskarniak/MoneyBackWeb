@@ -57,6 +57,13 @@ function getDefaultRange(): [Date, Date] {
   return [from, to];
 }
 
+const SENTINEL_BUCKETS: Record<string, { param: 'uncategorized' | 'hiddenGrouping'; direction: 'expense' | 'income' }> = {
+  __uncategorized_expense__: { param: 'uncategorized', direction: 'expense' },
+  __uncategorized_income__: { param: 'uncategorized', direction: 'income' },
+  __hidden_grouping_expense__: { param: 'hiddenGrouping', direction: 'expense' },
+  __hidden_grouping_income__: { param: 'hiddenGrouping', direction: 'income' },
+};
+
 export function MonthlyCategoryDashboardWorkspace() {
   const { data: accounts = [] } = useAccountsAll();
   const { data: currentMonthData } = useCurrentMonth();
@@ -133,7 +140,13 @@ export function MonthlyCategoryDashboardWorkspace() {
 
     const { firstDay, lastDay } = toMonthDateBounds(month);
     const params = new URLSearchParams();
-    params.set('categoryGroupingId', groupingId);
+    const sentinel = SENTINEL_BUCKETS[groupingId];
+    if (sentinel) {
+      params.set(sentinel.param, 'true');
+      params.set('direction', sentinel.direction);
+    } else {
+      params.set('categoryGroupingId', groupingId);
+    }
     params.set('dueDateFrom', firstDay);
     params.set('dueDateTo', lastDay);
     params.set('sortByDueDate', 'true');
@@ -218,10 +231,14 @@ export function MonthlyCategoryDashboardWorkspace() {
             <Text fz={13} c={TEXT_MUTED}>
               Solde des opérations (et lignes de ventilation) rattachées à une catégorie, regroupées par code
               regroupement de catégorie, mois par mois — seuls les regroupements cochés « Tableau de bord »
-              (fiche Regroupements) apparaissent ici. Clique sur un montant pour voir le détail des opérations
-              qui le composent. La moyenne mensuelle compte les mois à 0 (utile pour provisionner une dépense
-              semestrielle ou annuelle) mais s'arrête au « Mois en cours » réglé en haut de l'écran : un mois
-              futur pas encore atteint n'est jamais compté.
+              (fiche Regroupements) apparaissent ici en tant que tels. Deux paires de lignes de contrôle
+              garantissent que toute dépense/recette a une ligne dans ce tableau : « Dépenses/Recettes non
+              regroupées » (opérations sans catégorie, ou dont la catégorie n'est rattachée à aucun
+              regroupement) et « Dépenses/Recettes regroupées masquées » (catégorie rattachée à un
+              regroupement bien réel, mais dont la case « Tableau de bord » n'est pas cochée). Clique sur un
+              montant pour voir le détail des opérations qui le composent. La moyenne mensuelle compte les mois
+              à 0 (utile pour provisionner une dépense semestrielle ou annuelle) mais s'arrête au « Mois en
+              cours » réglé en haut de l'écran : un mois futur pas encore atteint n'est jamais compté.
             </Text>
           </Stack>
         </Box>
