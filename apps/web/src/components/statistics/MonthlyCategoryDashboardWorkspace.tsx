@@ -128,11 +128,16 @@ export function MonthlyCategoryDashboardWorkspace() {
 
   const handleRun = () => {
     if (!monthFrom || !monthTo) return;
-    setSubmittedFilters({
+    const nextFilters: MonthlyCategoryDashboardFilters = {
       accountId: accountId ?? undefined,
       monthFrom: toMonthKey(monthFrom),
       monthTo: toMonthKey(monthTo),
-    });
+    };
+    const isSameFilters = JSON.stringify(nextFilters) === JSON.stringify(submittedFilters);
+    setSubmittedFilters(nextFilters);
+    if (isSameFilters) {
+      dashboardQuery.refetch();
+    }
   };
 
   const openDrillDown = (groupingId: string | null, month: string) => {

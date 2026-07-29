@@ -450,9 +450,16 @@ export function DetailedStatisticsWorkspace() {
 
   const applyFilters = () => {
     const nextBaseSort = getBaseSortState(draftFilters.sortByDueDate);
+    const nextFilters = buildSubmittedFilters(draftFilters);
+    const isSamePage = page === 1;
+    const isSameSort = sortState.key === nextBaseSort.key && sortState.direction === nextBaseSort.direction;
+    const isSameFilters = isSamePage && isSameSort && JSON.stringify(nextFilters) === JSON.stringify(submittedFilters);
     setSortState(nextBaseSort);
     setPage(1);
-    setSubmittedFilters(buildSubmittedFilters(draftFilters));
+    setSubmittedFilters(nextFilters);
+    if (isSameFilters) {
+      statisticsQuery.refetch();
+    }
   };
 
   const openOperationEditor = (operationId: string, accountId: string, rowId: string) => {

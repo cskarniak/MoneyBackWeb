@@ -305,11 +305,17 @@ export function EnvelopeSummaryWorkspace() {
   }, [sortedItems]);
 
   const handleRun = () => {
-    setSubmittedFilters({
+    const nextFilters = {
       accountId: accountId ?? undefined,
       referenceDate: dateMode === 'date' ? toIsoDate(referenceDateInput) : undefined,
       useDueDate,
-    });
+    };
+    const isSameFilters = JSON.stringify(nextFilters) === JSON.stringify(submittedFilters);
+    setSubmittedFilters(nextFilters);
+    if (isSameFilters) {
+      currentQuery.refetch();
+      calculatedQuery.refetch();
+    }
   };
 
   const openDetailedStatistics = (budgetId: string) => {
