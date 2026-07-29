@@ -101,7 +101,7 @@ export class OperationsService {
       if (split.budgetId) checks.push(this.assertBudgetActive(split.budgetId));
       if (split.categoryId) {
         checks.push(this.assertCategoryActive(split.categoryId));
-        checks.push(this.assertCategoryDirection(split.categoryId, split.categoryDirection ?? null));
+        checks.push(this.assertCategoryDirection(split.categoryId, split.categoryDirection ?? null, dto.categoryAllowReversal ?? false));
       }
     }
     await Promise.all(checks);
@@ -376,6 +376,7 @@ export class OperationsService {
         thirdPartyId: true,
         categoryId: true,
         budgetId: true,
+        movementTypeId: true,
         budget: {
           select: {
             label: true,
@@ -459,6 +460,7 @@ export class OperationsService {
 
       const nextCategoryId = match.ventilated ? null : match.categoryId;
       const nextBudgetId = match.ventilated ? null : match.budgetId;
+      const nextMovementTypeId = match.movementTypeId;
       const assignsBudget = match.ventilated
         ? templateSplits.some(split => split.budgetId)
         : Boolean(nextBudgetId);
@@ -470,6 +472,7 @@ export class OperationsService {
         operation.thirdPartyId !== match.thirdPartyId
         || operation.categoryId !== nextCategoryId
         || operation.budgetId !== nextBudgetId
+        || operation.movementTypeId !== nextMovementTypeId
         || (hasSplitTemplate && operation._count.splits === 0);
 
       if (dto.applyChanges && needsUpdate) {
@@ -479,6 +482,7 @@ export class OperationsService {
             thirdPartyId: match.thirdPartyId,
             categoryId: nextCategoryId,
             budgetId: nextBudgetId,
+            movementTypeId: nextMovementTypeId,
             operationType: hasSplitTemplate
               ? this.resolveOperationType(
                   { expense: Number(operation.expense), income: Number(operation.income) },

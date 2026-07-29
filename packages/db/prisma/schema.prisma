@@ -79,6 +79,7 @@ model MovementType {
   budgets       Budget[]
   operations    Operation[]
   subscriptions Subscription[]
+  thirdParties  ThirdParty[]
 
   @@map("types_mouvement")
 }
@@ -191,6 +192,8 @@ model ThirdParty {
   category   Category? @relation(fields: [categoryId], references: [id])
   budgetId   String?   @map("budget_id")
   budget     Budget?   @relation(fields: [budgetId], references: [id])
+  movementTypeId String?       @map("type_mouvement_id")
+  movementType   MovementType? @relation(fields: [movementTypeId], references: [id])
 
   migratedToId    String?      @map("migre_vers_id")
   migratedTo      ThirdParty?  @relation("ThirdPartyMigration", fields: [migratedToId], references: [id])
@@ -205,6 +208,7 @@ model ThirdParty {
 
   @@index([categoryId])
   @@index([budgetId])
+  @@index([movementTypeId])
   @@index([active])
   @@index([name])
   @@index([migratedToId])

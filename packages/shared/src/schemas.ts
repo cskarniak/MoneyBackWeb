@@ -514,6 +514,7 @@ export const CreateThirdPartySchema = z.object({
   ventilated: z.boolean().default(false),
   categoryId: z.string().uuid().optional().nullable(),
   budgetId: z.string().uuid().optional().nullable(),
+  movementTypeId: z.string().uuid().optional().nullable(),
   active: z.boolean().default(true),
   splits: z.array(z.object({
     label: z.string().optional().nullable(),

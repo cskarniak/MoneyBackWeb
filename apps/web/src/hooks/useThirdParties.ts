@@ -10,8 +10,10 @@ export type ThirdParty = {
   ventilated: boolean;
   categoryId: string | null;
   budgetId: string | null;
+  movementTypeId: string | null;
   categorie: { id: string; label: string } | null;
   enveloppe: { id: string; label: string } | null;
+  typeMouvement: { id: string; label: string; code: string | null } | null;
   active: boolean;
   migratedToId: string | null;
   migratedTo: { id: string; name: string } | null;
@@ -78,6 +80,7 @@ export type ThirdPartyPayload = {
   ventilated: boolean;
   categoryId?: string | null;
   budgetId?: string | null;
+  movementTypeId?: string | null;
   active: boolean;
   matchingRules?: Array<{
     label: string;
@@ -124,8 +127,10 @@ function normalizeThirdParty(thirdParty: Record<string, unknown>): ThirdParty {
     comment: (thirdParty.comment as string | null | undefined) ?? null,
     categoryId: (thirdParty.categoryId as string | null | undefined) ?? null,
     budgetId: (thirdParty.budgetId as string | null | undefined) ?? null,
+    movementTypeId: (thirdParty.movementTypeId as string | null | undefined) ?? null,
     categorie: (thirdParty.categorie as { id: string; label: string } | null | undefined) ?? null,
     enveloppe: (thirdParty.enveloppe as { id: string; label: string } | null | undefined) ?? null,
+    typeMouvement: (thirdParty.typeMouvement as { id: string; label: string; code: string | null } | null | undefined) ?? null,
     matchingRules: ((thirdParty.matchingRules as Record<string, unknown>[] | undefined) ?? []).map(rule => ({
       ...rule,
       description: (rule.description as string | null | undefined) ?? null,

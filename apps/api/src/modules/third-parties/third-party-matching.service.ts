@@ -20,6 +20,7 @@ type LoadedRule = {
     active: boolean;
     categoryId: string | null;
     budgetId: string | null;
+    movementTypeId: string | null;
     budget: {
       label: string;
     } | null;
@@ -49,6 +50,7 @@ export type ThirdPartyMatchResult = {
   categoryId: string | null;
   budgetId: string | null;
   budgetLabel: string | null;
+  movementTypeId: string | null;
   matchedRuleId: string;
   matchedRuleLabel: string;
   matchedConditions: ThirdPartyMatchConditionResult[];
@@ -75,6 +77,7 @@ export class ThirdPartyMatchingService {
             active: true,
             categoryId: true,
             budgetId: true,
+            movementTypeId: true,
             budget: {
               select: {
                 label: true,
@@ -153,6 +156,7 @@ export class ThirdPartyMatchingService {
       categoryId: rule.thirdParty.categoryId,
       budgetId: rule.thirdParty.budgetId,
       budgetLabel: rule.thirdParty.budget?.label ?? null,
+      movementTypeId: rule.thirdParty.movementTypeId,
       matchedRuleId: rule.id,
       matchedRuleLabel: rule.label,
       matchedConditions,

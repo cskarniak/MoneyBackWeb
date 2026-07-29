@@ -362,6 +362,9 @@ export function OperationsFiche({ id }: Props) {
 
     setValue('categoryId', thirdParty.categoryId, { shouldDirty: true });
     setValue('budgetId', thirdParty.budgetId, { shouldDirty: true });
+    if (thirdParty.movementTypeId) {
+      setValue('movementTypeId', thirdParty.movementTypeId, { shouldDirty: true });
+    }
 
     const nextSuggestedSplits = buildThirdPartySplitDrafts(thirdParty, watch('label'));
     setSuggestedSplits(nextSuggestedSplits);
@@ -696,7 +699,7 @@ export function OperationsFiche({ id }: Props) {
                               <PositioningSelect data={enveloppeOptions} value={split.budgetId ?? null} onChange={val => setValue(`splits.${index}.budgetId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <PositioningSelect data={filterCategoryOptionsByDirection(categoryOptions, split.expense, split.income)} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable styles={{ input: fieldInputStyle }} />
+                              <PositioningSelect data={filterCategoryOptionsByDirection(categoryOptions, split.expense, split.income, categoryAllowReversal)} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
                               <ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>
@@ -784,6 +787,7 @@ export function OperationsFiche({ id }: Props) {
         splitIncome={suggestedTotals.income}
         enveloppeOptions={enveloppeOptions}
         categoryOptions={categoryOptions}
+        categoryAllowReversal={categoryAllowReversal}
         onAddRow={() => setSuggestedSplits(current => [
           ...current,
           { label: '', categoryId: null, budgetId: null, expense: '', income: '' },

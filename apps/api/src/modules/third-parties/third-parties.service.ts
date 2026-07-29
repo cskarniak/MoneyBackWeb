@@ -10,6 +10,7 @@ import type {
 const THIRD_PARTY_INCLUDE = {
   category: { select: { id: true, label: true } },
   budget: { select: { id: true, label: true } },
+  movementType: { select: { id: true, label: true, code: true } },
   migratedTo: { select: { id: true, name: true } },
   matchingRules: {
     include: {
@@ -42,8 +43,10 @@ export class ThirdPartiesService {
     active: boolean;
     categoryId: string | null;
     budgetId: string | null;
+    movementTypeId: string | null;
     category: { id: string; label: string } | null;
     budget: { id: string; label: string } | null;
+    movementType: { id: string; label: string; code: string | null } | null;
     migratedToId: string | null;
     migratedTo: { id: string; name: string } | null;
     migrationReport: string | null;
@@ -77,12 +80,13 @@ export class ThirdPartiesService {
       budget: { id: string; label: string } | null;
     }>;
   }) {
-    const { category, budget, matchingRules, splits, ...rest } = thirdParty;
+    const { category, budget, movementType, matchingRules, splits, ...rest } = thirdParty;
 
     return {
       ...rest,
       categorie: category,
       enveloppe: budget,
+      typeMouvement: movementType,
       matchingRules,
       splits: splits.map(split => ({
         ...split,
@@ -186,6 +190,7 @@ export class ThirdPartiesService {
         ventilated: dto.ventilated ?? false,
         categoryId: dto.categoryId ?? null,
         budgetId: dto.budgetId ?? null,
+        movementTypeId: dto.movementTypeId ?? null,
         active: dto.active ?? true,
         matchingRules: this.buildMatchingRulesCreate(matchingRules ?? []),
         splits: splits.length > 0 ? {
@@ -224,6 +229,7 @@ export class ThirdPartiesService {
         ...(dto.ventilated !== undefined && { ventilated: dto.ventilated }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId ?? null }),
         ...(dto.budgetId !== undefined && { budgetId: dto.budgetId ?? null }),
+        ...(dto.movementTypeId !== undefined && { movementTypeId: dto.movementTypeId ?? null }),
         ...(dto.active !== undefined && { active: dto.active }),
         ...(matchingRules !== undefined && {
           matchingRules: {

@@ -171,7 +171,7 @@ export class SubscriptionsService {
       if (split.budgetId) checks.push(this.assertBudgetActive(split.budgetId));
       if (split.categoryId) {
         checks.push(this.assertCategoryActive(split.categoryId));
-        checks.push(this.assertCategoryDirection(split.categoryId, split.categoryDirection ?? null));
+        checks.push(this.assertCategoryDirection(split.categoryId, split.categoryDirection ?? null, dto.categoryAllowReversal ?? false));
       }
     }
     await Promise.all(checks);

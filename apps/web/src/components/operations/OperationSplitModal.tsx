@@ -46,6 +46,7 @@ type Props = {
   splitIncome: number;
   enveloppeOptions?: SelectOption[];
   categoryOptions?: CategoryOption[];
+  categoryAllowReversal?: boolean;
   onClose: () => void;
   onAddRow?: () => void;
   onRemoveRow?: (index: number) => void;
@@ -65,6 +66,7 @@ export function OperationSplitModal({
   splitIncome,
   enveloppeOptions = [],
   categoryOptions = [],
+  categoryAllowReversal = false,
   onClose,
   onAddRow,
   onRemoveRow,
@@ -294,7 +296,7 @@ export function OperationSplitModal({
                       </Table.Td>
                       <Table.Td style={{ ...splitGridCellStyle, borderRight: editable ? `1px solid ${CRUD.couleurs.grilleTableau}` : 'none' }}>
                         <PositioningSelect
-                          data={editable ? filterCategoryOptionsByDirection(categoryOptions, row.expense, row.income) : row.categorieLabel ? [{ value: row.categoryId ?? '__value__', label: row.categorieLabel }] : []}
+                          data={editable ? filterCategoryOptionsByDirection(categoryOptions, row.expense, row.income, categoryAllowReversal) : row.categorieLabel ? [{ value: row.categoryId ?? '__value__', label: row.categorieLabel }] : []}
                           value={editable ? row.categoryId : (row.categorieLabel ? row.categoryId ?? '__value__' : null)}
                           onChange={value => onChangeRow?.(index, 'categoryId', value)}
                           onKeyDown={event => onRowEnter?.(index)(event as React.KeyboardEvent<HTMLInputElement>)}

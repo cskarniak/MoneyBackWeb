@@ -24,6 +24,7 @@ import { IconAlertCircle, IconGitBranch } from '@tabler/icons-react';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useCategoriesAll } from '@/hooks/useCategories';
 import { useEnveloppesAll } from '@/hooks/useEnveloppes';
+import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { filterActiveOptions } from '@/lib/activeOptions';
 import {
   useCreateThirdParty,
@@ -76,6 +77,7 @@ const schema = z.object({
   ventilated: z.boolean(),
   categoryId: z.string().nullable().optional(),
   budgetId: z.string().nullable().optional(),
+  movementTypeId: z.string().nullable().optional(),
   active: z.boolean(),
   matchingRules: z.array(matchingRuleSchema),
   splits: z.array(splitSchema),
@@ -266,6 +268,7 @@ function toPayload(values: FormValues): ThirdPartyPayload {
     ventilated: values.ventilated,
     categoryId: values.categoryId || null,
     budgetId: values.budgetId || null,
+    movementTypeId: values.movementTypeId || null,
     active: values.active,
     matchingRules: values.matchingRules
       .map(rule => ({
@@ -333,6 +336,7 @@ export function TiersFiche({ id }: Props) {
   const { data: tiers, isLoading } = useThirdParty(id ?? '');
   const { data: categories = [], isLoading: loadingCategories } = useCategoriesAll();
   const { data: enveloppes = [], isLoading: loadingEnveloppes } = useEnveloppesAll();
+  const { data: movementTypes = [], isLoading: loadingMovementTypes } = useMovementTypesAll();
   const { data: allThirdParties = [] } = useThirdPartiesAll();
   const createMutation = useCreateThirdParty();
   const updateMutation = useUpdateThirdParty();
@@ -356,6 +360,7 @@ export function TiersFiche({ id }: Props) {
       ventilated: false,
       categoryId: null,
       budgetId: null,
+      movementTypeId: null,
       active: true,
       matchingRules: [],
       splits: [],
@@ -385,6 +390,7 @@ export function TiersFiche({ id }: Props) {
       ventilated: tiers.ventilated,
       categoryId: tiers.categoryId,
       budgetId: tiers.budgetId,
+      movementTypeId: tiers.movementTypeId,
       active: tiers.active,
       matchingRules: tiers.matchingRules.map(rule => ({
         label: rule.label,
@@ -416,6 +422,7 @@ export function TiersFiche({ id }: Props) {
   const watchedMatchingRules = watch('matchingRules');
   const watchedCategoryId = watch('categoryId');
   const watchedBudgetId = watch('budgetId');
+  const watchedMovementTypeId = watch('movementTypeId');
 
   const categoryOptions = useMemo(
     () =>
@@ -438,6 +445,18 @@ export function TiersFiche({ id }: Props) {
         [tiers?.budgetId, watchedBudgetId, ...(watchedSplits ?? []).map(split => split.budgetId)],
       ),
     [enveloppes, tiers, watchedBudgetId, watchedSplits],
+  );
+  const movementTypeOptions = useMemo(
+    () =>
+      filterActiveOptions(
+        movementTypes.map(movementType => ({
+          value: movementType.id,
+          label: movementType.code ? `${movementType.code} - ${movementType.label}` : movementType.label,
+        })),
+        value => !!movementTypes.find(movementType => movementType.id === value)?.active,
+        [tiers?.movementTypeId, watchedMovementTypeId],
+      ),
+    [movementTypes, tiers, watchedMovementTypeId],
   );
 
   const migrationTargetOptions = allThirdParties
@@ -623,6 +642,22 @@ export function TiersFiche({ id }: Props) {
                 disabled={loadingCategories || watchedVentilated || isMigrated}
                 placeholder={watchedVentilated ? 'Désactivée pour un tiers ventilé' : 'Aucune'}
                 onChange={value => setValue('categoryId', value, { shouldDirty: true })}
+                styles={{ input: fieldInputStyle }}
+              />
+            </Group>
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>Code mouvement habituel</Text>
+              <PositioningSelect
+                size="sm"
+                radius="md"
+                style={{ flex: 1 }}
+                data={movementTypeOptions}
+                value={watchedMovementTypeId ?? null}
+                clearable
+                disabled={loadingMovementTypes || isMigrated}
+                placeholder="Aucun"
+                onChange={value => setValue('movementTypeId', value, { shouldDirty: true })}
                 styles={{ input: fieldInputStyle }}
               />
             </Group>

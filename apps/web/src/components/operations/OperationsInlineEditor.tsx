@@ -478,6 +478,9 @@ export function OperationsInlineEditor({
 
     setValue('categoryId', thirdParty.categoryId, { shouldDirty: true });
     setValue('budgetId', thirdParty.budgetId, { shouldDirty: true });
+    if (thirdParty.movementTypeId) {
+      setValue('movementTypeId', thirdParty.movementTypeId, { shouldDirty: true });
+    }
 
     const nextSuggestedSplits = buildThirdPartySplitDrafts(thirdParty, watch('label'));
     setSuggestedSplits(nextSuggestedSplits);
@@ -832,6 +835,7 @@ export function OperationsInlineEditor({
         splitIncome={splitIncome}
         enveloppeOptions={enveloppeOptions}
         categoryOptions={categoryOptions}
+        categoryAllowReversal={categoryAllowReversal}
         onAddRow={appendSplitRow}
         onRemoveRow={remove}
         onChangeRow={(index, field, value) => {
@@ -863,6 +867,7 @@ export function OperationsInlineEditor({
         splitIncome={suggestedTotals.income}
         enveloppeOptions={enveloppeOptions}
         categoryOptions={categoryOptions}
+        categoryAllowReversal={categoryAllowReversal}
         onAddRow={() => setSuggestedSplits(current => [
           ...current,
           { label: '', categoryId: null, budgetId: null, expense: '', income: '' },
