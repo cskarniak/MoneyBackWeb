@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Badge, Box, Button, Group, Menu, Text } from '@mantine/core';
 import { MonthPickerInput } from '@mantine/dates';
 import { useCurrentMonth, useUpdateCurrentMonth } from '@/hooks/useCurrentMonth';
+import { useApiHostInfo, useHostInfo } from '@/hooks/useHostInfo';
 import {
   IconCoins,
   IconChevronDown,
@@ -98,6 +99,8 @@ export function AppNavbar() {
   const router = useRouter();
   const { data: currentMonthData } = useCurrentMonth();
   const updateCurrentMonth = useUpdateCurrentMonth();
+  const { data: hostInfo } = useHostInfo();
+  const { data: apiHostInfo } = useApiHostInfo();
 
   const fichiersActive = FICHIERS_ITEMS.some(item => pathname.startsWith(item.href));
   const outilsActive = OUTILS_ITEMS.some(item => pathname.startsWith(item.href));
@@ -332,6 +335,34 @@ export function AppNavbar() {
                   {APP_ENV_DESCRIPTION}
                 </Text>
               ) : null}
+            </Group>
+          ) : null}
+          {hostInfo ? (
+            <Group
+              gap={6}
+              wrap="nowrap"
+              title={`Machine exécutant le front (Next.js) • ${hostInfo.platform} ${hostInfo.release} • ${hostInfo.cpuModel ?? 'CPU inconnu'} (${hostInfo.cpuCount} cœurs) • ${hostInfo.totalMemGB} Go RAM`}
+            >
+              <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
+                Front
+              </Text>
+              <Badge color="gray" variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>
+                {hostInfo.hostname}
+              </Badge>
+            </Group>
+          ) : null}
+          {apiHostInfo ? (
+            <Group
+              gap={6}
+              wrap="nowrap"
+              title={`Machine exécutant l'API (NestJS) • ${apiHostInfo.platform} ${apiHostInfo.release} • ${apiHostInfo.cpuModel ?? 'CPU inconnu'} (${apiHostInfo.cpuCount} cœurs) • ${apiHostInfo.totalMemGB} Go RAM`}
+            >
+              <Text size="xs" style={{ color: '#868e96', whiteSpace: 'nowrap' }}>
+                API
+              </Text>
+              <Badge color="gray" variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>
+                {apiHostInfo.hostname}
+              </Badge>
             </Group>
           ) : null}
           <Group gap={6} wrap="nowrap" title="Mois de référence utilisé pour les moyennes de provisionnement (tableau de bord mensuel)">
