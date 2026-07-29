@@ -36,6 +36,7 @@ import {
 } from '@tabler/icons-react';
 import { useDeleteSubscription, useSubscriptions, type Subscription } from '@/hooks/useSubscriptions';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -187,7 +188,9 @@ export function SubscriptionsList() {
 
   const handleDelete = async (subscription: Subscription) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer l'abonnement "${subscription.label}" ?`)) return;
+    const message = `Supprimer l'abonnement "${subscription.label}" ?`;
+    const confirmed = subscription.splits.length > 0 ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    if (!confirmed) return;
     try {
       const result = await deleteMutation.mutateAsync(subscription.id);
       notifications.show({

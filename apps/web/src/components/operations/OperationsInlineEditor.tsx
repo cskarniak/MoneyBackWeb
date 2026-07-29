@@ -854,6 +854,7 @@ export function OperationsInlineEditor({
         onClose={() => setSplitSuggestionModalOpened(false)}
         title={suggestedThirdPartyName ? `Ventilation proposée - ${suggestedThirdPartyName}` : "Ventilation proposée"}
         editable
+        confirmRemove={false}
         rows={suggestedSplits.map((split, index) => ({
           id: `suggested-${index}`,
           label: split.label,

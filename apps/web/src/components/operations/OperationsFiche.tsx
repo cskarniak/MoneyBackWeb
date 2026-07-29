@@ -31,6 +31,7 @@ import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { filterActiveOptions, filterCategoryOptionsByDirection } from '@/lib/activeOptions';
+import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
@@ -702,7 +703,10 @@ export function OperationsFiche({ id }: Props) {
                               <PositioningSelect data={filterCategoryOptionsByDirection(categoryOptions, split.expense, split.income, categoryAllowReversal)} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <ActionIcon color="red" variant="subtle" onClick={() => remove(index)}>
+                              <ActionIcon color="red" variant="subtle" onClick={() => {
+                                if (!confirmSimpleDelete('Supprimer cette ligne de ventilation ?')) return;
+                                remove(index);
+                              }}>
                                 <IconTrash size={16} />
                               </ActionIcon>
                             </Table.Td>
@@ -743,7 +747,10 @@ export function OperationsFiche({ id }: Props) {
                   variant="light"
                   loading={deleteMutation.isPending}
                   onClick={async () => {
-                    if (!window.confirm(`Supprimer l'opération "${operation?.label}" ?`)) return;
+                    const isVentilated = (operation?.splits?.length ?? 0) > 0;
+                    const message = `Supprimer l'opération "${operation?.label}" ?`;
+                    const confirmed = isVentilated ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+                    if (!confirmed) return;
                     try {
                       await deleteMutation.mutateAsync(id!);
                       router.push('/operations');
@@ -774,6 +781,7 @@ export function OperationsFiche({ id }: Props) {
         onClose={() => setSplitSuggestionModalOpened(false)}
         title={suggestedThirdPartyName ? `Ventilation proposée - ${suggestedThirdPartyName}` : "Ventilation proposée"}
         editable
+        confirmRemove={false}
         rows={suggestedSplits.map((split, index) => ({
           id: `suggested-${index}`,
           label: split.label,

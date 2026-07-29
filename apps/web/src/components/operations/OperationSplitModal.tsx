@@ -17,6 +17,7 @@ import { IconAlertCircle, IconPlus, IconTrash, IconX } from '@tabler/icons-react
 import { CRUD } from '@/lib/crud-tokens';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { filterCategoryOptionsByDirection } from '@/lib/activeOptions';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 
@@ -47,6 +48,7 @@ type Props = {
   enveloppeOptions?: SelectOption[];
   categoryOptions?: CategoryOption[];
   categoryAllowReversal?: boolean;
+  confirmRemove?: boolean;
   onClose: () => void;
   onAddRow?: () => void;
   onRemoveRow?: (index: number) => void;
@@ -67,6 +69,7 @@ export function OperationSplitModal({
   enveloppeOptions = [],
   categoryOptions = [],
   categoryAllowReversal = false,
+  confirmRemove = true,
   onClose,
   onAddRow,
   onRemoveRow,
@@ -314,7 +317,10 @@ export function OperationSplitModal({
                             color="red"
                             variant="subtle"
                             radius={0}
-                            onClick={() => onRemoveRow?.(index)}
+                            onClick={() => {
+                              if (confirmRemove && !confirmSimpleDelete('Supprimer cette ligne de ventilation ?')) return;
+                              onRemoveRow?.(index);
+                            }}
                             title="Supprimer la ligne"
                             style={{ width: '100%', height: 24 }}
                           >

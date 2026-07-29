@@ -27,6 +27,7 @@ import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import { isSecondaryTabRequest, openSecondaryTab } from '@/lib/secondary-tab';
 import { OperationSplitModal } from './OperationSplitModal';
 import { OperationsInlineEditor } from './OperationsInlineEditor';
@@ -597,7 +598,8 @@ export function OperationsList() {
     const message = hasSplits
       ? `Supprimer l'opération "${operation.label}" ?\n\nAttention : cette opération est ventilée, ses lignes de ventilation seront également supprimées.`
       : `Supprimer l'opération "${operation.label}" ?`;
-    if (!window.confirm(message)) return;
+    const confirmed = hasSplits ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync(operation.id);
       if (operationId) {

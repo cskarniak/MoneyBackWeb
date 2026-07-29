@@ -37,6 +37,7 @@ import {
 } from '@tabler/icons-react';
 import { useDeleteThirdParty, useThirdParties, type ThirdParty } from '@/hooks/useThirdParties';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -149,7 +150,9 @@ export function TiersList() {
 
   const handleDelete = async (tiers: ThirdParty) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer le tiers "${tiers.name}" ?`)) return;
+    const message = `Supprimer le tiers "${tiers.name}" ?`;
+    const confirmed = tiers.ventilated ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    if (!confirmed) return;
     try {
       const result = await deleteMutation.mutateAsync(tiers.id);
       notifications.show({

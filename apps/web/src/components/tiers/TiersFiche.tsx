@@ -36,6 +36,7 @@ import {
   type ThirdPartyPayload,
 } from '@/hooks/useThirdParties';
 import { OperationSplitModal } from '../operations/OperationSplitModal';
+import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
 import { openSecondaryTab } from '@/lib/secondary-tab';
 
@@ -852,7 +853,9 @@ export function TiersFiche({ id }: Props) {
                     variant="light"
                     loading={deleteMutation.isPending}
                     onClick={async () => {
-                      if (!window.confirm(`Supprimer le tiers "${tiers?.name}" ?`)) return;
+                      const message = `Supprimer le tiers "${tiers?.name}" ?`;
+                      const confirmed = tiers?.ventilated ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+                      if (!confirmed) return;
                       try {
                         await deleteMutation.mutateAsync(id!);
                         router.push('/referentiels/tiers');

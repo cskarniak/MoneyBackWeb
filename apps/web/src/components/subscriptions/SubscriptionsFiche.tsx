@@ -27,6 +27,7 @@ import { useEnveloppesAll } from '@/hooks/useEnveloppes';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { filterActiveOptions, filterCategoryOptionsByDirection } from '@/lib/activeOptions';
+import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import {
   useCreateSubscription,
   useDeleteSubscription,
@@ -242,7 +243,9 @@ export function SubscriptionsFiche({ id }: Props) {
 
   const handleDelete = async () => {
     if (!id || !subscription) return;
-    if (!window.confirm(`Supprimer l'abonnement "${subscription.label}" ?`)) return;
+    const message = `Supprimer l'abonnement "${subscription.label}" ?`;
+    const confirmed = subscription.splits.length > 0 ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync(id);
       router.push('/abonnements');
