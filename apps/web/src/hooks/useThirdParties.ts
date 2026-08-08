@@ -222,6 +222,14 @@ export function useMigrateThirdParty() {
   });
 }
 
+export function useDuplicateThirdParty() {
+  const qc = useQueryClient();
+  return useMutation<ThirdParty, Error, string>({
+    mutationFn: id => api.post(`/third-parties/${id}/duplicate`).then(r => normalizeThirdParty(r.data)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
 function normalizeMigrateThirdPartyResult(data: Record<string, unknown>): MigrateThirdPartyResult {
   return {
     report: String(data.report ?? ''),

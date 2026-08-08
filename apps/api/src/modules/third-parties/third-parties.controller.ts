@@ -42,4 +42,10 @@ export class ThirdPartiesController {
     const { targetId } = MigrateEntitySchema.parse(body);
     return this.service.migrate(id, targetId);
   }
+
+  @Post(':id/duplicate')
+  @ApiOperation({ summary: 'Duplique un tiers avec ses écritures ventilées' })
+  duplicate(@Param('id') id: string) {
+    return this.service.duplicate(id);
+  }
 }

@@ -29,6 +29,7 @@ import { filterActiveOptions } from '@/lib/activeOptions';
 import {
   useCreateThirdParty,
   useDeleteThirdParty,
+  useDuplicateThirdParty,
   useMigrateThirdParty,
   useThirdParty,
   useThirdPartiesAll,
@@ -343,6 +344,7 @@ export function TiersFiche({ id }: Props) {
   const updateMutation = useUpdateThirdParty();
   const deleteMutation = useDeleteThirdParty();
   const migrateMutation = useMigrateThirdParty();
+  const duplicateMutation = useDuplicateThirdParty();
 
   const {
     control,
@@ -510,9 +512,20 @@ export function TiersFiche({ id }: Props) {
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!id) return;
+    try {
+      const duplicated = await duplicateMutation.mutateAsync(id);
+      router.push(`/referentiels/tiers?highlight=${duplicated.id}`);
+    } catch {
+      void 0;
+    }
+  };
+
   const mutationError =
     (isNew ? createMutation.error : updateMutation.error)?.message
     ?? deleteMutation.error?.message
+    ?? duplicateMutation.error?.message
     ?? null;
 
   if (!isNew && isLoading) {
@@ -841,6 +854,18 @@ export function TiersFiche({ id }: Props) {
                   onClick={() => openSecondaryTab(`/statistiques?thirdPartyId=${id}&autoRun=true`)}
                 >
                   Voir les statistiques
+                </Button>
+              )}
+              {!isNew && (
+                <Button
+                  type="button"
+                  size="xs"
+                  radius="md"
+                  variant="outline"
+                  loading={duplicateMutation.isPending}
+                  onClick={handleDuplicate}
+                >
+                  Dupliquer
                 </Button>
               )}
               {!isNew && !tiers?.migratedToId && (

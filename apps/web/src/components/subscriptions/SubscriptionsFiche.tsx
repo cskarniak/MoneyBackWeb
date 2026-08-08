@@ -31,6 +31,7 @@ import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import {
   useCreateSubscription,
   useDeleteSubscription,
+  useDuplicateSubscription,
   useSubscription,
   useUpdateSubscription,
   type SubscriptionPayload,
@@ -150,6 +151,7 @@ export function SubscriptionsFiche({ id }: Props) {
   const createMutation = useCreateSubscription();
   const updateMutation = useUpdateSubscription();
   const deleteMutation = useDeleteSubscription();
+  const duplicateMutation = useDuplicateSubscription();
 
   const {
     control,
@@ -254,9 +256,20 @@ export function SubscriptionsFiche({ id }: Props) {
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!id) return;
+    try {
+      const duplicated = await duplicateMutation.mutateAsync(id);
+      router.push(`/abonnements?highlight=${duplicated.id}`);
+    } catch {
+      // erreur affichée via mutationError
+    }
+  };
+
   const mutationError =
     (isNew ? createMutation.error : updateMutation.error)?.message
     ?? deleteMutation.error?.message
+    ?? duplicateMutation.error?.message
     ?? null;
   const watchedVentilated = watch('ventilated');
   const watchedSplits = watch('splits');
@@ -664,6 +677,17 @@ export function SubscriptionsFiche({ id }: Props) {
             }}
           >
             <Group gap="var(--crud-form-footer-gap)">
+              {!isNew && (
+                <Button
+                  size="xs"
+                  radius="md"
+                  variant="outline"
+                  onClick={handleDuplicate}
+                  loading={duplicateMutation.isPending}
+                >
+                  Dupliquer
+                </Button>
+              )}
               {!isNew && (
                 <Button
                   size="xs"

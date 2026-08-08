@@ -647,6 +647,51 @@ export class SubscriptionsService {
     };
   }
 
+  async duplicate(id: string) {
+    const existing = await this.prisma.subscription.findUnique({
+      where: { id },
+      include: { splits: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Abonnement ${id} introuvable`);
+    }
+
+    const duplicated = await this.prisma.subscription.create({
+      data: {
+        accountId: existing.accountId,
+        label: `${existing.label} (copie)`,
+        entryLabel: existing.entryLabel,
+        expense: existing.expense,
+        income: existing.income,
+        periodicity: existing.periodicity,
+        dayOfPeriod: existing.dayOfPeriod,
+        subscriptionType: existing.subscriptionType,
+        firstDueDate: existing.firstDueDate,
+        nextDueDate: existing.firstDueDate,
+        endDate: existing.endDate,
+        active: existing.active,
+        hasSplits: existing.hasSplits,
+        categoryId: existing.categoryId,
+        budgetId: existing.budgetId,
+        thirdPartyId: existing.thirdPartyId,
+        movementTypeId: existing.movementTypeId,
+        splits: existing.splits.length > 0 ? {
+          create: existing.splits.map(split => ({
+            label: split.label,
+            expense: split.expense,
+            income: split.income,
+            balance: split.balance,
+            categoryId: split.categoryId,
+            budgetId: split.budgetId,
+          })),
+        } : undefined,
+      },
+      include: this.include,
+    });
+
+    return this.presenter(duplicated as SubscriptionWithRelations);
+  }
+
   async remove(id: string) {
     const subscription = await this.findOne(id);
 

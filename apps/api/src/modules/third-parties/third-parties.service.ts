@@ -275,6 +275,42 @@ export class ThirdPartiesService {
     return { status: 'deleted' as const, item: thirdParty };
   }
 
+  async duplicate(id: string) {
+    const existing = await this.prisma.thirdParty.findUnique({
+      where: { id },
+      include: { splits: true },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Tiers ${id} introuvable`);
+    }
+
+    const duplicated = await this.prisma.thirdParty.create({
+      data: {
+        name: `${existing.name} (copie)`,
+        comment: existing.comment,
+        budgetBearer: existing.budgetBearer,
+        ventilated: existing.ventilated,
+        categoryId: existing.categoryId,
+        budgetId: existing.budgetId,
+        movementTypeId: existing.movementTypeId,
+        active: existing.active,
+        splits: existing.splits.length > 0 ? {
+          create: existing.splits.map(split => ({
+            label: split.label,
+            expense: split.expense,
+            income: split.income,
+            balance: split.balance,
+            categoryId: split.categoryId,
+            budgetId: split.budgetId,
+          })),
+        } : undefined,
+      },
+      include: THIRD_PARTY_INCLUDE,
+    });
+
+    return this.presenter(duplicated);
+  }
+
   async migrate(id: string, targetId: string) {
     if (id === targetId) {
       throw new BadRequestException('Impossible de migrer un tiers vers lui-même.');

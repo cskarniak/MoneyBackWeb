@@ -266,6 +266,14 @@ export function useGenerateSubscriptions() {
   });
 }
 
+export function useDuplicateSubscription() {
+  const qc = useQueryClient();
+  return useMutation<Subscription, Error, string>({
+    mutationFn: id => api.post(`/subscriptions/${id}/duplicate`).then(r => normalizeSubscription(r.data)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
 export function usePreviewSubscriptionsGeneration() {
   return useMutation<PreviewSubscriptionsGenerationResult, Error, { dateRef: string }>({
     mutationFn: payload => api.post('/subscriptions/generate/eligible', payload).then(r => r.data),

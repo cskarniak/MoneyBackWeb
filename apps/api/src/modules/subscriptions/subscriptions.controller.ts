@@ -58,4 +58,10 @@ export class SubscriptionsController {
   remove(@Param('id') id: string) {
     return this.service.remove(id);
   }
+
+  @Post(':id/duplicate')
+  @ApiOperation({ summary: "Duplique un abonnement avec ses écritures ventilées" })
+  duplicate(@Param('id') id: string) {
+    return this.service.duplicate(id);
+  }
 }
