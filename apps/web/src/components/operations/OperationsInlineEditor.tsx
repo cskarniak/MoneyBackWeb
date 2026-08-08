@@ -865,7 +865,7 @@ export function OperationsInlineEditor({
           budgetId: split.budgetId,
           categoryId: split.categoryId,
         }))}
-        remainingBalance={remainingBalance}
+        remainingBalance={(income - expense) - (suggestedTotals.income - suggestedTotals.expense)}
         splitExpense={suggestedTotals.expense}
         splitIncome={suggestedTotals.income}
         enveloppeOptions={enveloppeOptions}
