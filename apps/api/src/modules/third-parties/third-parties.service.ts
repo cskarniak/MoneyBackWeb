@@ -148,7 +148,20 @@ export class ThirdPartiesService {
     return null;
   }
 
-  private async assertSplitCategoryDirections(splits: Array<{ categoryId?: string | null; expense?: number | null; income?: number | null }>) {
+  private async resolveMovementTypeAllowsReversal(movementTypeId?: string | null): Promise<boolean> {
+    if (!movementTypeId) return false;
+    const movementType = await this.prisma.movementType.findUnique({
+      where: { id: movementTypeId },
+      select: { allowsCategoryReversal: true },
+    });
+    return movementType?.allowsCategoryReversal ?? false;
+  }
+
+  private async assertSplitCategoryDirections(
+    splits: Array<{ categoryId?: string | null; expense?: number | null; income?: number | null }>,
+    allowReversal = false,
+  ) {
+    if (allowReversal) return;
     const checks: Promise<void>[] = [];
     for (const split of splits) {
       if (!split.categoryId) continue;
@@ -179,7 +192,8 @@ export class ThirdPartiesService {
       split =>
         split.label || split.categoryId || split.budgetId || (split.expense ?? 0) > 0 || (split.income ?? 0) > 0,
     );
-    await this.assertSplitCategoryDirections(splits);
+    const allowReversal = await this.resolveMovementTypeAllowsReversal(dto.movementTypeId);
+    await this.assertSplitCategoryDirections(splits, allowReversal);
 
     const thirdParty = await this.prisma.thirdParty.create({
       data: {
@@ -211,13 +225,17 @@ export class ThirdPartiesService {
   }
 
   async update(id: string, dto: UpdateThirdPartyDto) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
     const matchingRules = (dto as UpdateThirdPartyDto & { matchingRules?: ThirdPartyMatchingRuleDto[] }).matchingRules;
     const splits = dto.splits?.filter(
       split =>
         split.label || split.categoryId || split.budgetId || (split.expense ?? 0) > 0 || (split.income ?? 0) > 0,
     );
-    if (splits) await this.assertSplitCategoryDirections(splits);
+    if (splits) {
+      const effectiveMovementTypeId = dto.movementTypeId !== undefined ? dto.movementTypeId : existing.movementTypeId;
+      const allowReversal = await this.resolveMovementTypeAllowsReversal(effectiveMovementTypeId);
+      await this.assertSplitCategoryDirections(splits, allowReversal);
+    }
 
     const thirdParty = await this.prisma.thirdParty.update({
       where: { id },
