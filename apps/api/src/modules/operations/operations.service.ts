@@ -322,6 +322,7 @@ export class OperationsService {
               category: { select: { id: true, label: true } },
               budget: { select: { id: true, label: true } },
             },
+            orderBy: { position: 'asc' as const },
           },
         },
         orderBy: { [sortBy]: sortOrder },
@@ -404,6 +405,7 @@ export class OperationsService {
     if (ventilatedThirdPartyIds.length > 0) {
       const splitTemplates = await this.prisma.thirdPartySplit.findMany({
         where: { thirdPartyId: { in: ventilatedThirdPartyIds } },
+        orderBy: { position: 'asc' },
       });
       for (const template of splitTemplates) {
         const list = splitTemplatesByThirdParty.get(template.thirdPartyId) ?? [];
@@ -493,12 +495,13 @@ export class OperationsService {
               ? {
                   splits: {
                     deleteMany: {},
-                    create: templateSplits.map(split => ({
+                    create: templateSplits.map((split, index) => ({
                       label: split.label,
                       expense: split.expense,
                       income: split.income,
                       categoryId: split.categoryId,
                       budgetId: split.budgetId,
+                      position: index,
                     })),
                   },
                 }
@@ -563,6 +566,7 @@ export class OperationsService {
             category: { select: { id: true, label: true } },
             budget: { select: { id: true, label: true } },
           },
+          orderBy: { position: 'asc' as const },
         },
       },
     });
@@ -609,12 +613,13 @@ export class OperationsService {
         closed: dto.closed ?? false,
         operationType: this.resolveOperationType(dto, splits),
         splits: splits.length > 0 ? {
-          create: splits.map(split => ({
+          create: splits.map((split, index) => ({
             label: split.label ?? null,
             expense: split.expense ?? 0,
             income: split.income ?? 0,
             categoryId: split.categoryId ?? null,
             budgetId: split.budgetId ?? null,
+            position: index,
           })),
         } : undefined,
       },
@@ -630,6 +635,7 @@ export class OperationsService {
             category: { select: { id: true, label: true } },
             budget: { select: { id: true, label: true } },
           },
+          orderBy: { position: 'asc' as const },
         },
       },
     });
@@ -725,12 +731,13 @@ export class OperationsService {
           ),
           splits: {
             deleteMany: {},
-            create: splits.map(split => ({
+            create: splits.map((split, index) => ({
               label: split.label ?? null,
               expense: split.expense ?? 0,
               income: split.income ?? 0,
               categoryId: split.categoryId ?? null,
               budgetId: split.budgetId ?? null,
+              position: index,
             })),
           },
         }),
@@ -747,6 +754,7 @@ export class OperationsService {
             category: { select: { id: true, label: true } },
             budget: { select: { id: true, label: true } },
           },
+          orderBy: { position: 'asc' as const },
         },
       },
     });

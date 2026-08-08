@@ -25,7 +25,7 @@ const THIRD_PARTY_INCLUDE = {
       category: { select: { id: true, label: true } },
       budget: { select: { id: true, label: true } },
     },
-    orderBy: { createdAt: 'asc' as const },
+    orderBy: { position: 'asc' as const },
   },
 };
 
@@ -208,13 +208,14 @@ export class ThirdPartiesService {
         active: dto.active ?? true,
         matchingRules: this.buildMatchingRulesCreate(matchingRules ?? []),
         splits: splits.length > 0 ? {
-          create: splits.map(split => ({
+          create: splits.map((split, index) => ({
             label: split.label ?? null,
             expense: split.expense ?? 0,
             income: split.income ?? 0,
             balance: (split.income ?? 0) - (split.expense ?? 0),
             categoryId: split.categoryId ?? null,
             budgetId: split.budgetId ?? null,
+            position: index,
           })),
         } : undefined,
       },
@@ -258,13 +259,14 @@ export class ThirdPartiesService {
         ...(splits !== undefined && {
           splits: {
             deleteMany: {},
-            create: splits.map(split => ({
+            create: splits.map((split, index) => ({
               label: split.label ?? null,
               expense: split.expense ?? 0,
               income: split.income ?? 0,
               balance: (split.income ?? 0) - (split.expense ?? 0),
               categoryId: split.categoryId ?? null,
               budgetId: split.budgetId ?? null,
+              position: index,
             })),
           },
         }),
@@ -296,7 +298,7 @@ export class ThirdPartiesService {
   async duplicate(id: string) {
     const existing = await this.prisma.thirdParty.findUnique({
       where: { id },
-      include: { splits: true },
+      include: { splits: { orderBy: { position: 'asc' } } },
     });
     if (!existing) {
       throw new NotFoundException(`Tiers ${id} introuvable`);
@@ -313,13 +315,14 @@ export class ThirdPartiesService {
         movementTypeId: existing.movementTypeId,
         active: existing.active,
         splits: existing.splits.length > 0 ? {
-          create: existing.splits.map(split => ({
+          create: existing.splits.map((split, index) => ({
             label: split.label,
             expense: split.expense,
             income: split.income,
             balance: split.balance,
             categoryId: split.categoryId,
             budgetId: split.budgetId,
+            position: index,
           })),
         } : undefined,
       },

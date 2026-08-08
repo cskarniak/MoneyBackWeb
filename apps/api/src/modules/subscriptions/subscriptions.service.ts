@@ -79,7 +79,7 @@ export class SubscriptionsService {
         category: { select: { id: true, label: true } },
         budget: { select: { id: true, label: true } },
       },
-      orderBy: { createdAt: 'asc' as const },
+      orderBy: { position: 'asc' as const },
     },
     planning: {
       orderBy: { dueDate: 'asc' as const },
@@ -282,7 +282,7 @@ export class SubscriptionsService {
       include: {
         account: { select: { id: true, name: true } },
         thirdParty: { select: { id: true, name: true } },
-        splits: true,
+        splits: { orderBy: { position: 'asc' } },
       },
       orderBy: {
         nextDueDate: 'asc',
@@ -387,13 +387,14 @@ export class SubscriptionsService {
         thirdPartyId: dto.thirdPartyId ?? null,
         movementTypeId: dto.movementTypeId ?? null,
         splits: splits.length > 0 ? {
-          create: splits.map(split => ({
+          create: splits.map((split, index) => ({
             label: split.label ?? null,
             expense: split.expense ?? 0,
             income: split.income ?? 0,
             balance: (split.income ?? 0) - (split.expense ?? 0),
             categoryId: split.categoryId ?? null,
             budgetId: split.budgetId ?? null,
+            position: index,
           })),
         } : undefined,
       },
@@ -461,13 +462,14 @@ export class SubscriptionsService {
           hasSplits: splits.length > 0,
           splits: {
             deleteMany: {},
-            create: splits.map(split => ({
+            create: splits.map((split, index) => ({
               label: split.label ?? null,
               expense: split.expense ?? 0,
               income: split.income ?? 0,
               balance: (split.income ?? 0) - (split.expense ?? 0),
               categoryId: split.categoryId ?? null,
               budgetId: split.budgetId ?? null,
+              position: index,
             })),
           },
         }),
@@ -572,12 +574,13 @@ export class SubscriptionsService {
               splitPayload,
             ),
             splits: splitPayload.length > 0 ? {
-              create: splitPayload.map(split => ({
+              create: splitPayload.map((split, index) => ({
                 label: split.label ?? null,
                 expense: split.expense,
                 income: split.income,
                 categoryId: split.categoryId ?? null,
                 budgetId: split.budgetId ?? null,
+                position: index,
               })),
             } : undefined,
           },
@@ -650,7 +653,7 @@ export class SubscriptionsService {
   async duplicate(id: string) {
     const existing = await this.prisma.subscription.findUnique({
       where: { id },
-      include: { splits: true },
+      include: { splits: { orderBy: { position: 'asc' } } },
     });
     if (!existing) {
       throw new NotFoundException(`Abonnement ${id} introuvable`);
@@ -676,13 +679,14 @@ export class SubscriptionsService {
         thirdPartyId: existing.thirdPartyId,
         movementTypeId: existing.movementTypeId,
         splits: existing.splits.length > 0 ? {
-          create: existing.splits.map(split => ({
+          create: existing.splits.map((split, index) => ({
             label: split.label,
             expense: split.expense,
             income: split.income,
             balance: split.balance,
             categoryId: split.categoryId,
             budgetId: split.budgetId,
+            position: index,
           })),
         } : undefined,
       },

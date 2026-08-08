@@ -222,6 +222,7 @@ model ThirdPartySplit {
   expense   Decimal  @default(0) @map("depense") @db.Decimal(15, 2)
   income    Decimal  @default(0) @map("recette") @db.Decimal(15, 2)
   balance   Decimal? @map("solde") @db.Decimal(15, 2)
+  position  Int      @default(0) @map("position")
   createdAt DateTime @default(now()) @map("date_creation")
   updatedAt DateTime @updatedAt @map("date_modification")
 
@@ -386,6 +387,7 @@ model OperationSplit {
   balance    Decimal?  @map("solde") @db.Decimal(15, 2)
   periodDate DateTime? @map("date_periode")
   lettering  String?   @map("lettrage")
+  position   Int       @default(0) @map("position")
   createdAt  DateTime  @default(now()) @map("date_creation")
   updatedAt  DateTime  @updatedAt @map("date_modification")
 
@@ -471,6 +473,7 @@ model SubscriptionSplit {
   expense   Decimal  @default(0) @map("depense") @db.Decimal(15, 2)
   income    Decimal  @default(0) @map("recette") @db.Decimal(15, 2)
   balance   Decimal? @map("solde") @db.Decimal(15, 2)
+  position  Int      @default(0) @map("position")
   createdAt DateTime @default(now()) @map("date_creation")
   updatedAt DateTime @updatedAt @map("date_modification")
 
