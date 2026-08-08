@@ -28,6 +28,18 @@ const PANEL_BG = '#ffffff';
 const TEXT_MUTED = '#667085';
 const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 
+function formatAmount(value: string) {
+  return Number(value || 0).toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatDate(value: string | null) {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString('fr-FR');
+}
+
 export function AccountsList() {
   const router = useRouter();
 
@@ -192,11 +204,16 @@ export function AccountsList() {
     switch (columnId) {
       case 'cursor':
         return '22px';
+      case 'name':
+        return '160px';
       case 'agency':
         return '160px';
       case 'number':
         return '170px';
-      case 'managedForOther':
+      case 'balance':
+        return '130px';
+      case 'balanceReferenceDate':
+        return '150px';
       case 'closed':
         return '110px';
       case 'actions':
@@ -245,9 +262,22 @@ export function AccountsList() {
         cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
       },
       {
-        id: 'managedForOther',
-        header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Autrui</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.managedForOther ? '✓' : ''}</Text>,
+        id: 'balance',
+        header: () => <span style={{ ...thStyle(), textAlign: 'right', display: 'block' }}>Solde</span>,
+        cell: ({ row }) => (
+          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} ta="right">
+            {formatAmount(row.original.balance)} €
+          </Text>
+        ),
+      },
+      {
+        id: 'balanceReferenceDate',
+        header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Mise à jour</span>,
+        cell: ({ row }) => (
+          <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} ta="center">
+            {formatDate(row.original.balanceReferenceDate) ?? '—'}
+          </Text>
+        ),
       },
       {
         id: 'closed',
@@ -482,13 +512,19 @@ export function AccountsList() {
             minHeight: 42,
           }}
         >
-          <Text
-            fz={CRUD.typographie.tailleTexte}
-            c={TEXT_MUTED}
+          <Group
+            gap={12}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
-            {data ? `${data.total} compte${data.total !== 1 ? 's' : ''}` : '…'}
-          </Text>
+            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
+              {data ? `${data.total} compte${data.total !== 1 ? 's' : ''}` : '…'}
+            </Text>
+            {data && (
+              <Text fz={CRUD.typographie.tailleTexte} fw={700}>
+                Total des soldes : {formatAmount(String(data.totalBalance))} €
+              </Text>
+            )}
+          </Group>
           <Group gap={6} justify="center">
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
               Précédent

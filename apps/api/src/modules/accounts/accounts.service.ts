@@ -107,9 +107,10 @@ export class AccountsService {
 
     const orderBy = { [sortBy]: sortOrder };
 
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, balanceAggregate] = await this.prisma.$transaction([
       this.prisma.account.findMany({ where, orderBy, skip, take: limit }),
       this.prisma.account.count({ where }),
+      this.prisma.account.aggregate({ where, _sum: { balance: true } }),
     ]);
 
     let highlightIndex: number | null = null;
@@ -119,7 +120,14 @@ export class AccountsService {
       highlightIndex = index >= 0 ? index : null;
     }
 
-    return { items: await this.presentAccounts(items), total, page, limit, highlightIndex };
+    return {
+      items: await this.presentAccounts(items),
+      total,
+      page,
+      limit,
+      highlightIndex,
+      totalBalance: this.toNumber(balanceAggregate._sum.balance),
+    };
   }
 
   async findOne(id: string) {

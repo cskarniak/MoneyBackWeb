@@ -28,6 +28,7 @@ export type AccountsResponse = {
   page: number;
   limit: number;
   highlightIndex: number | null;
+  totalBalance: number;
 };
 
 export type AccountFilters = {
