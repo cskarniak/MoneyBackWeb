@@ -1,4 +1,5 @@
-import { Box, Title } from '@mantine/core';
+import { Suspense } from 'react';
+import { Box, Center, Loader, Title } from '@mantine/core';
 import { TiersFiche } from '@/components/tiers/TiersFiche';
 
 export default function NewTiersPage() {
@@ -7,7 +8,9 @@ export default function NewTiersPage() {
       <Title order={2} mb="md" style={{ fontSize: 22, fontWeight: 700 }}>
         👥 Tiers
       </Title>
-      <TiersFiche />
+      <Suspense fallback={<Center style={{ minHeight: 200 }}><Loader size="sm" /></Center>}>
+        <TiersFiche />
+      </Suspense>
     </Box>
   );
 }

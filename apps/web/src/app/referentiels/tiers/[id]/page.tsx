@@ -1,4 +1,5 @@
-import { Box, Title } from '@mantine/core';
+import { Suspense } from 'react';
+import { Box, Center, Loader, Title } from '@mantine/core';
 import { TiersFiche } from '@/components/tiers/TiersFiche';
 
 type Props = { params: Promise<{ id: string }> };
@@ -10,7 +11,9 @@ export default async function EditTiersPage({ params }: Props) {
       <Title order={2} mb="md" style={{ fontSize: 22, fontWeight: 700 }}>
         👥 Tiers
       </Title>
-      <TiersFiche id={id} />
+      <Suspense fallback={<Center style={{ minHeight: 200 }}><Loader size="sm" /></Center>}>
+        <TiersFiche id={id} />
+      </Suspense>
     </Box>
   );
 }
