@@ -262,7 +262,7 @@ export function TiersList() {
             <ActionIcon
               variant="subtle"
               size="md"
-              onClick={() => router.push(`/referentiels/tiers/${row.original.id}`)}
+              onClick={() => router.push(`/referentiels/tiers/${row.original.id}?${searchParams.toString()}`)}
               title="Modifier"
               style={actionIconStyle}
             >
@@ -334,7 +334,7 @@ export function TiersList() {
               <Button variant="default" leftSection={<IconMenu2 size={14} />} radius="md" style={toolbarButtonStyle}>
                 Menu
               </Button>
-              <Button leftSection={<IconPlus size={14} />} radius="md" style={primaryButtonStyle} onClick={() => router.push('/referentiels/tiers/new')}>
+              <Button leftSection={<IconPlus size={14} />} radius="md" style={primaryButtonStyle} onClick={() => router.push(`/referentiels/tiers/new?${searchParams.toString()}`)}>
                 Nouveau
               </Button>
             </Group>
@@ -447,7 +447,7 @@ export function TiersList() {
                         <Table.Td
                           key={cell.id}
                           style={tdStyle(cellIndex < row.getVisibleCells().length - 1)}
-                          onClick={cell.column.id === 'actions' ? undefined : () => router.push(`/referentiels/tiers/${row.original.id}`)}
+                          onClick={cell.column.id === 'actions' ? undefined : () => router.push(`/referentiels/tiers/${row.original.id}?${searchParams.toString()}`)}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </Table.Td>

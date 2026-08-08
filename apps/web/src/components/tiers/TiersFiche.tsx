@@ -1,7 +1,7 @@
 'use client';
 
 import { CRUD } from '@/lib/crud-tokens';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, type Control, type UseFormSetValue, type UseFormWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -330,7 +330,16 @@ function getMatchingRulesError(matchingRules: FormValues['matchingRules']) {
 
 export function TiersFiche({ id }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isNew = !id;
+
+  const buildListUrl = (highlightId?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('highlight');
+    if (highlightId) params.set('highlight', highlightId);
+    const qs = params.toString();
+    return `/referentiels/tiers${qs ? `?${qs}` : ''}`;
+  };
   const [ventilationOpened, setVentilationOpened] = useState(false);
   const [expandedRuleIndex, setExpandedRuleIndex] = useState<number | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -506,10 +515,10 @@ export function TiersFiche({ id }: Props) {
       const payload = toPayload(values);
       if (isNew) {
         const created = await createMutation.mutateAsync(payload);
-        router.push(`/referentiels/tiers?highlight=${created.id}`);
+        router.push(buildListUrl(created.id));
       } else {
         await updateMutation.mutateAsync({ id: id!, ...payload });
-        router.push(`/referentiels/tiers?highlight=${id}`);
+        router.push(buildListUrl(id));
       }
     } catch (err: unknown) {
       void err;
@@ -520,7 +529,7 @@ export function TiersFiche({ id }: Props) {
     if (!id) return;
     try {
       const duplicated = await duplicateMutation.mutateAsync(id);
-      router.push(`/referentiels/tiers?highlight=${duplicated.id}`);
+      router.push(buildListUrl(duplicated.id));
     } catch {
       void 0;
     }
@@ -583,7 +592,7 @@ export function TiersFiche({ id }: Props) {
         >
           <Group justify="space-between" align="center" wrap="nowrap">
             <Text inherit fw={700}>Fiche tiers</Text>
-            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push('/referentiels/tiers')}>
+            <Button variant="subtle" size="xs" color="rgba(255,255,255,0.92)" onClick={() => router.push(buildListUrl())}>
               Fermer
             </Button>
           </Group>
@@ -887,7 +896,7 @@ export function TiersFiche({ id }: Props) {
                       if (!confirmed) return;
                       try {
                         await deleteMutation.mutateAsync(id!);
-                        router.push('/referentiels/tiers');
+                        router.push(buildListUrl());
                       } catch {
                         void 0;
                       }
@@ -907,7 +916,7 @@ export function TiersFiche({ id }: Props) {
             </Group>
 
             <Group gap="var(--crud-form-footer-gap)">
-              <Button type="button" variant="default" radius="md" onClick={() => router.push('/referentiels/tiers')}>
+              <Button type="button" variant="default" radius="md" onClick={() => router.push(buildListUrl())}>
                 {isMigrated ? 'Fermer' : 'Retour'}
               </Button>
               {!isMigrated && (
