@@ -23,7 +23,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload, IconWand, IconDotsVertical } from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload, IconWand, IconDotsVertical, IconRefresh } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
@@ -321,10 +321,14 @@ export function OperationsList() {
     sortOrder,
   }, { enabled: !!accountId });
   const operationQuery = useOperation(operationId);
-  const { data: accounts = [] } = useAccountsAll();
+  const { data: accounts = [], refetch: refetchAccounts, isFetching: isRefetchingAccounts } = useAccountsAll();
   const { data: usedStatementRefs = [] } = useOperationStatementRefs(accountId || undefined);
   const selectedAccount = accounts.find(account => account.id === accountId) ?? null;
   const hasSelectedAccount = !!accountId;
+
+  useEffect(() => {
+    if (accountId) refetchAccounts();
+  }, [accountId, refetchAccounts]);
   const effectiveItems = useMemo(() => (
     operationId
       ? (operationQuery.data ? [operationQuery.data] : [])
@@ -1105,6 +1109,19 @@ export function OperationsList() {
                 >
                   {!accountId ? '—' : `${displayedBalance >= 0 ? '+' : ''}${formatBalanceAmount(displayedBalance)}`}
                 </Text>
+                <Tooltip label="Recalcul solde du compte bancaire">
+                  <ActionIcon
+                    variant="default"
+                    size={28}
+                    radius="md"
+                    disabled={!accountId}
+                    loading={isRefetchingAccounts}
+                    onClick={() => refetchAccounts()}
+                    aria-label="Solde"
+                  >
+                    <IconRefresh size={14} />
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Group>
 
