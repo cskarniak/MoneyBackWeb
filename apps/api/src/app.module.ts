@@ -16,6 +16,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
 import { ImportProfilesModule } from './modules/import-profiles/import-profiles.module';
 import { AnomaliesModule } from './modules/anomalies/anomalies.module';
 import { AppSettingsModule } from './modules/app-settings/app-settings.module';
+import { NotesModule } from './modules/notes/notes.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AppSettingsModule } from './modules/app-settings/app-settings.module';
     ImportProfilesModule,
     AnomaliesModule,
     AppSettingsModule,
+    NotesModule,
   ],
   controllers: [AppController],
 })

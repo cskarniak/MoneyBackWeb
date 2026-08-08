@@ -692,3 +692,15 @@ model AuditLog {
   @@index([createdAt])
   @@map("journaux_audit")
 }
+
+// ─── Notes ──────────────────────────────────────────────────────────────────
+
+model Note {
+  id        String   @id @default(uuid())
+  title     String   @map("titre")
+  content   String   @default("") @map("contenu")
+  createdAt DateTime @default(now()) @map("date_creation")
+  updatedAt DateTime @updatedAt @map("date_modification")
+
+  @@map("notes")
+}

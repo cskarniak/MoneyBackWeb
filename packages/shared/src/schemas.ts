@@ -747,3 +747,26 @@ export const UpdateCurrentMonthSchema = z.object({
 });
 
 export type UpdateCurrentMonthDto = z.infer<typeof UpdateCurrentMonthSchema>;
+
+// ─── Note ─────────────────────────────────────────────────────────────────────
+
+export const CreateNoteSchema = z.object({
+  title: z.string().min(1, 'Le titre est obligatoire'),
+  content: z.string().optional().default(''),
+});
+
+export type CreateNoteDto = z.infer<typeof CreateNoteSchema>;
+
+export const UpdateNoteSchema = CreateNoteSchema.partial();
+export type UpdateNoteDto = z.infer<typeof UpdateNoteSchema>;
+
+export const NoteFiltersSchema = z.object({
+  search: z.string().optional(),
+  highlightId: z.string().uuid().optional(),
+  page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
+  sortBy: z.enum(['title', 'createdAt', 'updatedAt']).default('updatedAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export type NoteFiltersDto = z.infer<typeof NoteFiltersSchema>;

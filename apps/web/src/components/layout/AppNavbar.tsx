@@ -30,10 +30,12 @@ import {
   IconLayoutDashboard,
   IconLogout,
   IconServer,
+  IconNotes,
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
   { label: 'Opérations', prefix: '/operations' },
+  { label: 'Notes', prefix: '/notes' },
 ];
 
 const STATISTICS_ITEMS = [
@@ -72,7 +74,10 @@ const FICHIERS_ITEMS = [
 ];
 
 const NARROW_MENU_SECTIONS = [
-  { label: null, items: [{ label: 'Opérations', href: '/operations', icon: IconChartBar }] },
+  { label: null, items: [
+    { label: 'Opérations', href: '/operations', icon: IconChartBar },
+    { label: 'Notes', href: '/notes', icon: IconNotes },
+  ] },
   { label: 'Statistiques', items: STATISTICS_ITEMS },
   { label: 'Imports', items: IMPORT_ITEMS },
   { label: 'Outils', items: OUTILS_ITEMS },

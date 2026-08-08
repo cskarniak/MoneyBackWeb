@@ -83,6 +83,7 @@ Le schéma Prisma est dans `packages/db/prisma/schema.prisma`. Le client génér
 - Imports : `imports`, `import_jobs`, `import_job_lines`, `import_profiles`
 - Portefeuille : `portfolio_transactions`, `portfolio_matchings`, `portfolio_prices`, `portfolio_labels`
 - Transverse : `settings`, `audit_logs`
+- Notes : `notes` (bloc-notes libre, sans lien avec les autres entités)
 
 Après toute modification du schéma : `pnpm db:generate` puis `pnpm db:migrate`.
 
