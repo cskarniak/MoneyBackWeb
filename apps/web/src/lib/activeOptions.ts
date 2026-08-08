@@ -24,9 +24,11 @@ export function resolveAmountDirection(expense?: number | string | null, income?
 }
 
 /**
- * Certains types de mouvement (remboursement, trop perçu...) autorisent exceptionnellement
- * une catégorie dans le sens inverse de son paramétrage : dans ce cas, on ne filtre plus par
- * sens et on propose toutes les catégories. Cette exception ne s'applique jamais à la ventilation.
+ * Certains types de mouvement (remboursement, trop perçu, affectation poste à poste...)
+ * autorisent exceptionnellement une catégorie dans le sens inverse de son paramétrage :
+ * dans ce cas, on ne filtre plus par sens et on propose toutes les catégories. Le sens est
+ * porté par le type de mouvement de l'en-tête (opération, abonnement ou tiers) ; l'appelant
+ * doit propager ce même indicateur aux lignes de ventilation pour rester cohérent.
  */
 export function filterCategoryOptionsByDirection<T extends { value: string; direction?: 'expense' | 'income' | null }>(
   options: T[],

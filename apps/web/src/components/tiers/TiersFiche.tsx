@@ -462,6 +462,10 @@ export function TiersFiche({ id }: Props) {
     [movementTypes, tiers, watchedMovementTypeId],
   );
 
+  const categoryAllowReversal =
+    !!watchedMovementTypeId
+    && !!movementTypes.find(movementType => movementType.id === watchedMovementTypeId)?.allowsCategoryReversal;
+
   const migrationTargetOptions = allThirdParties
     .filter(t => t.id !== id && !t.migratedToId)
     .map(t => ({ value: t.id, label: t.name }));
@@ -928,6 +932,7 @@ export function TiersFiche({ id }: Props) {
         splitIncome={splitIncome}
         enveloppeOptions={enveloppeOptions}
         categoryOptions={categoryOptions}
+        categoryAllowReversal={categoryAllowReversal}
         onClose={() => setVentilationOpened(false)}
         onAddRow={() => append({ label: '', expense: '', income: '', budgetId: null, categoryId: null })}
         onRemoveRow={index => remove(index)}

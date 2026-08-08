@@ -340,6 +340,10 @@ export function SubscriptionsFiche({ id }: Props) {
     value => !!categories.find(category => category.id === value)?.active,
     [subscription?.categoryId, ...watchedSplits.map(split => split.categoryId)],
   );
+  const selectedMovementTypeId = watch('movementTypeId');
+  const categoryAllowReversal =
+    !!selectedMovementTypeId
+    && !!movementTypes.find(movementType => movementType.id === selectedMovementTypeId)?.allowsCategoryReversal;
   const enveloppeOptions = filterActiveOptions(
     enveloppes.map(enveloppe => ({ value: enveloppe.id, label: enveloppe.label })),
     value => !!enveloppes.find(enveloppe => enveloppe.id === value)?.active,
@@ -563,7 +567,7 @@ export function SubscriptionsFiche({ id }: Props) {
                   categoryOptions,
                   watch('expense'),
                   watch('income'),
-                  !!movementTypes.find(movementType => movementType.id === watch('movementTypeId'))?.allowsCategoryReversal,
+                  categoryAllowReversal,
                 )}
                 clearable
                 disabled={loadingCategories || watchedVentilated}
@@ -726,6 +730,7 @@ export function SubscriptionsFiche({ id }: Props) {
         splitIncome={splitIncome}
         enveloppeOptions={enveloppeOptions}
         categoryOptions={categoryOptions}
+        categoryAllowReversal={categoryAllowReversal}
         onClose={() => setVentilationOpened(false)}
         onAddRow={() => append({ label: '', expense: '', income: '', budgetId: null, categoryId: null })}
         onRemoveRow={index => remove(index)}
