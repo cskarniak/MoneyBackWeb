@@ -34,8 +34,8 @@ import {
 } from '@tabler/icons-react';
 
 const FLAT_LINKS = [
-  { label: 'Opérations', prefix: '/operations' },
-  { label: 'Notes', prefix: '/notes' },
+  { label: 'Opérations', prefix: '/operations', icon: IconChartBar },
+  { label: 'Notes', prefix: '/notes', icon: IconNotes },
 ];
 
 const STATISTICS_ITEMS = [
@@ -217,6 +217,7 @@ export function AppNavbar() {
                 key={link.prefix}
                 variant="subtle"
                 size="xs"
+                leftSection={<link.icon size={12} />}
                 onClick={() => router.push(link.prefix)}
                 style={{
                   color: active ? ACTIVE_COLOR : '#adb5bd',
