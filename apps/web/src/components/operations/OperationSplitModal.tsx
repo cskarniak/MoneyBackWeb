@@ -49,7 +49,9 @@ type Props = {
   categoryOptions?: CategoryOption[];
   categoryAllowReversal?: boolean;
   confirmRemove?: boolean;
+  confirmLabel?: string;
   onClose: () => void;
+  onConfirm?: () => void;
   onAddRow?: () => void;
   onRemoveRow?: (index: number) => void;
   onChangeRow?: (index: number, field: 'label' | 'expense' | 'income' | 'budgetId' | 'categoryId', value: string | null) => void;
@@ -70,7 +72,9 @@ export function OperationSplitModal({
   categoryOptions = [],
   categoryAllowReversal = false,
   confirmRemove = true,
+  confirmLabel = 'Appliquer la ventilation',
   onClose,
+  onConfirm,
   onAddRow,
   onRemoveRow,
   onChangeRow,
@@ -222,6 +226,12 @@ export function OperationSplitModal({
               </Alert>
             )}
 
+            {editable && onConfirm && (
+              <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+                <Text size="sm">Ceci est un aperçu : cliquer sur « {confirmLabel} » pour l'appliquer à l'écriture, puis Enregistrer.</Text>
+              </Alert>
+            )}
+
             <Box
               style={{
                 border: `1px solid ${GRAY_BORDER}`,
@@ -355,6 +365,11 @@ export function OperationSplitModal({
                   <Text size="sm" c="orange">
                     Reste à ventiler: <strong>{remainingBalance.toFixed(2)}</strong>
                   </Text>
+                )}
+                {onConfirm && (
+                  <Button size="xs" onClick={onConfirm}>
+                    {confirmLabel}
+                  </Button>
                 )}
               </Group>
             </Group>

@@ -779,6 +779,8 @@ export function OperationsFiche({ id }: Props) {
       <OperationSplitModal
         opened={splitSuggestionModalOpened}
         onClose={() => setSplitSuggestionModalOpened(false)}
+        onConfirm={applySuggestedSplits}
+        confirmLabel="Appliquer la ventilation"
         title={suggestedThirdPartyName ? `Ventilation proposée - ${suggestedThirdPartyName}` : "Ventilation proposée"}
         editable
         confirmRemove={false}
