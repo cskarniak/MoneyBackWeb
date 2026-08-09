@@ -90,6 +90,10 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
   const [newCategoryId, setNewCategoryId] = useState<string | null>(null);
   const [newBudgetId, setNewBudgetId] = useState<string | null>(null);
 
+  const [existingCategoryId, setExistingCategoryId] = useState<string | null>(null);
+  const [existingBudgetId, setExistingBudgetId] = useState<string | null>(null);
+  const [loadedThirdPartyId, setLoadedThirdPartyId] = useState<string | null>(null);
+
   const [ruleLabel, setRuleLabel] = useState('');
   const [operator, setOperator] = useState<'AND' | 'OR'>('AND');
   const [stopOnMatch, setStopOnMatch] = useState(false);
@@ -104,6 +108,9 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
     setNewThirdPartyName('');
     setNewCategoryId(null);
     setNewBudgetId(null);
+    setExistingCategoryId(null);
+    setExistingBudgetId(null);
+    setLoadedThirdPartyId(null);
     setRuleLabel(operation.label.trim());
     setOperator('AND');
     setStopOnMatch(false);
@@ -111,6 +118,21 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
     setConditions([defaultCondition(operation)]);
     setError(null);
   }, [opened, operation]);
+
+  useEffect(() => {
+    if (mode !== 'existing' || !selectedThirdParty || selectedThirdParty.id !== thirdPartyId) return;
+    if (loadedThirdPartyId === selectedThirdParty.id) return;
+    setExistingCategoryId(selectedThirdParty.categoryId);
+    setExistingBudgetId(selectedThirdParty.budgetId);
+    setLoadedThirdPartyId(selectedThirdParty.id);
+  }, [mode, selectedThirdParty, thirdPartyId, loadedThirdPartyId]);
+
+  const handleThirdPartyIdChange = (value: string | null) => {
+    setThirdPartyId(value);
+    setExistingCategoryId(null);
+    setExistingBudgetId(null);
+    setLoadedThirdPartyId(null);
+  };
 
   const thirdPartyOptions = filterActiveOptions(
     thirdParties.map(tp => ({ value: tp.id, label: tp.name })),
@@ -223,6 +245,8 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
         }));
         await updateMutation.mutateAsync({
           id: thirdPartyId!,
+          categoryId: existingCategoryId,
+          budgetId: existingBudgetId,
           matchingRules: [...existingRules, newRule],
         });
         notifications.show({ message: `Règle "${newRule.label}" ajoutée au tiers.`, color: 'green' });
@@ -253,14 +277,38 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
           />
 
           {mode === 'existing' ? (
-            <PositioningSelect
-              label="Tiers cible"
-              placeholder="Sélectionner un tiers"
-              data={thirdPartyOptions}
-              value={thirdPartyId}
-              onChange={setThirdPartyId}
-              required
-            />
+            <Stack gap={14}>
+              <PositioningSelect
+                label="Tiers cible"
+                placeholder="Sélectionner un tiers"
+                data={thirdPartyOptions}
+                value={thirdPartyId}
+                onChange={handleThirdPartyIdChange}
+                required
+              />
+              {thirdPartyId && (
+                <Group grow align="flex-end">
+                  <PositioningSelect
+                    label="Catégorie"
+                    placeholder="Aucune"
+                    data={categoryOptions}
+                    value={existingCategoryId}
+                    onChange={setExistingCategoryId}
+                    clearable
+                    disabled={loadingSelectedThirdParty}
+                  />
+                  <PositioningSelect
+                    label="Enveloppe"
+                    placeholder="Aucune"
+                    data={budgetOptions}
+                    value={existingBudgetId}
+                    onChange={setExistingBudgetId}
+                    clearable
+                    disabled={loadingSelectedThirdParty}
+                  />
+                </Group>
+              )}
+            </Stack>
           ) : (
             <Group grow align="flex-end">
               <TextInput
