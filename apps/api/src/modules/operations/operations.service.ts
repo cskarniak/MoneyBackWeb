@@ -173,6 +173,7 @@ export class OperationsService {
     operationValidated: string | null;
     locked: boolean;
     closed: boolean;
+    autoAssignedRuleLabel: string | null;
     createdAt: Date;
     updatedAt: Date;
     accountId: string;
@@ -233,6 +234,7 @@ export class OperationsService {
       hideLocked,
       emptyEnvelopeOnly,
       unvalidatedOnly,
+      preassigned,
       search,
       page,
       limit,
@@ -269,6 +271,8 @@ export class OperationsService {
           operationValidated: 'V',
         },
       }),
+      ...(preassigned === 'oui' && { autoAssignedRuleLabel: { not: null } }),
+      ...(preassigned === 'non' && { autoAssignedRuleLabel: null }),
       ...(dateFrom || dateTo
         ? {
             operationDate: {
@@ -485,6 +489,7 @@ export class OperationsService {
             categoryId: nextCategoryId,
             budgetId: nextBudgetId,
             movementTypeId: nextMovementTypeId,
+            autoAssignedRuleLabel: match.matchedRuleLabel,
             operationType: hasSplitTemplate
               ? this.resolveOperationType(
                   { expense: Number(operation.expense), income: Number(operation.income) },
@@ -711,6 +716,9 @@ export class OperationsService {
         ...(dto.budgetId !== undefined && { budgetId: dto.budgetId ?? null }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId ?? null }),
         ...(dto.thirdPartyId !== undefined && { thirdPartyId: dto.thirdPartyId ?? null }),
+        ...(dto.thirdPartyId !== undefined && dto.thirdPartyId !== existingOperation.thirdPartyId && {
+          autoAssignedRuleLabel: null,
+        }),
         ...(dto.paymentMethodId !== undefined && { paymentMethodId: dto.paymentMethodId ?? null }),
         ...(dto.movementTypeId !== undefined && { movementTypeId: dto.movementTypeId ?? null }),
         ...(dto.lettering !== undefined && { lettering: dto.lettering ?? null }),

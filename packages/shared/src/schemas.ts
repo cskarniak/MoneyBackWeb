@@ -115,6 +115,7 @@ export const OperationFiltersSchema = z.object({
     v => (v === 'true' ? true : v === 'false' ? false : undefined),
     z.boolean().optional(),
   ),
+  preassigned: z.enum(['oui', 'non', 'tous']).default('tous'),
   search: z.string().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
   limit: z.preprocess(v => Number(v ?? 100), z.number().int().min(1).max(500)).default(100),

@@ -35,6 +35,7 @@ export type Operation = {
   operationValidated: string | null;
   locked: boolean;
   closed: boolean;
+  autoAssignedRuleLabel: string | null;
   accountId: string;
   budgetId: string | null;
   categoryId: string | null;
@@ -67,6 +68,7 @@ export type OperationFilters = {
   hideLocked?: boolean;
   emptyEnvelopeOnly?: boolean;
   unvalidatedOnly?: boolean;
+  preassigned?: 'oui' | 'non' | 'tous';
   page?: number;
   limit?: number;
   sortBy?: 'operationDate' | 'label' | 'expense' | 'income';

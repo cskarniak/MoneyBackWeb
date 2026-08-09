@@ -123,6 +123,7 @@ export function OperationsList() {
   const hideLocked = searchParams.get('hideLocked') === 'true';
   const emptyEnvelopeOnly = searchParams.get('emptyEnvelopeOnly') === 'true';
   const unvalidatedOnly = searchParams.get('unvalidatedOnly') === 'true';
+  const preassigned = (searchParams.get('preassigned') as 'oui' | 'non' | 'tous') ?? 'tous';
   const sortBy = (searchParams.get('sortBy') as 'operationDate' | 'label' | 'expense' | 'income') ?? 'operationDate';
   const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'desc';
 
@@ -158,6 +159,7 @@ export function OperationsList() {
     hideLocked: string | null;
     emptyEnvelopeOnly: string | null;
     unvalidatedOnly: string | null;
+    preassigned: string | null;
     sortBy: string;
     sortOrder: string;
   } | null>(null);
@@ -317,6 +319,7 @@ export function OperationsList() {
     hideLocked,
     emptyEnvelopeOnly,
     unvalidatedOnly,
+    preassigned,
     sortBy,
     sortOrder,
   }, { enabled: !!accountId });
@@ -414,6 +417,7 @@ export function OperationsList() {
       hideLocked: hideLocked ? 'true' : null,
       emptyEnvelopeOnly: emptyEnvelopeOnly ? 'true' : null,
       unvalidatedOnly: unvalidatedOnly ? 'true' : null,
+      preassigned: preassigned !== 'tous' ? preassigned : null,
       sortBy,
       sortOrder,
     };
@@ -429,6 +433,7 @@ export function OperationsList() {
     sortBy,
     sortOrder,
     unvalidatedOnly,
+    preassigned,
   ]);
 
   useEffect(() => {
@@ -525,6 +530,7 @@ export function OperationsList() {
       hideLocked: null,
       emptyEnvelopeOnly: null,
       unvalidatedOnly: null,
+      preassigned: null,
       page: '1',
     });
   };
@@ -546,6 +552,7 @@ export function OperationsList() {
           hideLocked,
           emptyEnvelopeOnly,
           unvalidatedOnly,
+          preassigned,
           sortBy,
           sortOrder,
         },
@@ -1143,6 +1150,24 @@ export function OperationsList() {
               />
               <Group gap={8} wrap="nowrap" align="center">
                 <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} c={TEXT_MUTED} tt="uppercase">
+                  Préaffectés
+                </Text>
+                <Select
+                  size="sm"
+                  radius="md"
+                  value={preassigned}
+                  onChange={value => pushParams({ preassigned: value && value !== 'tous' ? value : null, page: '1' })}
+                  data={[
+                    { value: 'tous', label: 'Tous' },
+                    { value: 'oui', label: 'Oui' },
+                    { value: 'non', label: 'Non' },
+                  ]}
+                  style={{ width: 90 }}
+                  allowDeselect={false}
+                />
+              </Group>
+              <Group gap={8} wrap="nowrap" align="center">
+                <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} c={TEXT_MUTED} tt="uppercase">
                   LOT
                 </Text>
                 <PositioningSelect
@@ -1452,6 +1477,7 @@ export function OperationsList() {
                 root: {
                   height: 40,
                   color: '#334155',
+                  borderBottom: `1px solid ${GRAY_BORDER}`,
                 },
                 inner: {
                   justifyContent: 'flex-start',
@@ -1461,6 +1487,14 @@ export function OperationsList() {
             >
               Créer une règle de tiers…
             </Button>
+            <Box style={{ padding: '8px 14px' }}>
+              <Text fz={11} fw={700} c="dimmed" tt="uppercase" mb={2}>
+                Règle d&apos;affectation
+              </Text>
+              <Text fz={12} c={contextMenu.operation.autoAssignedRuleLabel ? '#334155' : 'dimmed'}>
+                {contextMenu.operation.autoAssignedRuleLabel || "Pas de règle d'affectation"}
+              </Text>
+            </Box>
           </Box>
         )}
 
