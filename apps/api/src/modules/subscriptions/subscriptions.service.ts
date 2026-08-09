@@ -699,15 +699,8 @@ export class SubscriptionsService {
   async remove(id: string) {
     const subscription = await this.findOne(id);
 
-    const operationsCount = await this.prisma.operation.count({
-      where: { subscriptionId: id, deletedAt: null },
-    });
-
-    if (operationsCount > 0) {
-      await this.prisma.subscription.update({ where: { id }, data: { active: false } });
-      return { status: 'deactivated' as const, item: await this.findOne(id) };
-    }
-
+    // Pas de contrainte d'utilisation : les opérations déjà générées ne sont pas
+    // supprimées, elles perdent simplement leur lien vers l'abonnement (FK en SET NULL).
     await this.prisma.subscription.delete({ where: { id } });
     return { status: 'deleted' as const, item: subscription };
   }

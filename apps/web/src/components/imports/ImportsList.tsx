@@ -30,6 +30,7 @@ import {
 import { CRUD } from '@/lib/crud-tokens';
 import { useDeleteImportProfile, useImportProfiles, type ImportProfile } from '@/hooks/useImportProfiles';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
@@ -123,7 +124,7 @@ export function ImportsList() {
 
   const handleDelete = async (item: ImportProfile) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer le masque "${item.name}" ?`)) return;
+    if (!(await confirmSimpleDelete(`Supprimer le masque "${item.name}" ?`))) return;
     try {
       await deleteMutation.mutateAsync(item.id);
       notifications.show({ message: `"${item.name}" supprimé`, color: 'red' });
@@ -204,7 +205,7 @@ export function ImportsList() {
           </span>
         ),
         cell: ({ row, getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
             {getValue() as string}
           </Text>
         ),
@@ -212,13 +213,13 @@ export function ImportsList() {
       {
         id: 'bankLabel',
         header: () => <span style={thStyle()}>Banque</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} truncate title={row.original.bankLabel}>{row.original.bankLabel}</Text>,
+        cell: ({ row }) => <Text fz={CRUD.typographie.petiteTailleTexte} truncate title={row.original.bankLabel}>{row.original.bankLabel}</Text>,
       },
       {
         id: 'delimiter',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Délimiteur</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} ff="monospace" ta="center">
+          <Text fz={CRUD.typographie.petiteTailleTexte} ff="monospace" ta="center">
             {row.original.delimiter ?? '—'}
           </Text>
         ),
@@ -231,7 +232,7 @@ export function ImportsList() {
           </span>
         ),
         cell: ({ getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte}>{new Date(getValue() as string).toLocaleDateString('fr-FR')}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte}>{new Date(getValue() as string).toLocaleDateString('fr-FR')}</Text>
         ),
       },
       {
@@ -325,7 +326,7 @@ export function ImportsList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select size="sm" radius="md" value={String(limit)} onChange={handleLimitChange} data={LIMIT_OPTIONS} style={{ width: 78 }} />
               <TextInput
                 size="sm"
@@ -418,7 +419,7 @@ export function ImportsList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">
                         Aucun masque d&apos;import.
                       </Text>
                     </Table.Td>
@@ -465,7 +466,7 @@ export function ImportsList() {
           }}
         >
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             c={TEXT_MUTED}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
@@ -475,7 +476,7 @@ export function ImportsList() {
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
               Précédent
             </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
               Page {page} sur {totalPages || 1}
             </Text>
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>

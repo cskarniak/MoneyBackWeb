@@ -327,8 +327,8 @@ export function OperationSplitModal({
                             color="red"
                             variant="subtle"
                             radius={0}
-                            onClick={() => {
-                              if (confirmRemove && !confirmSimpleDelete('Supprimer cette ligne de ventilation ?')) return;
+                            onClick={async () => {
+                              if (confirmRemove && !(await confirmSimpleDelete('Supprimer cette ligne de ventilation ?'))) return;
                               onRemoveRow?.(index);
                             }}
                             title="Supprimer la ligne"

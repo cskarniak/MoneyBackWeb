@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Box, Button, Checkbox, Group, Stack, Text, Textarea, TextInput, Alert, Loader, Center } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { useMovementTypesAll } from '@/hooks/useMovementTypes';
@@ -21,6 +22,8 @@ import {
 } from '@/hooks/useEnveloppes';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { openSecondaryTab } from '@/lib/secondary-tab';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
@@ -386,6 +389,7 @@ export function EnveloppesFiche({ id }: Props) {
               {!isNew && (
                 <>
                   <Button
+                    type="button"
                     size="xs"
                     radius="md"
                     variant="outline"
@@ -396,15 +400,27 @@ export function EnveloppesFiche({ id }: Props) {
                   {!enveloppe?.migratedToId && (
                     <>
                       <Button
+                        type="button"
                         size="xs"
                         radius="md"
                         variant="outline"
                         color="red"
                         loading={deleteMutation.isPending}
                         onClick={async () => {
-                          if (!window.confirm(`Supprimer l'enveloppe "${enveloppe?.label}" ?`)) return;
+                          if (!(await confirmSimpleDelete(`Supprimer l'enveloppe "${enveloppe?.label}" ?`))) return;
                           try {
-                            await deleteMutation.mutateAsync(id!);
+                            const outcome = await deleteWithDeactivateFallback({
+                              deleteFn: () => deleteMutation.mutateAsync(id!),
+                              deactivateFn: () => updateMutation.mutateAsync({ id: id!, active: false }),
+                            });
+                            if (outcome === 'cancelled') return;
+                            notifications.show({
+                              message:
+                                outcome === 'deactivated'
+                                  ? `"${enveloppe?.label}" désactivée`
+                                  : `"${enveloppe?.label}" supprimée`,
+                              color: outcome === 'deactivated' ? 'orange' : 'red',
+                            });
                             router.push(buildListUrl());
                           } catch {
                             // erreur affichée via mutationError
@@ -426,7 +442,7 @@ export function EnveloppesFiche({ id }: Props) {
               )}
             </Group>
             <Group gap="var(--crud-form-footer-gap)">
-              <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
+              <Button type="button" size="sm" radius="md" variant="default" onClick={() => router.back()}>
                 {isMigrated ? 'Fermer' : 'Annuler'}
               </Button>
               {!isMigrated && (

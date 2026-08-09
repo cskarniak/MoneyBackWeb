@@ -28,6 +28,7 @@ import {
   type SplitMismatchResult,
   type BalanceFieldResult,
 } from '@/hooks/useAnomalies';
+import { confirmAction } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -173,7 +174,7 @@ export function AnomaliesWorkspace() {
 
   const handleFixDueDate = async () => {
     if (!dueDateResult || dueDateResult.anomalyCount === 0) return;
-    if (!window.confirm(`Corriger ${dueDateResult.anomalyCount} opération(s) en reportant la date d'opération vers la date de rattachement ?`)) return;
+    if (!(await confirmAction(`Corriger ${dueDateResult.anomalyCount} opération(s) en reportant la date d'opération vers la date de rattachement ?`, 'Corriger'))) return;
     try {
       const fixRes = await missingDueDateMutation.mutateAsync({
         accountId: accountId ?? undefined,
@@ -197,7 +198,7 @@ export function AnomaliesWorkspace() {
 
   const handleFixBalance = async () => {
     if (!balanceResult || balanceResult.anomalyCount === 0) return;
-    if (!window.confirm(`Recalculer le solde de ${balanceResult.anomalyCount} enregistrement(s) ?`)) return;
+    if (!(await confirmAction(`Recalculer le solde de ${balanceResult.anomalyCount} enregistrement(s) ?`, 'Recalculer'))) return;
     try {
       const fixRes = await balanceFieldMutation.mutateAsync({
         accountId: accountId ?? undefined,
@@ -221,7 +222,7 @@ export function AnomaliesWorkspace() {
 
   const handleFixDuplicates = async () => {
     if (!duplicatesResult || duplicatesResult.anomalyCount === 0) return;
-    if (!window.confirm(`Annoter les doublons avec "opération 2", "opération 3"... dans le commentaire ?`)) return;
+    if (!(await confirmAction(`Annoter les doublons avec "opération 2", "opération 3"... dans le commentaire ?`, 'Annoter'))) return;
     try {
       const fixRes = await duplicatesMutation.mutateAsync({
         accountId: accountId ?? undefined,

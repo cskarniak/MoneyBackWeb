@@ -19,9 +19,11 @@ import {
   Loader,
   Center,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useAccount, useCreateAccount, useDeleteAccount, useUpdateAccount, type AccountPayload } from '@/hooks/useAccounts';
 import { openSecondaryTab } from '@/lib/secondary-tab';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -317,6 +319,7 @@ export function AccountsFiche({ id }: Props) {
             <Group gap={8}>
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   variant="outline"
@@ -327,15 +330,17 @@ export function AccountsFiche({ id }: Props) {
               )}
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   variant="outline"
                   color="red"
                   loading={deleteMutation.isPending}
                   onClick={async () => {
-                    if (!window.confirm(`Supprimer le compte "${account?.name}" ?`)) return;
+                    if (!(await confirmSimpleDelete(`Supprimer le compte "${account?.name}" ?`))) return;
                     try {
                       await deleteMutation.mutateAsync(id!);
+                      notifications.show({ message: `"${account?.name}" supprimé`, color: 'red' });
                       router.push('/comptes');
                     } catch {
                       // erreur affichée via mutationError
@@ -347,7 +352,7 @@ export function AccountsFiche({ id }: Props) {
               )}
             </Group>
             <Group gap="var(--crud-form-footer-gap)">
-              <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
+              <Button type="button" size="sm" radius="md" variant="default" onClick={() => router.back()}>
                 Annuler
               </Button>
               <Button size="sm" radius="md" type="submit" loading={isSubmitting}>

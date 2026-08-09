@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CreatePaymentMethodDto,
@@ -80,15 +80,9 @@ export class PaymentMethodsService {
     });
 
     if (operationsCount > 0) {
-      const inactivePaymentMethod = await this.prisma.paymentMethod.update({
-        where: { id },
-        data: { active: false },
-      });
-
-      return {
-        status: 'deactivated' as const,
-        item: inactivePaymentMethod,
-      };
+      throw new ConflictException(
+        `Impossible de supprimer le moyen de paiement "${paymentMethod.label}" : utilisé par ${operationsCount} opération(s).`,
+      );
     }
 
     await this.prisma.paymentMethod.delete({ where: { id } });

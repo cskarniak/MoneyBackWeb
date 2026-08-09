@@ -21,6 +21,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2 } from '@tabler/icons-react';
 import { useDeleteNote, useNotes, type Note } from '@/hooks/useNotes';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -123,7 +124,7 @@ export function NotesList() {
 
   const handleDelete = async (note: Note) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer la note "${note.title}" ?`)) return;
+    if (!(await confirmSimpleDelete(`Supprimer la note "${note.title}" ?`))) return;
     try {
       await deleteMutation.mutateAsync(note.id);
       notifications.show({ message: `"${note.title}" supprimée`, color: 'red' });
@@ -203,7 +204,7 @@ export function NotesList() {
         ),
         cell: ({ row, getValue }) => (
           <Stack gap={2}>
-            <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
               {getValue() as string}
             </Text>
             <Text fz={12} c="dimmed" truncate>
@@ -220,7 +221,7 @@ export function NotesList() {
           </span>
         ),
         cell: ({ getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>
             {formatDate(getValue() as string)}
           </Text>
         ),
@@ -316,7 +317,7 @@ export function NotesList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select size="sm" radius="md" value={String(limit)} onChange={handleLimitChange} data={LIMIT_OPTIONS} style={{ width: 78 }} />
               <TextInput
                 size="sm"
@@ -396,7 +397,7 @@ export function NotesList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucune note.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucune note.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -443,7 +444,7 @@ export function NotesList() {
           }}
         >
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             c={TEXT_MUTED}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
@@ -453,7 +454,7 @@ export function NotesList() {
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
               Précédent
             </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
               Page {page} sur {totalPages || 1}
             </Text>
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>

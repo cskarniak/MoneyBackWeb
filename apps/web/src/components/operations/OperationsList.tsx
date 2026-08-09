@@ -602,7 +602,7 @@ export function OperationsList() {
     const message = hasSplits
       ? `Supprimer l'opération "${operation.label}" ?\n\nAttention : cette opération est ventilée, ses lignes de ventilation seront également supprimées.`
       : `Supprimer l'opération "${operation.label}" ?`;
-    const confirmed = hasSplits ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    const confirmed = hasSplits ? await confirmStrongDelete(message) : await confirmSimpleDelete(message);
     if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync(operation.id);
@@ -987,7 +987,7 @@ export function OperationsList() {
       >
         Précédent
       </Button>
-      <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px', whiteSpace: 'nowrap' }}>
+      <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px', whiteSpace: 'nowrap' }}>
         Page {paginationHasSelectedAccount ? page : 0} / {paginationHasSelectedAccount ? Math.max(totalPages, 1) : 0}
       </Text>
       <Button
@@ -1056,7 +1056,7 @@ export function OperationsList() {
 
               <Group gap={8} wrap="nowrap" justify="flex-end">
                 {paginationControls}
-                <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+                <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
                 <Select value={String(limit)} onChange={val => val && pushParams({ limit: val, page: '1' })} data={LIMIT_OPTIONS} w={78} radius="md" />
                 <TextInput
                   value={searchInput}
@@ -1184,7 +1184,7 @@ export function OperationsList() {
 
           {!hasSelectedAccount ? (
             <Center style={{ minHeight: 180, padding: 24 }}>
-              <Text fz={CRUD.typographie.tailleTexte} c="dimmed">
+              <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">
                 Sélectionnez un compte pour afficher les opérations.
               </Text>
             </Center>
@@ -1232,7 +1232,7 @@ export function OperationsList() {
                 {rows.length === 0 && !showTopEditor ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: 24 }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucune opération.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucune opération.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -1501,7 +1501,7 @@ export function OperationsList() {
         />
 
         <Group justify="space-between" align="center" style={{ padding: 'var(--crud-list-footer-padding-top) var(--crud-list-footer-padding-x)' }}>
-          <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>
             {paginationHasSelectedAccount ? `${data?.total ?? 0} opérations` : 'Aucun compte sélectionné'}
           </Text>
           {paginationControls}

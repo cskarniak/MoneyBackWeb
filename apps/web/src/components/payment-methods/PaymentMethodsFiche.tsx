@@ -18,7 +18,10 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 import {
   useCreatePaymentMethod,
   useDeletePaymentMethod,
@@ -99,7 +102,7 @@ export function PaymentMethodsFiche({ id }: Props) {
     }
   };
 
-  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? deleteMutation.error?.message ?? null;
 
   if (!isNew && loadingPaymentMethod) {
     return (
@@ -234,15 +237,31 @@ export function PaymentMethodsFiche({ id }: Props) {
             <Box>
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   variant="outline"
                   color="red"
                   loading={deleteMutation.isPending}
                   onClick={async () => {
-                    if (!window.confirm(`Supprimer le moyen de paiement "${paymentMethod?.label}" ?`)) return;
-                    await deleteMutation.mutateAsync(id!);
-                    router.push('/referentiels/moyens-paiement');
+                    if (!(await confirmSimpleDelete(`Supprimer le moyen de paiement "${paymentMethod?.label}" ?`))) return;
+                    try {
+                      const outcome = await deleteWithDeactivateFallback({
+                        deleteFn: () => deleteMutation.mutateAsync(id!),
+                        deactivateFn: () => updateMutation.mutateAsync({ id: id!, active: false }),
+                      });
+                      if (outcome === 'cancelled') return;
+                      notifications.show({
+                        message:
+                          outcome === 'deactivated'
+                            ? `"${paymentMethod?.label}" désactivé`
+                            : `"${paymentMethod?.label}" supprimé`,
+                        color: outcome === 'deactivated' ? 'orange' : 'red',
+                      });
+                      router.push('/referentiels/moyens-paiement');
+                    } catch {
+                      // erreur affichée via mutationError
+                    }
                   }}
                 >
                   Supprimer
@@ -250,7 +269,7 @@ export function PaymentMethodsFiche({ id }: Props) {
               )}
             </Box>
             <Group gap="var(--crud-form-footer-gap)">
-              <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
+              <Button type="button" size="sm" radius="md" variant="default" onClick={() => router.back()}>
                 Annuler
               </Button>
               <Button size="sm" radius="md" type="submit" loading={isSubmitting}>

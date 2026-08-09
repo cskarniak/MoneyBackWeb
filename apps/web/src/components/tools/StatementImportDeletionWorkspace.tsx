@@ -8,6 +8,7 @@ import { CRUD } from '@/lib/crud-tokens';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useDeleteStatementImport, useOperationStatementRefs } from '@/hooks/useOperations';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -44,7 +45,7 @@ export function StatementImportDeletionWorkspace() {
       return;
     }
 
-    if (!window.confirm(`Confirmer la suppression du relevé "${statementRef}" ?`)) {
+    if (!(await confirmSimpleDelete(`Confirmer la suppression du relevé "${statementRef}" ?`))) {
       return;
     }
 

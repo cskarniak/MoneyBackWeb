@@ -19,6 +19,7 @@ import {
   Center,
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 import {
   useNote,
   useCreateNote,
@@ -222,7 +223,7 @@ export function NotesFiche({ id }: Props) {
                   variant="light"
                   loading={deleteMutation.isPending}
                   onClick={async () => {
-                    if (!window.confirm(`Supprimer la note "${note?.title}" ?`)) return;
+                    if (!(await confirmSimpleDelete(`Supprimer la note "${note?.title}" ?`))) return;
                     try {
                       await deleteMutation.mutateAsync(id!);
                       router.push(buildListUrl());

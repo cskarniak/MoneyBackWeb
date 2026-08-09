@@ -18,7 +18,10 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 import {
   useCreateMovementType,
   useDeleteMovementType,
@@ -107,7 +110,7 @@ export function MovementTypesFiche({ id }: Props) {
     }
   };
 
-  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? null;
+  const mutationError = (isNew ? createMutation.error : updateMutation.error)?.message ?? deleteMutation.error?.message ?? null;
 
   if (!isNew && loadingMovementType) {
     return (
@@ -259,15 +262,31 @@ export function MovementTypesFiche({ id }: Props) {
             <Box>
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   variant="outline"
                   color="red"
                   loading={deleteMutation.isPending}
                   onClick={async () => {
-                    if (!window.confirm(`Supprimer le type de mouvement "${movementType?.label}" ?`)) return;
-                    await deleteMutation.mutateAsync(id!);
-                    router.push('/referentiels/types-mouvement');
+                    if (!(await confirmSimpleDelete(`Supprimer le type de mouvement "${movementType?.label}" ?`))) return;
+                    try {
+                      const outcome = await deleteWithDeactivateFallback({
+                        deleteFn: () => deleteMutation.mutateAsync(id!),
+                        deactivateFn: () => updateMutation.mutateAsync({ id: id!, active: false }),
+                      });
+                      if (outcome === 'cancelled') return;
+                      notifications.show({
+                        message:
+                          outcome === 'deactivated'
+                            ? `"${movementType?.label}" désactivé`
+                            : `"${movementType?.label}" supprimé`,
+                        color: outcome === 'deactivated' ? 'orange' : 'red',
+                      });
+                      router.push('/referentiels/types-mouvement');
+                    } catch {
+                      // erreur affichée via mutationError
+                    }
                   }}
                 >
                   Supprimer
@@ -275,7 +294,7 @@ export function MovementTypesFiche({ id }: Props) {
               )}
             </Box>
             <Group gap="var(--crud-form-footer-gap)">
-              <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
+              <Button type="button" size="sm" radius="md" variant="default" onClick={() => router.back()}>
                 Annuler
               </Button>
               <Button size="sm" radius="md" type="submit" loading={isSubmitting}>

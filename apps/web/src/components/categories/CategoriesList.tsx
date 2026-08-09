@@ -43,6 +43,8 @@ import { useRegroupement } from '@/hooks/useGroupings';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { isSecondaryTabRequest } from '@/lib/secondary-tab';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const SALMON = '#ffe4d6';
 const GRAY_BG = '#f8f9fa';
@@ -191,15 +193,19 @@ export function CategoriesList() {
 
   const handleDelete = async (cat: Category) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer la catégorie "${cat.label}" ?`)) return;
+    if (!(await confirmSimpleDelete(`Supprimer la catégorie "${cat.label}" ?`))) return;
     try {
-      const result = await deleteMutation.mutateAsync(cat.id);
+      const outcome = await deleteWithDeactivateFallback({
+        deleteFn: () => deleteMutation.mutateAsync(cat.id),
+        deactivateFn: () => assignMutation.mutateAsync({ id: cat.id, active: false }),
+      });
+      if (outcome === 'cancelled') return;
       notifications.show({
         message:
-          result.status === 'deactivated'
-            ? `"${cat.label}" est utilisée et a été rendue inactive`
+          outcome === 'deactivated'
+            ? `"${cat.label}" désactivée`
             : `"${cat.label}" supprimée`,
-        color: result.status === 'deactivated' ? 'orange' : 'red',
+        color: outcome === 'deactivated' ? 'orange' : 'red',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : null;
@@ -283,13 +289,13 @@ export function CategoriesList() {
             Libellé{sortIcon('label')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={highlightedId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={highlightedId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         id: 'type',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Type</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} style={{ textAlign: 'center' }} c={row.original.income ? 'teal' : row.original.expense ? 'red' : 'dimmed'}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} style={{ textAlign: 'center' }} c={row.original.income ? 'teal' : row.original.expense ? 'red' : 'dimmed'}>
             {row.original.income ? 'Recette' : row.original.expense ? 'Dépense' : '—'}
           </Text>
         ),
@@ -302,7 +308,7 @@ export function CategoriesList() {
           </span>
         ),
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={highlightedId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'} truncate title={row.original.regroupement?.label}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={highlightedId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'} truncate title={row.original.regroupement?.label}>
             {row.original.regroupement?.label ?? '—'}
           </Text>
         ),
@@ -311,7 +317,7 @@ export function CategoriesList() {
         id: 'active',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Actif</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={700} style={{ textAlign: 'center' }}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} style={{ textAlign: 'center' }}>
             {row.original.active ? '✓' : ''}
           </Text>
         ),
@@ -454,7 +460,7 @@ export function CategoriesList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select
                 size="sm"
                 radius="md"
@@ -581,7 +587,7 @@ export function CategoriesList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucune catégorie.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucune catégorie.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -631,7 +637,7 @@ export function CategoriesList() {
           }}
         >
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             c={TEXT_MUTED}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
@@ -648,7 +654,7 @@ export function CategoriesList() {
               >
                 Précédent
               </Button>
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
                 Page {page} sur {totalPages || 1}
               </Text>
               <Button

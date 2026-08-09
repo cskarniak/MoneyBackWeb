@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CreateMovementTypeDto,
@@ -84,15 +84,14 @@ export class MovementTypesService {
     ]);
 
     if (operationsCount > 0 || budgetsCount > 0 || subscriptionsCount > 0) {
-      const inactiveMovementType = await this.prisma.movementType.update({
-        where: { id },
-        data: { active: false },
-      });
+      const details: string[] = [];
+      if (operationsCount > 0) details.push(`${operationsCount} opération(s)`);
+      if (budgetsCount > 0) details.push(`${budgetsCount} enveloppe(s)`);
+      if (subscriptionsCount > 0) details.push(`${subscriptionsCount} abonnement(s)`);
 
-      return {
-        status: 'deactivated' as const,
-        item: inactiveMovementType,
-      };
+      throw new ConflictException(
+        `Impossible de supprimer le type de mouvement "${movementType.label}" : utilisé par ${details.join(', ')}.`,
+      );
     }
 
     await this.prisma.movementType.delete({ where: { id } });

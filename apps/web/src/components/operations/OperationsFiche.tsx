@@ -31,7 +31,7 @@ import { useMovementTypesAll } from '@/hooks/useMovementTypes';
 import { usePaymentMethodsAll } from '@/hooks/usePaymentMethods';
 import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { filterActiveOptions, filterCategoryOptionsByDirection } from '@/lib/activeOptions';
-import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
+import { confirmAction, confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
 
@@ -372,14 +372,14 @@ export function OperationsFiche({ id }: Props) {
     setSuggestedThirdPartyName(nextSuggestedSplits.length > 0 ? thirdParty.name : null);
   };
 
-  const applySuggestedSplits = () => {
+  const applySuggestedSplits = async () => {
     if (suggestedSplits.length === 0) {
       return;
     }
 
     if (
       watchSplits.length > 0
-      && !window.confirm('Cette opération contient déjà une ventilation. La nouvelle ventilation du tiers va la remplacer. Continuer ?')
+      && !(await confirmAction('Cette opération contient déjà une ventilation. La nouvelle ventilation du tiers va la remplacer. Continuer ?', 'Remplacer'))
     ) {
       return;
     }
@@ -482,10 +482,11 @@ export function OperationsFiche({ id }: Props) {
                 {isNew ? 'Nouvelle opération' : `Modification: ${operation?.label ?? ''}`}
               </Text>
               <Group gap={8}>
-                <Button variant="default" radius="md" onClick={() => reset()}>
+                <Button type="button" variant="default" radius="md" onClick={() => reset()}>
                   RAZ
                 </Button>
                 <Button
+                  type="button"
                   variant="default"
                   radius="md"
                   leftSection={<IconPlus size={14} />}
@@ -644,10 +645,10 @@ export function OperationsFiche({ id }: Props) {
                     </Text>
                   </Box>
                   <Group gap={8}>
-                    <Button variant="default" size="xs" onClick={() => setSplitSuggestionModalOpened(true)}>
+                    <Button type="button" variant="default" size="xs" onClick={() => setSplitSuggestionModalOpened(true)}>
                       Voir / modifier
                     </Button>
-                    <Button size="xs" onClick={applySuggestedSplits}>
+                    <Button type="button" size="xs" onClick={applySuggestedSplits}>
                       Générer
                     </Button>
                   </Group>
@@ -703,8 +704,8 @@ export function OperationsFiche({ id }: Props) {
                               <PositioningSelect data={filterCategoryOptionsByDirection(categoryOptions, split.expense, split.income, categoryAllowReversal)} value={split.categoryId ?? null} onChange={val => setValue(`splits.${index}.categoryId`, val)} clearable styles={{ input: fieldInputStyle }} />
                             </Table.Td>
                             <Table.Td>
-                              <ActionIcon color="red" variant="subtle" onClick={() => {
-                                if (!confirmSimpleDelete('Supprimer cette ligne de ventilation ?')) return;
+                              <ActionIcon type="button" color="red" variant="subtle" onClick={async () => {
+                                if (!(await confirmSimpleDelete('Supprimer cette ligne de ventilation ?'))) return;
                                 remove(index);
                               }}>
                                 <IconTrash size={16} />
@@ -719,7 +720,7 @@ export function OperationsFiche({ id }: Props) {
               </Box>
 
               <Group justify="space-between" mt={10}>
-                <Button variant="default" leftSection={<IconPlus size={14} />} onClick={() => append({ label: '', categoryId: null, budgetId: null, expense: '', income: '' })}>
+                <Button type="button" variant="default" leftSection={<IconPlus size={14} />} onClick={() => append({ label: '', categoryId: null, budgetId: null, expense: '', income: '' })}>
                   Ajouter une ligne
                 </Button>
                 <Group gap={20}>
@@ -741,6 +742,7 @@ export function OperationsFiche({ id }: Props) {
             <Box>
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   color="red"
@@ -749,7 +751,7 @@ export function OperationsFiche({ id }: Props) {
                   onClick={async () => {
                     const isVentilated = (operation?.splits?.length ?? 0) > 0;
                     const message = `Supprimer l'opération "${operation?.label}" ?`;
-                    const confirmed = isVentilated ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+                    const confirmed = isVentilated ? await confirmStrongDelete(message) : await confirmSimpleDelete(message);
                     if (!confirmed) return;
                     try {
                       await deleteMutation.mutateAsync(id!);
@@ -765,7 +767,7 @@ export function OperationsFiche({ id }: Props) {
             </Box>
 
             <Group gap="var(--crud-form-footer-gap)">
-              <Button variant="default" radius="md" onClick={() => router.push('/operations')}>
+              <Button type="button" variant="default" radius="md" onClick={() => router.push('/operations')}>
                 Retour
               </Button>
               <Button type="submit" radius="md" loading={isSubmitting}>

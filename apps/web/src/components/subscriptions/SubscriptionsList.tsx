@@ -189,7 +189,7 @@ export function SubscriptionsList() {
   const handleDelete = async (subscription: Subscription) => {
     setDeleteError(null);
     const message = `Supprimer l'abonnement "${subscription.label}" ?`;
-    const confirmed = subscription.splits.length > 0 ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    const confirmed = subscription.splits.length > 0 ? await confirmStrongDelete(message) : await confirmSimpleDelete(message);
     if (!confirmed) return;
     try {
       const result = await deleteMutation.mutateAsync(subscription.id);
@@ -285,7 +285,7 @@ export function SubscriptionsList() {
         ),
         cell: ({ row, getValue }) => (
           <Stack gap={2}>
-            <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
               {getValue() as string}
             </Text>
           </Stack>
@@ -308,7 +308,7 @@ export function SubscriptionsList() {
           </span>
         ),
         cell: ({ getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte}>{periodicityLabel(getValue() as string)}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte}>{periodicityLabel(getValue() as string)}</Text>
         ),
       },
       {
@@ -319,21 +319,21 @@ export function SubscriptionsList() {
           </span>
         ),
         cell: ({ getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte}>{formatDate(getValue() as string | null)}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte}>{formatDate(getValue() as string | null)}</Text>
         ),
       },
       {
         id: 'compte',
         header: () => <span style={thStyle()}>Compte</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} truncate title={row.original.compte?.name}>{row.original.compte?.name ?? '—'}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte} truncate title={row.original.compte?.name}>{row.original.compte?.name ?? '—'}</Text>
         ),
       },
       {
         id: 'active',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Actif</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.active ? '✓' : ''}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} ta="center">{row.original.active ? '✓' : ''}</Text>
         ),
       },
       {
@@ -433,7 +433,7 @@ export function SubscriptionsList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select
                 size="sm"
                 radius="md"
@@ -563,7 +563,7 @@ export function SubscriptionsList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucun abonnement.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucun abonnement.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -615,7 +615,7 @@ export function SubscriptionsList() {
           }}
         >
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             c={TEXT_MUTED}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
@@ -632,7 +632,7 @@ export function SubscriptionsList() {
             >
               Précédent
             </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
               Page {page} sur {totalPages || 1}
             </Text>
             <Button

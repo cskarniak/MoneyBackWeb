@@ -35,6 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { useRegroupements, useDeleteRegroupement, type Regroupement, type RegroupementType } from '@/hooks/useGroupings';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const SALMON = '#ffe4d6';
 const GRAY_BG = '#f8f9fa';
@@ -152,7 +153,7 @@ export function GroupingsList() {
 
   const handleDelete = async (g: Regroupement) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer le regroupement "${g.label}" ?`)) return;
+    if (!(await confirmSimpleDelete(`Supprimer le regroupement "${g.label}" ?`))) return;
     try {
       await deleteMutation.mutateAsync(g.id);
       notifications.show({ message: `"${g.label}" supprimé`, color: 'red' });
@@ -235,27 +236,27 @@ export function GroupingsList() {
             Libellé{sortIcon('label')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         id: 'income',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Catégorie</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={700} style={{ textAlign: 'center' }}>{row.original.income ? '✓' : ''}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} style={{ textAlign: 'center' }}>{row.original.income ? '✓' : ''}</Text>
         ),
       },
       {
         id: 'expense',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Poste</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={700} style={{ textAlign: 'center' }}>{row.original.expense ? '✓' : ''}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} style={{ textAlign: 'center' }}>{row.original.expense ? '✓' : ''}</Text>
         ),
       },
       {
         id: 'dashboard',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Tableau de bord</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={700} style={{ textAlign: 'center' }}>{row.original.dashboard ? '✓' : ''}</Text>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} style={{ textAlign: 'center' }}>{row.original.dashboard ? '✓' : ''}</Text>
         ),
       },
       {
@@ -357,7 +358,7 @@ export function GroupingsList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select
                 size="sm"
                 radius="md"
@@ -489,7 +490,7 @@ export function GroupingsList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucun regroupement.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucun regroupement.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -539,7 +540,7 @@ export function GroupingsList() {
           }}
         >
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             c={TEXT_MUTED}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
@@ -556,7 +557,7 @@ export function GroupingsList() {
               >
                 Précédent
               </Button>
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
                 Page {page} sur {totalPages || 1}
               </Text>
               <Button

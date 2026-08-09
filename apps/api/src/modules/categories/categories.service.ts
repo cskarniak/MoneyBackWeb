@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { CreateCategoryDto, UpdateCategoryDto, CategoryFiltersDto } from '@moneyback/shared';
 
@@ -153,13 +153,18 @@ export class CategoriesService {
       || migratedFromCount > 0;
 
     if (inUse) {
-      const inactiveCategory = await this.prisma.category.update({
-        where: { id },
-        data: { active: false },
-        include: GROUPING_INCLUDE,
-      });
+      const details: string[] = [];
+      if (operationsCount > 0) details.push(`${operationsCount} opération(s)`);
+      if (splitsCount > 0) details.push(`${splitsCount} opération(s) ventilée(s)`);
+      if (subscriptionsCount > 0) details.push(`${subscriptionsCount} abonnement(s)`);
+      if (subscriptionSplitsCount > 0) details.push(`${subscriptionSplitsCount} abonnement(s) ventilé(s)`);
+      if (thirdPartiesCount > 0) details.push(`${thirdPartiesCount} tiers`);
+      if (thirdPartySplitsCount > 0) details.push(`${thirdPartySplitsCount} tiers ventilé(s)`);
+      if (migratedFromCount > 0) details.push(`${migratedFromCount} catégorie(s) migrée(s) depuis celle-ci`);
 
-      return { status: 'deactivated' as const, item: this.presenter(inactiveCategory) };
+      throw new ConflictException(
+        `Impossible de supprimer la catégorie "${category.label}" : utilisée par ${details.join(', ')}.`,
+      );
     }
 
     await this.prisma.category.delete({ where: { id } });

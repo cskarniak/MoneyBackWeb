@@ -40,6 +40,8 @@ import { OperationSplitModal } from '../operations/OperationSplitModal';
 import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
 import { openSecondaryTab } from '@/lib/secondary-tab';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { notifications } from '@mantine/notifications';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -892,10 +894,21 @@ export function TiersFiche({ id }: Props) {
                     loading={deleteMutation.isPending}
                     onClick={async () => {
                       const message = `Supprimer le tiers "${tiers?.name}" ?`;
-                      const confirmed = tiers?.ventilated ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+                      const confirmed = tiers?.ventilated ? await confirmStrongDelete(message) : await confirmSimpleDelete(message);
                       if (!confirmed) return;
                       try {
-                        await deleteMutation.mutateAsync(id!);
+                        const outcome = await deleteWithDeactivateFallback({
+                          deleteFn: () => deleteMutation.mutateAsync(id!),
+                          deactivateFn: () => updateMutation.mutateAsync({ id: id!, active: false }),
+                        });
+                        if (outcome === 'cancelled') return;
+                        notifications.show({
+                          message:
+                            outcome === 'deactivated'
+                              ? `"${tiers?.name}" désactivé`
+                              : `"${tiers?.name}" supprimé`,
+                          color: outcome === 'deactivated' ? 'orange' : 'red',
+                        });
                         router.push(buildListUrl());
                       } catch {
                         void 0;

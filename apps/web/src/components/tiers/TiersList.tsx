@@ -35,9 +35,10 @@ import {
   IconEye,
   IconEyeOff,
 } from '@tabler/icons-react';
-import { useDeleteThirdParty, useThirdParties, type ThirdParty } from '@/hooks/useThirdParties';
+import { useDeleteThirdParty, useThirdParties, useUpdateThirdParty, type ThirdParty } from '@/hooks/useThirdParties';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
 import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -76,6 +77,7 @@ export function TiersList() {
     highlightId: recentId ?? undefined,
   });
   const deleteMutation = useDeleteThirdParty();
+  const updateMutation = useUpdateThirdParty();
 
   const hasRepositionedRef = useRef(false);
 
@@ -151,16 +153,20 @@ export function TiersList() {
   const handleDelete = async (tiers: ThirdParty) => {
     setDeleteError(null);
     const message = `Supprimer le tiers "${tiers.name}" ?`;
-    const confirmed = tiers.ventilated ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    const confirmed = tiers.ventilated ? await confirmStrongDelete(message) : await confirmSimpleDelete(message);
     if (!confirmed) return;
     try {
-      const result = await deleteMutation.mutateAsync(tiers.id);
+      const outcome = await deleteWithDeactivateFallback({
+        deleteFn: () => deleteMutation.mutateAsync(tiers.id),
+        deactivateFn: () => updateMutation.mutateAsync({ id: tiers.id, active: false }),
+      });
+      if (outcome === 'cancelled') return;
       notifications.show({
         message:
-          result.status === 'deactivated'
-            ? `"${tiers.name}" est utilisé et a été rendu inactif`
+          outcome === 'deactivated'
+            ? `"${tiers.name}" désactivé`
             : `"${tiers.name}" supprimé`,
-        color: result.status === 'deactivated' ? 'orange' : 'red',
+        color: outcome === 'deactivated' ? 'orange' : 'red',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : null;
@@ -238,7 +244,7 @@ export function TiersList() {
             Nom{sortIcon('name')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         accessorKey: 'comment',
@@ -247,12 +253,12 @@ export function TiersList() {
             Bloc note{sortIcon('comment')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} truncate title={(getValue() as string | null) ?? undefined}>{(getValue() as string | null) ?? '—'}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 400} truncate title={(getValue() as string | null) ?? undefined}>{(getValue() as string | null) ?? '—'}</Text>,
       },
       {
         id: 'active',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Actif</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.active ? '✓' : ''}</Text>,
+        cell: ({ row }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} ta="center">{row.original.active ? '✓' : ''}</Text>,
       },
       {
         id: 'actions',
@@ -340,7 +346,7 @@ export function TiersList() {
             </Group>
 
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select value={String(limit)} onChange={handleLimitChange} data={LIMIT_OPTIONS} w={78} radius="md" />
               <TextInput
                 value={searchInput}
@@ -423,7 +429,7 @@ export function TiersList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: 24 }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucun tiers.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucun tiers.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -461,7 +467,7 @@ export function TiersList() {
         </Box>
 
         <Group justify="space-between" align="center" style={{ padding: 'var(--crud-list-footer-padding-top) var(--crud-list-footer-padding-x)' }}>
-          <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>
             {data?.total ?? 0} tiers
           </Text>
 
@@ -474,7 +480,7 @@ export function TiersList() {
             >
               Précédent
             </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
               Page {page} sur {Math.max(totalPages, 1)}
             </Text>
             <Button

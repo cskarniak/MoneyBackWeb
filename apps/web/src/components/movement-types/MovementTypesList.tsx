@@ -31,9 +31,12 @@ import {
 import {
   useDeleteMovementType,
   useMovementTypes,
+  useUpdateMovementType,
   type MovementType,
 } from '@/hooks/useMovementTypes';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -98,6 +101,7 @@ export function MovementTypesList() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recentId, data]);
   const deleteMutation = useDeleteMovementType();
+  const updateMutation = useUpdateMovementType();
 
   const pushParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -144,20 +148,23 @@ export function MovementTypesList() {
 
   const handleDelete = async (movementType: MovementType) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer le type de mouvement "${movementType.label}" ?`)) return;
+    if (!(await confirmSimpleDelete(`Supprimer le type de mouvement "${movementType.label}" ?`))) return;
     try {
-      const result = await deleteMutation.mutateAsync(movementType.id);
+      const outcome = await deleteWithDeactivateFallback({
+        deleteFn: () => deleteMutation.mutateAsync(movementType.id),
+        deactivateFn: () => updateMutation.mutateAsync({ id: movementType.id, active: false }),
+      });
+      if (outcome === 'cancelled') return;
       notifications.show({
         message:
-          result.status === 'deactivated'
-            ? `"${movementType.label}" est utilisé et a été rendu inactif`
+          outcome === 'deactivated'
+            ? `"${movementType.label}" désactivé`
             : `"${movementType.label}" supprimé`,
-        color: result.status === 'deactivated' ? 'orange' : 'red',
+        color: outcome === 'deactivated' ? 'orange' : 'red',
       });
-    } catch {
-      setDeleteError(
-        `Impossible de supprimer "${movementType.label}". Il est peut-être utilisé par des opérations, postes ou abonnements.`,
-      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      setDeleteError(message ?? `Impossible de supprimer "${movementType.label}".`);
     }
   };
 
@@ -234,7 +241,7 @@ export function MovementTypesList() {
         ),
         cell: ({ row, getValue }) => (
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             fw={recentId === row.original.id ? 800 : 700}
             ff="monospace"
             ta="center"
@@ -251,7 +258,7 @@ export function MovementTypesList() {
           </span>
         ),
         cell: ({ row, getValue }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>
             {getValue() as string}
           </Text>
         ),
@@ -260,7 +267,7 @@ export function MovementTypesList() {
         id: 'active',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Actif</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} ta="center">
             {row.original.active ? '✓' : ''}
           </Text>
         ),
@@ -356,7 +363,7 @@ export function MovementTypesList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select size="sm" radius="md" value={String(limit)} onChange={handleLimitChange} data={LIMIT_OPTIONS} style={{ width: 78 }} />
               <TextInput
                 size="sm"
@@ -439,7 +446,7 @@ export function MovementTypesList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucun type de mouvement.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucun type de mouvement.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -484,7 +491,7 @@ export function MovementTypesList() {
           }}
         >
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             c={TEXT_MUTED}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
@@ -494,7 +501,7 @@ export function MovementTypesList() {
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
               Précédent
             </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
               Page {page} sur {totalPages || 1}
             </Text>
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>

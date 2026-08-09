@@ -22,6 +22,7 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconMenu2, IconDownload, IconEye, IconEyeOff } from '@tabler/icons-react';
 import { useAccounts, useDeleteAccount, type Account } from '@/hooks/useAccounts';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -152,7 +153,7 @@ export function AccountsList() {
 
   const handleDelete = async (account: Account) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer le compte "${account.name}" ?`)) return;
+    if (!(await confirmSimpleDelete(`Supprimer le compte "${account.name}" ?`))) return;
     try {
       await deleteMutation.mutateAsync(account.id);
       notifications.show({ message: `"${account.name}" supprimé`, color: 'red' });
@@ -241,7 +242,7 @@ export function AccountsList() {
             Nom{sortIcon('name')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         accessorKey: 'agency',
@@ -250,7 +251,7 @@ export function AccountsList() {
             Agence{sortIcon('agency')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} truncate title={(getValue() as string | null) ?? undefined}>{(getValue() as string | null) ?? '—'}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 400} truncate title={(getValue() as string | null) ?? undefined}>{(getValue() as string | null) ?? '—'}</Text>,
       },
       {
         accessorKey: 'number',
@@ -259,13 +260,13 @@ export function AccountsList() {
             Numéro{sortIcon('number')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 400}>{(getValue() as string | null) ?? '—'}</Text>,
       },
       {
         id: 'balance',
         header: () => <span style={{ ...thStyle(), textAlign: 'right', display: 'block' }}>Solde</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={recentId === row.original.id ? 700 : 400} ta="right">
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={recentId === row.original.id ? 700 : 400} ta="right">
             {formatAmount(row.original.balance)} €
           </Text>
         ),
@@ -274,7 +275,7 @@ export function AccountsList() {
         id: 'balanceReferenceDate',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Mise à jour</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} ta="center">
+          <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} ta="center">
             {formatDate(row.original.balanceReferenceDate) ?? '—'}
           </Text>
         ),
@@ -282,7 +283,7 @@ export function AccountsList() {
       {
         id: 'closed',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Fermé</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.closed ? '✓' : ''}</Text>,
+        cell: ({ row }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} ta="center">{row.original.closed ? '✓' : ''}</Text>,
       },
       {
         id: 'actions',
@@ -375,7 +376,7 @@ export function AccountsList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select size="sm" radius="md" value={String(limit)} onChange={handleLimitChange} data={LIMIT_OPTIONS} style={{ width: 78 }} />
               <TextInput
                 size="sm"
@@ -468,7 +469,7 @@ export function AccountsList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucun compte.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucun compte.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -516,11 +517,11 @@ export function AccountsList() {
             gap={12}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>
               {data ? `${data.total} compte${data.total !== 1 ? 's' : ''}` : '…'}
             </Text>
             {data && (
-              <Text fz={CRUD.typographie.tailleTexte} fw={700}>
+              <Text fz={CRUD.typographie.petiteTailleTexte} fw={700}>
                 Total des soldes : {formatAmount(String(data.totalBalance))} €
               </Text>
             )}
@@ -529,7 +530,7 @@ export function AccountsList() {
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
               Précédent
             </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
               Page {page} sur {totalPages || 1}
             </Text>
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>

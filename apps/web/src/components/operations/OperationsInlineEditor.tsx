@@ -30,6 +30,7 @@ import { useThirdPartiesAll } from '@/hooks/useThirdParties';
 import { filterActiveOptions, filterCategoryOptionsByDirection } from '@/lib/activeOptions';
 import { OperationSplitModal } from './OperationSplitModal';
 import { buildThirdPartySplitDrafts, sumSplitDrafts, type OperationSplitDraft } from './operationThirdPartyHelpers';
+import { confirmAction } from '@/lib/confirmDelete';
 
 const FIELD_BG = '#fbfdff';
 const ROW_BG = '#dbeafe';
@@ -491,14 +492,14 @@ export function OperationsInlineEditor({
     }
   };
 
-  const applySuggestedSplits = () => {
+  const applySuggestedSplits = async () => {
     if (suggestedSplits.length === 0) {
       return;
     }
 
     if (
       watchSplits.length > 0
-      && !window.confirm('Cette opération contient déjà une ventilation. La nouvelle ventilation du tiers va la remplacer. Continuer ?')
+      && !(await confirmAction('Cette opération contient déjà une ventilation. La nouvelle ventilation du tiers va la remplacer. Continuer ?', 'Remplacer'))
     ) {
       return;
     }

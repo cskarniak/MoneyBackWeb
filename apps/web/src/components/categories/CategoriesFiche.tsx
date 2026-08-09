@@ -20,6 +20,7 @@ import {
   Center,
   Radio,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import {
   useCategoriesAll,
@@ -34,6 +35,8 @@ import { useRegroupementsAll } from '@/hooks/useGroupings';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { MigrateActionButton, MigrationReportBanner } from '@/components/common/EntityMigration';
 import { isSecondaryTabRequest, openSecondaryTab } from '@/lib/secondary-tab';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -344,6 +347,7 @@ export function CategoriesFiche({ id }: Props) {
             <Group gap={8}>
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   variant="outline"
@@ -364,15 +368,27 @@ export function CategoriesFiche({ id }: Props) {
               {!isNew && !category?.migratedToId && (
                 <>
                   <Button
+                    type="button"
                     size="xs"
                     radius="md"
                     variant="outline"
                     color="red"
                     loading={deleteMutation.isPending}
                     onClick={async () => {
-                      if (!window.confirm(`Supprimer la catégorie "${category?.label}" ?`)) return;
+                      if (!(await confirmSimpleDelete(`Supprimer la catégorie "${category?.label}" ?`))) return;
                       try {
-                        await deleteMutation.mutateAsync(id!);
+                        const outcome = await deleteWithDeactivateFallback({
+                          deleteFn: () => deleteMutation.mutateAsync(id!),
+                          deactivateFn: () => updateMutation.mutateAsync({ id: id!, active: false }),
+                        });
+                        if (outcome === 'cancelled') return;
+                        notifications.show({
+                          message:
+                            outcome === 'deactivated'
+                              ? `"${category?.label}" désactivée`
+                              : `"${category?.label}" supprimée`,
+                          color: outcome === 'deactivated' ? 'orange' : 'red',
+                        });
                         router.push(buildListUrl());
                       } catch {
                         // erreur affichée via mutationError
@@ -393,6 +409,7 @@ export function CategoriesFiche({ id }: Props) {
             </Group>
             <Group gap="var(--crud-form-footer-gap)">
               <Button
+                type="button"
                 size="sm"
                 radius="md"
                 variant="default"

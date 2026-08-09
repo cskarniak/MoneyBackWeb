@@ -32,8 +32,8 @@ export const CRUD = {
     fondMiseEnEvidenceZoom: '#ffe066', // fond de mise en évidence de la ligne source lors d'un zoom
   },
   typographie: {
-    tailleTexte: 14, // taille standard du texte CRUD
-    petiteTailleTexte: 12, // petite taille pour libellés secondaires
+    tailleTexte: 14, // taille standard du texte CRUD (fiches, textes courants)
+    petiteTailleTexte: 12, // taille du texte des listes CRUD (entêtes ET cellules du tableau)
     tailleTitre: 20, // taille du titre dans le bandeau
   },
   fiche: {

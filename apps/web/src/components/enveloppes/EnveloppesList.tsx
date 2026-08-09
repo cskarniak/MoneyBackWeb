@@ -38,11 +38,25 @@ import { useRegroupement } from '@/hooks/useGroupings';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { isSecondaryTabRequest } from '@/lib/secondary-tab';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
+import { deleteWithDeactivateFallback } from '@/lib/deleteOrDeactivate';
+import { confirmSimpleDelete } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
 const TEXT_MUTED = '#667085';
 const LIMIT_OPTIONS = ['10', '20', '25', '50', '100'];
+
+function formatAmount(value: string) {
+  return Number(value || 0).toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatDate(value: string | null) {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString('fr-FR');
+}
 
 export function EnveloppesList() {
   const router = useRouter();
@@ -191,15 +205,19 @@ export function EnveloppesList() {
 
   const handleDelete = async (enveloppe: Enveloppe) => {
     setDeleteError(null);
-    if (!window.confirm(`Supprimer l'enveloppe "${enveloppe.label}" ?`)) return;
+    if (!(await confirmSimpleDelete(`Supprimer l'enveloppe "${enveloppe.label}" ?`))) return;
     try {
-      const result = await deleteMutation.mutateAsync(enveloppe.id);
+      const outcome = await deleteWithDeactivateFallback({
+        deleteFn: () => deleteMutation.mutateAsync(enveloppe.id),
+        deactivateFn: () => assignMutation.mutateAsync({ id: enveloppe.id, active: false }),
+      });
+      if (outcome === 'cancelled') return;
       notifications.show({
         message:
-          result.status === 'deactivated'
-            ? `"${enveloppe.label}" est utilisée et a été rendue inactive`
+          outcome === 'deactivated'
+            ? `"${enveloppe.label}" désactivée`
             : `"${enveloppe.label}" supprimée`,
-        color: result.status === 'deactivated' ? 'orange' : 'red',
+        color: outcome === 'deactivated' ? 'orange' : 'red',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : null;
@@ -214,6 +232,9 @@ export function EnveloppesList() {
     fontSize: CRUD.typographie.petiteTailleTexte,
     fontWeight: 700,
     whiteSpace: 'nowrap' as const,
+    overflow: 'hidden' as const,
+    textOverflow: 'ellipsis' as const,
+    display: 'block' as const,
     cursor: col ? 'pointer' : 'default',
     userSelect: 'none' as const,
     textTransform: 'uppercase' as const,
@@ -248,16 +269,22 @@ export function EnveloppesList() {
   const getColumnWidth = (columnId: string) => {
     switch (columnId) {
       case 'cursor':
-        return '22px';
+        return '18px';
+      case 'label':
+        return '202px';
       case 'regroupement':
-        return '180px';
+        return '70px';
       case 'regroupementTableauDeBord':
-        return '180px';
+        return '109px';
       case 'summary':
       case 'active':
-        return '90px';
+        return '64px';
+      case 'balance':
+        return '70px';
+      case 'balanceReferenceDate':
+        return '96px';
       case 'actions':
-        return '144px';
+        return '55px';
       default:
         return undefined;
     }
@@ -281,7 +308,7 @@ export function EnveloppesList() {
             Libellé{sortIcon('label')}
           </span>
         ),
-        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.tailleTexte} fw={highlightedId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
+        cell: ({ row, getValue }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={highlightedId === row.original.id ? 700 : 600} truncate title={getValue() as string}>{getValue() as string}</Text>,
       },
       {
         id: 'regroupement',
@@ -291,7 +318,7 @@ export function EnveloppesList() {
           </span>
         ),
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={highlightedId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'} truncate title={row.original.regroupement?.label}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={highlightedId === row.original.id ? 700 : 400} c={row.original.regroupement ? undefined : 'dimmed'} truncate title={row.original.regroupement?.label}>
             {row.original.regroupement?.label ?? '—'}
           </Text>
         ),
@@ -299,13 +326,13 @@ export function EnveloppesList() {
       {
         id: 'summary',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Synthèse</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.summary ? '✓' : ''}</Text>,
+        cell: ({ row }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} ta="center">{row.original.summary ? '✓' : ''}</Text>,
       },
       {
         id: 'regroupementTableauDeBord',
-        header: () => <span style={thStyle()}>Regroupement TB</span>,
+        header: () => <span style={thStyle()} title="Regroupement TB">Regroupement TB</span>,
         cell: ({ row }) => (
-          <Text fz={CRUD.typographie.tailleTexte} fw={highlightedId === row.original.id ? 700 : 400} c={row.original.regroupementTableauDeBord ? undefined : 'dimmed'} truncate title={row.original.regroupementTableauDeBord?.label}>
+          <Text fz={CRUD.typographie.petiteTailleTexte} fw={highlightedId === row.original.id ? 700 : 400} c={row.original.regroupementTableauDeBord ? undefined : 'dimmed'} truncate title={row.original.regroupementTableauDeBord?.label}>
             {row.original.regroupementTableauDeBord?.label ?? '—'}
           </Text>
         ),
@@ -313,7 +340,33 @@ export function EnveloppesList() {
       {
         id: 'active',
         header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Actif</span>,
-        cell: ({ row }) => <Text fz={CRUD.typographie.tailleTexte} fw={700} ta="center">{row.original.active ? '✓' : ''}</Text>,
+        cell: ({ row }) => <Text fz={CRUD.typographie.petiteTailleTexte} fw={700} ta="center">{row.original.active ? '✓' : ''}</Text>,
+      },
+      {
+        id: 'balance',
+        header: () => <span style={{ ...thStyle(), textAlign: 'right', display: 'block' }}>Solde</span>,
+        cell: ({ row }) => {
+          const balance = Number(row.original.balance || 0);
+          return (
+            <Text
+              fz={CRUD.typographie.petiteTailleTexte}
+              fw={highlightedId === row.original.id ? 700 : 400}
+              ta="right"
+              c={balance < 0 ? 'red' : undefined}
+            >
+              {formatAmount(row.original.balance)} €
+            </Text>
+          );
+        },
+      },
+      {
+        id: 'balanceReferenceDate',
+        header: () => <span style={{ ...thStyle(), textAlign: 'center', display: 'block' }}>Date de calcul</span>,
+        cell: ({ row }) => (
+          <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} ta="center">
+            {formatDate(row.original.balanceReferenceDate) ?? '—'}
+          </Text>
+        ),
       },
       {
         id: 'actions',
@@ -445,7 +498,7 @@ export function EnveloppesList() {
               </Button>
             </Group>
             <Group gap={8} wrap="nowrap">
-              <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED}>Afficher</Text>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED}>Afficher</Text>
               <Select size="sm" radius="md" value={String(limit)} onChange={handleLimitChange} data={LIMIT_OPTIONS} style={{ width: 78 }} />
               <TextInput
                 size="sm"
@@ -512,7 +565,7 @@ export function EnveloppesList() {
               <Loader size="sm" />
             </Center>
           ) : (
-            <Table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%' }}>
+            <Table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', tableLayout: 'fixed' }}>
               <Table.Thead>
                 <Table.Tr style={{ borderTop: `1px solid ${GRAY_BORDER}`, borderBottom: `2px solid ${GRAY_BORDER}`, background: CRUD.couleurs.fondEnteteTableau }}>
                   {table.getHeaderGroups()[0]?.headers.map((header, index, headers) => (
@@ -538,7 +591,7 @@ export function EnveloppesList() {
                 {table.getRowModel().rows.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={columns.length} style={{ padding: '16px', textAlign: 'center' }}>
-                      <Text fz={CRUD.typographie.tailleTexte} c="dimmed">Aucune enveloppe.</Text>
+                      <Text fz={CRUD.typographie.petiteTailleTexte} c="dimmed">Aucune enveloppe.</Text>
                     </Table.Td>
                   </Table.Tr>
                 ) : (
@@ -583,7 +636,7 @@ export function EnveloppesList() {
           }}
         >
           <Text
-            fz={CRUD.typographie.tailleTexte}
+            fz={CRUD.typographie.petiteTailleTexte}
             c={TEXT_MUTED}
             style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)' }}
           >
@@ -593,7 +646,7 @@ export function EnveloppesList() {
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page <= 1} onClick={() => pushParams({ page: String(page - 1) })}>
               Précédent
             </Button>
-            <Text fz={CRUD.typographie.tailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
+            <Text fz={CRUD.typographie.petiteTailleTexte} c={TEXT_MUTED} style={{ lineHeight: '34px' }}>
               Page {page} sur {totalPages || 1}
             </Text>
             <Button size="sm" radius="md" variant="default" style={toolbarButtonStyle} disabled={page >= totalPages} onClick={() => pushParams({ page: String(page + 1) })}>

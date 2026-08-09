@@ -8,6 +8,7 @@ import { CRUD } from '@/lib/crud-tokens';
 import { PositioningSelect } from '@/components/common/PositioningSelect';
 import { useAccountsAll } from '@/hooks/useAccounts';
 import { useAutoAssignOperationThirdParties } from '@/hooks/useOperationAutoAssign';
+import { confirmAction } from '@/lib/confirmDelete';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -72,7 +73,7 @@ export function ThirdPartyAutoAssignWorkspace() {
 
   const handleApply = async () => {
     if (!result || result.matchedCount === 0) return;
-    if (!window.confirm('Lancer maintenant le traitement d’affectation avec ces paramètres ?')) return;
+    if (!(await confirmAction('Lancer maintenant le traitement d’affectation avec ces paramètres ?', 'Lancer'))) return;
     await runTreatment(true);
   };
 

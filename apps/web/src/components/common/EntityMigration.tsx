@@ -125,6 +125,7 @@ export function MigrateActionButton({
   return (
     <>
       <Button
+        type="button"
         size="xs"
         radius="md"
         variant="outline"

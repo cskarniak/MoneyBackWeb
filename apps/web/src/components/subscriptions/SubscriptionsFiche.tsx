@@ -246,7 +246,7 @@ export function SubscriptionsFiche({ id }: Props) {
   const handleDelete = async () => {
     if (!id || !subscription) return;
     const message = `Supprimer l'abonnement "${subscription.label}" ?`;
-    const confirmed = subscription.splits.length > 0 ? confirmStrongDelete(message) : confirmSimpleDelete(message);
+    const confirmed = subscription.splits.length > 0 ? await confirmStrongDelete(message) : await confirmSimpleDelete(message);
     if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync(id);
@@ -683,6 +683,7 @@ export function SubscriptionsFiche({ id }: Props) {
             <Group gap="var(--crud-form-footer-gap)">
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   variant="outline"
@@ -694,6 +695,7 @@ export function SubscriptionsFiche({ id }: Props) {
               )}
               {!isNew && (
                 <Button
+                  type="button"
                   size="xs"
                   radius="md"
                   variant="outline"
@@ -707,7 +709,7 @@ export function SubscriptionsFiche({ id }: Props) {
             </Group>
 
             <Group gap="var(--crud-form-footer-gap)">
-              <Button size="sm" radius="md" variant="default" onClick={() => router.back()}>
+              <Button type="button" size="sm" radius="md" variant="default" onClick={() => router.back()}>
                 Annuler
               </Button>
               <Button size="sm" radius="md" type="submit" loading={isSubmitting}>

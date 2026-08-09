@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CreateThirdPartyDto,
@@ -287,8 +287,14 @@ export class ThirdPartiesService {
     ]);
 
     if (operationsCount > 0 || subscriptionsCount > 0 || migratedFromCount > 0) {
-      await this.prisma.thirdParty.update({ where: { id }, data: { active: false } });
-      return { status: 'deactivated' as const, item: await this.findOne(id) };
+      const details: string[] = [];
+      if (operationsCount > 0) details.push(`${operationsCount} opération(s)`);
+      if (subscriptionsCount > 0) details.push(`${subscriptionsCount} abonnement(s)`);
+      if (migratedFromCount > 0) details.push(`${migratedFromCount} tiers migré(s) depuis celui-ci`);
+
+      throw new ConflictException(
+        `Impossible de supprimer le tiers "${thirdParty.name}" : utilisé par ${details.join(', ')}.`,
+      );
     }
 
     await this.prisma.thirdParty.delete({ where: { id } });
