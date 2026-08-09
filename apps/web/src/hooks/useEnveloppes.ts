@@ -26,6 +26,8 @@ export type Enveloppe = {
   balance: string;
   invoiceBalance: string;
   balanceReferenceDate: string | null;
+  expectedBalanceMin: string | null;
+  expectedBalanceMax: string | null;
   regroupementId: string | null;
   regroupement: Regroupement | null;
   regroupementTableauDeBordId: string | null;
@@ -69,6 +71,8 @@ export type EnveloppePayload = {
   regroupementId?: string | null;
   regroupementTableauDeBordId?: string | null;
   movementTypeId?: string | null;
+  expectedBalanceMin?: number | null;
+  expectedBalanceMax?: number | null;
 };
 
 const KEY = 'enveloppes';
@@ -91,6 +95,8 @@ function normalizeEnveloppe(enveloppe: Record<string, unknown>): Enveloppe {
     ...enveloppe,
     balance: String(enveloppe.balance ?? '0'),
     invoiceBalance: String(enveloppe.invoiceBalance ?? '0'),
+    expectedBalanceMin: enveloppe.expectedBalanceMin != null ? String(enveloppe.expectedBalanceMin) : null,
+    expectedBalanceMax: enveloppe.expectedBalanceMax != null ? String(enveloppe.expectedBalanceMax) : null,
     regroupementId:
       (enveloppe.regroupementId as string | null | undefined) ??
       (enveloppe.groupingId as string | null | undefined) ??
@@ -192,5 +198,21 @@ export function useRebuildBudgetBalances() {
   return useMutation<RebuildBudgetBalancesResult, Error, { referenceDate?: string } | void>({
     mutationFn: payload => api.post('/budgets/rebuild-balances', payload ?? {}).then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export type BudgetBalanceAnomaliesResponse = {
+  items: Enveloppe[];
+  total: number;
+};
+
+export function useBudgetBalanceAnomalies() {
+  return useQuery<BudgetBalanceAnomaliesResponse>({
+    queryKey: [KEY, 'balance-anomalies'],
+    queryFn: () =>
+      api.get('/budgets/balance-anomalies').then(r => ({
+        ...r.data,
+        items: (r.data.items as Record<string, unknown>[]).map(normalizeEnveloppe),
+      })),
   });
 }

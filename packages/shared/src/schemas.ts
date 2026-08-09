@@ -426,6 +426,8 @@ export const CreateBudgetSchema = z.object({
   regroupementId: z.string().uuid().optional().nullable(),
   regroupementTableauDeBordId: z.string().uuid().optional().nullable(),
   movementTypeId: z.string().uuid().optional().nullable(),
+  expectedBalanceMin: z.number().optional().nullable(),
+  expectedBalanceMax: z.number().optional().nullable(),
 });
 
 export type CreateBudgetDto = z.infer<typeof CreateBudgetSchema>;

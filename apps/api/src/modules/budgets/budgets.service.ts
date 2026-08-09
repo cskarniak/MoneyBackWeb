@@ -38,6 +38,8 @@ export class BudgetsService {
     balance: unknown;
     invoiceBalance: unknown;
     balanceReferenceDate: Date | null;
+    expectedBalanceMin: unknown;
+    expectedBalanceMax: unknown;
     createdAt: Date;
     updatedAt: Date;
     groupingId: string | null;
@@ -115,7 +117,15 @@ export class BudgetsService {
     return this.presenter(budget);
   }
 
+  private assertExpectedBalanceRange(min?: number | null, max?: number | null) {
+    if (min != null && max != null && min > max) {
+      throw new BadRequestException('Le solde attendu minimum ne peut pas être supérieur au maximum.');
+    }
+  }
+
   async create(dto: CreateBudgetDto) {
+    this.assertExpectedBalanceRange(dto.expectedBalanceMin, dto.expectedBalanceMax);
+
     const budget = await this.prisma.budget.create({
       data: {
         label: dto.label,
@@ -124,6 +134,8 @@ export class BudgetsService {
         summary: dto.summary ?? false,
         dashboard: dto.regroupementTableauDeBordId ? true : (dto.dashboard ?? false),
         active: dto.active ?? true,
+        expectedBalanceMin: dto.expectedBalanceMin ?? null,
+        expectedBalanceMax: dto.expectedBalanceMax ?? null,
         ...(dto.regroupementId && { groupingId: dto.regroupementId }),
         ...(dto.regroupementTableauDeBordId && { dashboardGroupingId: dto.regroupementTableauDeBordId }),
         ...(dto.movementTypeId && { movementTypeId: dto.movementTypeId }),
@@ -136,6 +148,15 @@ export class BudgetsService {
 
   async update(id: string, dto: UpdateBudgetDto) {
     const existing = await this.findOne(id);
+
+    this.assertExpectedBalanceRange(
+      dto.expectedBalanceMin !== undefined
+        ? dto.expectedBalanceMin
+        : (existing.expectedBalanceMin != null ? Number(existing.expectedBalanceMin) : null),
+      dto.expectedBalanceMax !== undefined
+        ? dto.expectedBalanceMax
+        : (existing.expectedBalanceMax != null ? Number(existing.expectedBalanceMax) : null),
+    );
 
     if (dto.active === false && existing.active) {
       const todayOnly = toLocalDateOnly(new Date());
@@ -170,6 +191,8 @@ export class BudgetsService {
         ...(dto.regroupementId !== undefined && { groupingId: dto.regroupementId }),
         ...(dto.regroupementTableauDeBordId !== undefined && { dashboardGroupingId: dto.regroupementTableauDeBordId }),
         ...(dto.movementTypeId !== undefined && { movementTypeId: dto.movementTypeId ?? null }),
+        ...(dto.expectedBalanceMin !== undefined && { expectedBalanceMin: dto.expectedBalanceMin }),
+        ...(dto.expectedBalanceMax !== undefined && { expectedBalanceMax: dto.expectedBalanceMax }),
       },
       include: BUDGET_INCLUDE,
     });
@@ -355,5 +378,35 @@ export class BudgetsService {
     );
 
     return { updatedCount: budgets.length, referenceDate: referenceDateOnly };
+  }
+
+  /**
+   * Détecte les enveloppes dont le solde persisté (voir RebuildBudgetBalances) sort de la
+   * plage attendue (`expectedBalanceMin`/`expectedBalanceMax`), configurée manuellement sur
+   * les enveloppes qui doivent en théorie toujours revenir à un solde cible (ex. « Divers -
+   * virement compte à compte » → 0 à 0). Ne considère que les enveloppes actives ayant une
+   * plage définie.
+   */
+  async findBalanceAnomalies() {
+    const budgets = await this.prisma.budget.findMany({
+      where: {
+        active: true,
+        OR: [{ expectedBalanceMin: { not: null } }, { expectedBalanceMax: { not: null } }],
+      },
+      include: BUDGET_INCLUDE,
+      orderBy: { label: 'asc' },
+    });
+
+    const anomalies = budgets.filter(budget => {
+      const balance = Number(budget.balance);
+      const min = budget.expectedBalanceMin != null ? Number(budget.expectedBalanceMin) : null;
+      const max = budget.expectedBalanceMax != null ? Number(budget.expectedBalanceMax) : null;
+      const tolerance = 0.005;
+      if (min != null && balance < min - tolerance) return true;
+      if (max != null && balance > max + tolerance) return true;
+      return false;
+    });
+
+    return { items: anomalies.map(item => this.presenter(item)), total: anomalies.length };
   }
 }

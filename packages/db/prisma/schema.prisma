@@ -113,6 +113,8 @@ model Budget {
   balance        Decimal  @default(0) @map("solde") @db.Decimal(15, 2)
   invoiceBalance Decimal  @default(0) @map("solde_facture") @db.Decimal(15, 2)
   balanceReferenceDate DateTime? @map("date_reference_solde")
+  expectedBalanceMin Decimal? @map("solde_attendu_min") @db.Decimal(15, 2)
+  expectedBalanceMax Decimal? @map("solde_attendu_max") @db.Decimal(15, 2)
   active         Boolean  @default(true) @map("actif")
   createdAt      DateTime @default(now()) @map("date_creation")
   updatedAt      DateTime @updatedAt @map("date_modification")

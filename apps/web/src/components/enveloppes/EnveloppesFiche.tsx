@@ -44,6 +44,9 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleDateString('fr-FR');
 }
 
+const EXPECTED_BALANCE_MODES = ['none', 'positive', 'negative', 'zero', 'range'] as const;
+type ExpectedBalanceMode = (typeof EXPECTED_BALANCE_MODES)[number];
+
 const schema = z.object({
   label: z.string().min(1, 'Le libellé est obligatoire'),
   regroupementId: z.string().nullable().optional(),
@@ -53,11 +56,43 @@ const schema = z.object({
   summary: z.boolean(),
   dashboard: z.boolean(),
   active: z.boolean(),
+  expectedBalanceMode: z.enum(EXPECTED_BALANCE_MODES),
+  expectedBalanceRangeMin: z.string().optional(),
+  expectedBalanceRangeMax: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
+function expectedBalanceModeToRange(values: FormValues): { min: number | null; max: number | null } {
+  switch (values.expectedBalanceMode) {
+    case 'positive':
+      return { min: 0, max: null };
+    case 'negative':
+      return { min: null, max: 0 };
+    case 'zero':
+      return { min: 0, max: 0 };
+    case 'range':
+      return {
+        min: values.expectedBalanceRangeMin ? Number(values.expectedBalanceRangeMin) : null,
+        max: values.expectedBalanceRangeMax ? Number(values.expectedBalanceRangeMax) : null,
+      };
+    default:
+      return { min: null, max: null };
+  }
+}
+
+function expectedBalanceRangeToMode(min: string | null, max: string | null): ExpectedBalanceMode {
+  const minNum = min != null ? Number(min) : null;
+  const maxNum = max != null ? Number(max) : null;
+  if (minNum === 0 && maxNum === 0) return 'zero';
+  if (minNum === 0 && maxNum === null) return 'positive';
+  if (minNum === null && maxNum === 0) return 'negative';
+  if (minNum !== null || maxNum !== null) return 'range';
+  return 'none';
+}
+
 function toPayload(values: FormValues): EnveloppePayload {
+  const { min, max } = expectedBalanceModeToRange(values);
   return {
     label: values.label,
     regroupementId: values.regroupementId || null,
@@ -67,6 +102,8 @@ function toPayload(values: FormValues): EnveloppePayload {
     summary: values.summary,
     dashboard: !!values.regroupementTableauDeBordId || values.dashboard,
     active: values.active,
+    expectedBalanceMin: min,
+    expectedBalanceMax: max,
   };
 }
 
@@ -112,6 +149,9 @@ export function EnveloppesFiche({ id }: Props) {
       summary: false,
       dashboard: false,
       active: true,
+      expectedBalanceMode: 'none',
+      expectedBalanceRangeMin: '',
+      expectedBalanceRangeMax: '',
     },
   });
 
@@ -126,6 +166,9 @@ export function EnveloppesFiche({ id }: Props) {
         summary: enveloppe.summary,
         dashboard: enveloppe.dashboard,
         active: enveloppe.active,
+        expectedBalanceMode: expectedBalanceRangeToMode(enveloppe.expectedBalanceMin, enveloppe.expectedBalanceMax),
+        expectedBalanceRangeMin: enveloppe.expectedBalanceMin ?? '',
+        expectedBalanceRangeMax: enveloppe.expectedBalanceMax ?? '',
       });
     }
   }, [enveloppe, reset]);
@@ -287,6 +330,62 @@ export function EnveloppesFiche({ id }: Props) {
                     ? ` (au ${formatDate(enveloppe.balanceReferenceDate)})`
                     : ' (jamais recalculé)'}
                 </Text>
+              </Group>
+            )}
+
+            <Group gap={0} align="center">
+              <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle}>
+                Solde cible
+              </Text>
+              <Group gap={16}>
+                <Checkbox
+                  label="Solde > 0"
+                  checked={watch('expectedBalanceMode') === 'positive'}
+                  onChange={e => setValue('expectedBalanceMode', e.currentTarget.checked ? 'positive' : 'none')}
+                />
+                <Checkbox
+                  label="Solde < 0"
+                  checked={watch('expectedBalanceMode') === 'negative'}
+                  onChange={e => setValue('expectedBalanceMode', e.currentTarget.checked ? 'negative' : 'none')}
+                />
+                <Checkbox
+                  label="Solde = 0"
+                  checked={watch('expectedBalanceMode') === 'zero'}
+                  onChange={e => setValue('expectedBalanceMode', e.currentTarget.checked ? 'zero' : 'none')}
+                />
+                <Checkbox
+                  label="Intervalle"
+                  checked={watch('expectedBalanceMode') === 'range'}
+                  onChange={e => setValue('expectedBalanceMode', e.currentTarget.checked ? 'range' : 'none')}
+                />
+              </Group>
+            </Group>
+
+            {watch('expectedBalanceMode') === 'range' && (
+              <Group gap={0} align="center">
+                <Text fz="var(--crud-font-size)" fw={600} c={LABEL_COLOR} style={labelStyle} />
+                <Group gap={12} style={{ flex: 1 }}>
+                  <TextInput
+                    {...register('expectedBalanceRangeMin')}
+                    label="Borne inférieure"
+                    size="sm"
+                    radius="md"
+                    inputMode="decimal"
+                    placeholder="Aucune"
+                    style={{ flex: 1 }}
+                    styles={{ input: fieldInputStyle }}
+                  />
+                  <TextInput
+                    {...register('expectedBalanceRangeMax')}
+                    label="Borne supérieure"
+                    size="sm"
+                    radius="md"
+                    inputMode="decimal"
+                    placeholder="Aucune"
+                    style={{ flex: 1 }}
+                    styles={{ input: fieldInputStyle }}
+                  />
+                </Group>
               </Group>
             )}
 

@@ -23,6 +23,12 @@ export class BudgetsController {
     return this.service.rebuildBalances(referenceDate);
   }
 
+  @Get('balance-anomalies')
+  @ApiOperation({ summary: 'Liste les enveloppes dont le solde sort de la plage attendue configurée' })
+  findBalanceAnomalies() {
+    return this.service.findBalanceAnomalies();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
