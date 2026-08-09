@@ -108,9 +108,17 @@ export function CreateMatchingRuleModal({ opened, onClose, operation }: Props) {
     setNewThirdPartyName('');
     setNewCategoryId(null);
     setNewBudgetId(null);
-    setExistingCategoryId(null);
-    setExistingBudgetId(null);
-    setLoadedThirdPartyId(null);
+    if (operation.thirdPartyId) {
+      // Pré-remplit avec la catégorie/enveloppe déjà saisies sur cette opération plutôt
+      // qu'avec celles par défaut du tiers, qui peuvent différer de ce cas précis.
+      setExistingCategoryId(operation.categoryId ?? null);
+      setExistingBudgetId(operation.budgetId ?? null);
+      setLoadedThirdPartyId(operation.thirdPartyId);
+    } else {
+      setExistingCategoryId(null);
+      setExistingBudgetId(null);
+      setLoadedThirdPartyId(null);
+    }
     setRuleLabel(operation.label.trim());
     setOperator('AND');
     setStopOnMatch(false);
