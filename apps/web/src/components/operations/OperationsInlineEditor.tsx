@@ -541,6 +541,7 @@ export function OperationsInlineEditor({
   return (
     <>
       <Table.Tr style={{ ...compactFormVars, background: ROW_BG, borderBottom: 'none' }}>
+        <Table.Td style={{ ...inlineCellTdStyle, width: 32 }} />
         <Table.Td style={{ ...inlineCellTdStyle, width: 22 }}>
           <Text fz={11} fw={700} lh={1} ta="center" c="#4c73f0">
             ▶

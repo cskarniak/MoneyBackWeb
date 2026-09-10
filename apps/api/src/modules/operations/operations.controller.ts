@@ -2,11 +2,13 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AutoAssignOperationThirdPartiesSchema,
+  BulkAssignThirdPartySchema,
   DeleteStatementImportSchema,
   OperationFiltersSchema,
 } from '@moneyback/shared';
 import type {
   AutoAssignOperationThirdPartiesDto,
+  BulkAssignThirdPartyDto,
   CreateOperationDto,
   DeleteStatementImportDto,
   UpdateOperationDto,
@@ -47,6 +49,13 @@ export class OperationsController {
   autoAssignThirdParties(@Body() body: AutoAssignOperationThirdPartiesDto) {
     const dto = AutoAssignOperationThirdPartiesSchema.parse(body);
     return this.service.autoAssignThirdParties(dto);
+  }
+
+  @Patch('bulk-assign-third-party')
+  @ApiOperation({ summary: 'Affecte un tiers à un ensemble d\'opérations sélectionnées' })
+  bulkAssignThirdParty(@Body() body: BulkAssignThirdPartyDto) {
+    const dto = BulkAssignThirdPartySchema.parse(body);
+    return this.service.bulkAssignThirdParty(dto);
   }
 
   @Delete('statement-import')

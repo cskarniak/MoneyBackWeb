@@ -135,6 +135,12 @@ export const AutoAssignOperationThirdPartiesSchema = z.object({
 
 export type AutoAssignOperationThirdPartiesDto = z.infer<typeof AutoAssignOperationThirdPartiesSchema>;
 
+export const BulkAssignThirdPartySchema = z.object({
+  operationIds: z.array(z.string().uuid()).min(1),
+  thirdPartyId: z.string().uuid(),
+});
+export type BulkAssignThirdPartyDto = z.infer<typeof BulkAssignThirdPartySchema>;
+
 export const DeleteStatementImportSchema = z.object({
   accountId: z.string().uuid(),
   statementRef: z.string().trim().min(1, 'La référence du relevé est obligatoire'),

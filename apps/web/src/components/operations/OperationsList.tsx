@@ -25,7 +25,9 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconPencil, IconTrash, IconSearch, IconAlertCircle, IconCheck, IconGitBranch, IconDownload, IconWand, IconDotsVertical, IconRefresh } from '@tabler/icons-react';
 import { useAccountsAll } from '@/hooks/useAccounts';
-import { useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
+import { useBulkAssignThirdParty, useDeleteOperation, useOperation, useOperationStatementRefs, useOperations, useUpdateOperation, type Operation } from '@/hooks/useOperations';
+import { useThirdPartiesAll } from '@/hooks/useThirdParties';
+import { filterActiveOptions } from '@/lib/activeOptions';
 import { exportPaginatedListToExcel } from '@/lib/export-excel';
 import { confirmSimpleDelete, confirmStrongDelete } from '@/lib/confirmDelete';
 import { isSecondaryTabRequest, openSecondaryTab } from '@/lib/secondary-tab';
@@ -45,6 +47,7 @@ const OPERATIONS_LAST_ACCOUNT_STORAGE_KEY = 'operations:last-account-id';
 const SPLIT_TOLERANCE = 0.011;
 const VIEWPORT_TOP_OFFSET = 60;
 const OPERATION_COLUMN_WIDTHS: Record<string, string> = {
+  select: '32px',
   cursor: '22px',
   operationDate: '104px',
   label: '26%',
@@ -146,6 +149,10 @@ export function OperationsList() {
   const [isExporting, setIsExporting] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [mode, setMode] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkThirdPartyId, setBulkThirdPartyId] = useState<string | null>(null);
+  const { data: thirdParties = [] } = useThirdPartiesAll();
+  const bulkAssignThirdPartyMutation = useBulkAssignThirdParty();
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const viewportAnchorRef = useRef<{ operationId: string; top: number } | null>(null);
   const scrollTopRef = useRef<number | null>(null);
@@ -332,6 +339,11 @@ export function OperationsList() {
   useEffect(() => {
     if (accountId) refetchAccounts();
   }, [accountId, refetchAccounts]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setBulkThirdPartyId(null);
+  }, [accountId, page, search, statementRef, sortBy, sortOrder]);
   const effectiveItems = useMemo(() => (
     operationId
       ? (operationQuery.data ? [operationQuery.data] : [])
@@ -601,6 +613,44 @@ export function OperationsList() {
     setMode('new');
   };
 
+  const toggleRowSelected = (id: string) => {
+    setSelectedIds(previous => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllSelected = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(effectiveItems.map(operation => operation.id)) : new Set());
+  };
+
+  const thirdPartyOptions = filterActiveOptions(
+    thirdParties.map(tiers => ({ value: tiers.id, label: tiers.name })),
+    value => !!thirdParties.find(tiers => tiers.id === value)?.active,
+    [],
+  );
+
+  const handleBulkAssignThirdParty = async () => {
+    if (!bulkThirdPartyId || selectedIds.size === 0) return;
+    const thirdPartyName = thirdParties.find(tiers => tiers.id === bulkThirdPartyId)?.name ?? '';
+    try {
+      const result = await bulkAssignThirdPartyMutation.mutateAsync({
+        operationIds: Array.from(selectedIds),
+        thirdPartyId: bulkThirdPartyId,
+      });
+      notifications.show({
+        message: `${result.updatedCount} opération(s) affectée(s) à "${thirdPartyName}"`,
+        color: 'green',
+      });
+      setSelectedIds(new Set());
+      setBulkThirdPartyId(null);
+    } catch {
+      notifications.show({ message: "Impossible d'affecter le tiers aux opérations sélectionnées.", color: 'red' });
+    }
+  };
+
   const handleDelete = async (operation: Operation) => {
     rememberViewportAnchor(operation.id);
     setContextMenu(null);
@@ -743,6 +793,34 @@ export function OperationsList() {
 
   const columns = useMemo<ColumnDef<Operation>[]>(
     () => [
+      {
+        id: 'select',
+        header: () => (
+          <Box onClick={event => event.stopPropagation()} style={{ display: 'flex', justifyContent: 'center' }}>
+            <Checkbox
+              size="xs"
+              checked={effectiveItems.length > 0 && effectiveItems.every(operation => selectedIds.has(operation.id))}
+              indeterminate={selectedIds.size > 0 && !effectiveItems.every(operation => selectedIds.has(operation.id))}
+              onChange={event => toggleAllSelected(event.currentTarget.checked)}
+              aria-label="Tout sélectionner"
+            />
+          </Box>
+        ),
+        cell: ({ row }) => (
+          <Box
+            onClick={event => event.stopPropagation()}
+            onDoubleClick={event => event.stopPropagation()}
+            style={{ display: 'flex', justifyContent: 'center' }}
+          >
+            <Checkbox
+              size="xs"
+              checked={selectedIds.has(row.original.id)}
+              onChange={() => toggleRowSelected(row.original.id)}
+              aria-label="Sélectionner cette opération"
+            />
+          </Box>
+        ),
+      },
       {
         id: 'cursor',
         header: () => <span style={thStyle()} />,
@@ -951,7 +1029,7 @@ export function OperationsList() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sortBy, sortOrder, deleteMutation.isPending, cursorTargetId],
+    [sortBy, sortOrder, deleteMutation.isPending, cursorTargetId, selectedIds, effectiveItems],
   );
 
   const table = useReactTable({
@@ -1322,6 +1400,57 @@ export function OperationsList() {
             </Table>
           )}
         </Box>
+
+        {selectedIds.size > 0 && (
+          <Box
+            style={{
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 300,
+              marginTop: 12,
+              padding: '10px 16px',
+              background: '#1f2937',
+              borderRadius: 10,
+              boxShadow: '0 12px 30px rgba(15, 23, 42, 0.25)',
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="nowrap" gap={12}>
+              <Text fz={CRUD.typographie.petiteTailleTexte} c="white" fw={600}>
+                {selectedIds.size} opération(s) sélectionnée(s)
+              </Text>
+              <Group gap={8} wrap="nowrap" align="center">
+                <PositioningSelect
+                  placeholder="Affecter un tiers"
+                  data={thirdPartyOptions}
+                  value={bulkThirdPartyId}
+                  onChange={setBulkThirdPartyId}
+                  clearable
+                  radius="md"
+                  w={260}
+                />
+                <Button
+                  radius="md"
+                  disabled={!bulkThirdPartyId}
+                  loading={bulkAssignThirdPartyMutation.isPending}
+                  onClick={handleBulkAssignThirdParty}
+                >
+                  Appliquer
+                </Button>
+                <Button
+                  variant="subtle"
+                  color="gray"
+                  radius="md"
+                  onClick={() => {
+                    setSelectedIds(new Set());
+                    setBulkThirdPartyId(null);
+                  }}
+                >
+                  Annuler la sélection
+                </Button>
+              </Group>
+            </Group>
+          </Box>
+        )}
 
         {contextMenu && (
           <Box

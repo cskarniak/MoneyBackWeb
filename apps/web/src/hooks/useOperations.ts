@@ -234,6 +234,21 @@ export function useDeleteOperation() {
   });
 }
 
+export function useBulkAssignThirdParty() {
+  const qc = useQueryClient();
+  return useMutation<
+    { requestedCount: number; updatedCount: number; thirdPartyName: string },
+    Error,
+    { operationIds: string[]; thirdPartyId: string }
+  >({
+    mutationFn: payload => api.patch('/operations/bulk-assign-third-party', payload).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+    },
+  });
+}
+
 export function useDeleteStatementImport() {
   const qc = useQueryClient();
   return useMutation<DeleteStatementImportResult, Error, DeleteStatementImportPayload>({

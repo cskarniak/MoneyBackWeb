@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { OperationType } from '@moneyback/shared';
 import type {
   AutoAssignOperationThirdPartiesDto,
+  BulkAssignThirdPartyDto,
   CreateOperationDto,
   DeleteStatementImportDto,
   OperationFiltersDto,
@@ -553,6 +554,69 @@ export class OperationsService {
       afterWithoutBudgetCount,
       assignmentRate,
       details: details.slice(0, 100),
+    };
+  }
+
+  async bulkAssignThirdParty(dto: BulkAssignThirdPartyDto) {
+    await this.assertThirdPartyActive(dto.thirdPartyId);
+
+    const thirdParty = await this.prisma.thirdParty.findUnique({
+      where: { id: dto.thirdPartyId },
+      select: { id: true, name: true, categoryId: true, budgetId: true, movementTypeId: true, ventilated: true },
+    });
+    if (!thirdParty) throw new NotFoundException(`Tiers ${dto.thirdPartyId} introuvable`);
+
+    const templateSplits = thirdParty.ventilated
+      ? await this.prisma.thirdPartySplit.findMany({
+          where: { thirdPartyId: thirdParty.id },
+          orderBy: { position: 'asc' },
+        })
+      : [];
+    const hasSplitTemplate = templateSplits.length > 0;
+
+    const operations = await this.prisma.operation.findMany({
+      where: { id: { in: dto.operationIds }, deletedAt: null },
+      select: { id: true, expense: true, income: true },
+    });
+
+    let updatedCount = 0;
+    for (const operation of operations) {
+      await this.prisma.operation.update({
+        where: { id: operation.id },
+        data: {
+          thirdPartyId: thirdParty.id,
+          categoryId: thirdParty.ventilated ? null : thirdParty.categoryId,
+          budgetId: thirdParty.ventilated ? null : thirdParty.budgetId,
+          movementTypeId: thirdParty.movementTypeId,
+          autoAssignedRuleLabel: null,
+          ...(hasSplitTemplate
+            ? {
+                operationType: this.resolveOperationType(
+                  { expense: Number(operation.expense), income: Number(operation.income) },
+                  templateSplits.map(split => ({ expense: Number(split.expense), income: Number(split.income) })),
+                ),
+                splits: {
+                  deleteMany: {},
+                  create: templateSplits.map((split, index) => ({
+                    label: split.label,
+                    expense: split.expense,
+                    income: split.income,
+                    categoryId: split.categoryId,
+                    budgetId: split.budgetId,
+                    position: index,
+                  })),
+                },
+              }
+            : {}),
+        },
+      });
+      updatedCount += 1;
+    }
+
+    return {
+      requestedCount: dto.operationIds.length,
+      updatedCount,
+      thirdPartyName: thirdParty.name,
     };
   }
 
