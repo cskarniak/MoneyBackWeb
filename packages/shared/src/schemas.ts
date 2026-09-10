@@ -551,7 +551,7 @@ export const ThirdPartyFiltersSchema = z.object({
   ),
   highlightId: z.string().uuid().optional(),
   page: z.preprocess(v => Number(v ?? 1), z.number().int().min(1)).default(1),
-  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(200)).default(20),
+  limit: z.preprocess(v => Number(v ?? 20), z.number().int().min(1).max(1000)).default(20),
   sortBy: z.enum(['name', 'comment', 'ventilated']).default('name'),
   sortOrder: z.enum(['asc', 'desc']).default('asc'),
 });

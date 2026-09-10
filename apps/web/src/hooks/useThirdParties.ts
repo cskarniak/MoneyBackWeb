@@ -161,7 +161,7 @@ export function useThirdPartiesAll() {
   return useQuery<ThirdParty[]>({
     queryKey: [KEY, 'all'],
     queryFn: () =>
-      api.get('/third-parties', { params: { limit: 200, sortBy: 'name', sortOrder: 'asc' } }).then(r =>
+      api.get('/third-parties', { params: { limit: 1000, sortBy: 'name', sortOrder: 'asc' } }).then(r =>
         (r.data.items as Record<string, unknown>[]).map(normalizeThirdParty),
       ),
     staleTime: 5 * 60_000,
