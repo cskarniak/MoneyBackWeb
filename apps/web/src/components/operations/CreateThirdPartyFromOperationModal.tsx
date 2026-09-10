@@ -68,6 +68,7 @@ export function CreateThirdPartyFromOperationModal({ opened, onClose, operation 
         active: true,
         categoryId: isVentilated ? null : categoryId,
         budgetId: isVentilated ? null : budgetId,
+        movementTypeId: operation.movementTypeId,
         ...(isVentilated && {
           splits: operation.splits.map(split => ({
             label: split.label,
@@ -80,8 +81,8 @@ export function CreateThirdPartyFromOperationModal({ opened, onClose, operation 
       });
       notifications.show({ message: `Tiers "${created.name}" créé.`, color: 'green' });
       onClose();
-    } catch {
-      setError('Impossible de créer le tiers.');
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : 'Impossible de créer le tiers.');
     }
   };
 
