@@ -34,6 +34,7 @@ import { isSecondaryTabRequest, openSecondaryTab } from '@/lib/secondary-tab';
 import { OperationSplitModal } from './OperationSplitModal';
 import { OperationsInlineEditor } from './OperationsInlineEditor';
 import { CreateMatchingRuleModal } from './CreateMatchingRuleModal';
+import { CreateThirdPartyFromOperationModal } from './CreateThirdPartyFromOperationModal';
 
 const GRAY_BORDER = CRUD.couleurs.grilleTableau;
 const PANEL_BG = '#ffffff';
@@ -145,6 +146,7 @@ export function OperationsList() {
   const [contextMenuPosition, setContextMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [splitDetailsOperation, setSplitDetailsOperation] = useState<Operation | null>(null);
   const [ruleModalOperation, setRuleModalOperation] = useState<Operation | null>(null);
+  const [createTiersModalOperation, setCreateTiersModalOperation] = useState<Operation | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -707,6 +709,11 @@ export function OperationsList() {
   const handleOpenCreateRule = (operation: Operation) => {
     setContextMenu(null);
     setRuleModalOperation(operation);
+  };
+
+  const handleOpenCreateTiers = (operation: Operation) => {
+    setContextMenu(null);
+    setCreateTiersModalOperation(operation);
   };
 
   const handleOpenThirdParty = (operation: Operation) => {
@@ -1616,6 +1623,26 @@ export function OperationsList() {
             >
               Créer une règle de tiers…
             </Button>
+            <Button
+              variant="subtle"
+              fullWidth
+              justify="flex-start"
+              leftSection={<IconWand size={14} />}
+              radius={0}
+              styles={{
+                root: {
+                  height: 40,
+                  color: '#334155',
+                  borderBottom: `1px solid ${GRAY_BORDER}`,
+                },
+                inner: {
+                  justifyContent: 'flex-start',
+                },
+              }}
+              onClick={() => handleOpenCreateTiers(contextMenu.operation)}
+            >
+              Créer un tiers à partir de cette écriture…
+            </Button>
             <Box style={{ padding: '8px 14px' }}>
               <Text fz={11} fw={700} c="dimmed" tt="uppercase" mb={2}>
                 Règle d&apos;affectation
@@ -1631,6 +1658,12 @@ export function OperationsList() {
           opened={!!ruleModalOperation}
           onClose={() => setRuleModalOperation(null)}
           operation={ruleModalOperation}
+        />
+
+        <CreateThirdPartyFromOperationModal
+          opened={!!createTiersModalOperation}
+          onClose={() => setCreateTiersModalOperation(null)}
+          operation={createTiersModalOperation}
         />
 
         <OperationSplitModal
