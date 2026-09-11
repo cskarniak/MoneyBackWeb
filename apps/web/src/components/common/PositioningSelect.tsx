@@ -84,7 +84,11 @@ export function PositioningSelect<T extends PositioningSelectOption = Positionin
     },
   });
 
-  const emptyOption = { value: EMPTY_OPTION_VALUE, label: ' ' } as T;
+  // Espace insécable : un espace normal seul dans un bloc est intégralement
+  // supprimé par les règles de collapse CSS (white-space: normal), ce qui
+  // ramène la ligne à une hauteur de 0 et la rend invisible/inaccessible au
+  // clic. L'espace insécable a un rendu identique mais n'est jamais supprimé.
+  const emptyOption = { value: EMPTY_OPTION_VALUE, label: ' ' } as T;
   const displayedData: T[] = clearable ? [emptyOption, ...data] : data;
 
   const selectedOption = data.find(item => item.value === value) ?? null;
