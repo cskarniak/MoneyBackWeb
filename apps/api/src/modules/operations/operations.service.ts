@@ -268,9 +268,9 @@ export class OperationsService {
         },
       }),
       ...(unvalidatedOnly && {
-        NOT: {
-          operationValidated: 'V',
-        },
+        // operationValidated ne vaut que 'V' ou null : un simple NOT { equals: 'V' }
+        // exclurait aussi les lignes null en SQL (comparaison à NULL indéterminée).
+        operationValidated: null,
       }),
       ...(preassigned === 'oui' && { autoAssignedRuleLabel: { not: null } }),
       ...(preassigned === 'non' && { autoAssignedRuleLabel: null }),
